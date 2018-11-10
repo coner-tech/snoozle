@@ -30,6 +30,8 @@ class Resource<E : Any>(
         val id = idMemberProperty.get(entity) as String
         val path = this.entity.path.replace("{id}", id)
         val file = File(root, "$path.json")
-        objectMapper.writeValue(file.outputStream(), entity)
+        file.outputStream().use {
+            objectMapper.writeValue(it, entity)
+        }
     }
 }
