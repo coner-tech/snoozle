@@ -21,8 +21,13 @@ class Database(
         resources = resourcesBuilder.toMap()
     }
 
-    inline fun <reified E : Any> getById(id: String): E {
+    inline fun <reified E : Any> get(id: String): E {
         val resource = resources[E::class]!!
         return resource.get(id)
+    }
+
+    inline fun <reified E : Any> put(entity: E) {
+        val resource = resources[E::class]!! as Resource<E>
+        resource.put(entity)
     }
 }

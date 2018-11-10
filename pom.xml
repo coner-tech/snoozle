@@ -14,6 +14,7 @@
         <jackson.version>2.9.4.1</jackson.version>
         <junit.version>4.12</junit.version>
         <assertj.version>3.11.1</assertj.version>
+        <kotlin-json-assert.version>0.1.0</kotlin-json-assert.version>
     </properties>
 
     <dependencies>
@@ -43,6 +44,12 @@
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <version>${assertj.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.gregwoodfill.assert</groupId>
+            <artifactId>kotlin-json-assert</artifactId>
+            <version>${kotlin-json-assert.version}</version>
             <scope>test</scope>
         </dependency>
 

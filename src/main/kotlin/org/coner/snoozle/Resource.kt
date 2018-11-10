@@ -16,16 +16,20 @@ class Resource<E : Any>(
 ) {
 
     val entity: Entity = kclass.findAnnotation()!!
-    val idMemberProperty: KProperty1<*, *> = kclass.declaredMemberProperties
+    val idMemberProperty: KProperty1<E, *> = kclass.declaredMemberProperties
             .firstOrNull { it.findAnnotation<Id>() != null }
             ?: throw IllegalArgumentException()
-
-    init {
-    }
 
     inline fun <reified E> get(id: String): E {
         val path = entity.path.replace("{id}", id)
         val file = File(root, "$path.json")
         return objectMapper.readValue(file, E::class.java)
+    }
+
+    fun put(entity: E) {
+        val id = idMemberProperty.get(entity) as String
+        val path = this.entity.path.replace("{id}", id)
+        val file = File(root, "$path.json")
+        objectMapper.writeValue(file.outputStream(), entity)
     }
 }
