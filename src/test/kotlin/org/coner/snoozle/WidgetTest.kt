@@ -47,7 +47,20 @@ class WidgetTest {
         val record = File(folder.root, "/widgets/${entity.id}.json")
         assertThat(record).exists()
         val actual = record.readText()
-        actual shouldEqualJson """{"id":"${entity.id}","name":"Three"}"""
+        actual.shouldEqualJson("""{"id":"${entity.id}","name":"Three"}""")
+    }
+
+    @Test
+    fun itShouldRemoveById() {
+        val database = Database(folder.root, Widget::class)
+        val id = "1f30d7b6-0296-489a-9615-55868aeef78a"
+        val file = File(folder.root, "/widgets/$id.json")
+        assertThat(file).exists() // sanity check
+        val entity: Widget = database.get(id)
+
+        database.remove(entity)
+
+        assertThat(file).doesNotExist()
     }
 
 }

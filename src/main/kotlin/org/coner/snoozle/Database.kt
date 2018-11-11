@@ -30,4 +30,9 @@ class Database(
         val resource = resources[E::class]!! as Resource<E>
         resource.put(entity)
     }
+
+    inline fun <reified E: Any> remove(entity: E) {
+        val resource = resources[E::class]!! as Resource<E>
+        resource.delete(entity)
+    }
 }

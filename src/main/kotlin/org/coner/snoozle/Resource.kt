@@ -34,4 +34,11 @@ class Resource<E : Any>(
             objectMapper.writeValue(it, entity)
         }
     }
+
+    fun delete(entity: E) {
+        val id = idMemberProperty.get(entity) as String
+        val path = this.entity.path.replace("{id}", id)
+        val file = File(root, "$path.json")
+        file.delete()
+    }
 }
