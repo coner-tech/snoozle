@@ -1,4 +1,4 @@
-package org.coner.snoozle
+package org.coner.snoozle.db
 
 import com.gregwoodfill.assert.shouldEqualJson
 import org.assertj.core.api.Assertions.assertThat
@@ -25,7 +25,7 @@ class WidgetTest {
     fun itShouldGetEntityById() {
         val database = Database(folder.root, Widget::class)
         val expected = Widget(
-                id = "1f30d7b6-0296-489a-9615-55868aeef78a",
+                id = UUID.fromString("1f30d7b6-0296-489a-9615-55868aeef78a"),
                 name = "One"
         )
 
@@ -38,7 +38,7 @@ class WidgetTest {
     fun itShouldPutEntityById() {
         val database = Database(folder.root, Widget::class)
         val entity = Widget(
-                id = UUID.randomUUID().toString(),
+                id = UUID.randomUUID(),
                 name = "Three"
         )
 
@@ -53,7 +53,7 @@ class WidgetTest {
     @Test
     fun itShouldRemoveById() {
         val database = Database(folder.root, Widget::class)
-        val id = "1f30d7b6-0296-489a-9615-55868aeef78a"
+        val id = UUID.fromString("1f30d7b6-0296-489a-9615-55868aeef78a")
         val file = File(folder.root, "/widgets/$id.json")
         assertThat(file).exists() // sanity check
         val entity: Widget = database.get(id)
