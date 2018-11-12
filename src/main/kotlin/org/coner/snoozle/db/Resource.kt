@@ -7,6 +7,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.findAnnotation
+import kotlin.streams.toList
 
 class Resource<E : Entity>(
         val root: File,
@@ -14,15 +15,18 @@ class Resource<E : Entity>(
         val objectMapper: ObjectMapper
 ) {
 
-    val path: Path = kclass.findAnnotation()!!
+    val entityPath: EntityPath = kclass.findAnnotation()!!
     val idMemberProperty: KProperty1<E, UUID>
+    val listingPath: File
 
     init {
-        val lastOpenBracket = path.format.lastIndexOf('{')
-        val lastCloseBracket = path.format.lastIndexOf('}')
-        val idMemberPropertyName = path.format.substring(lastOpenBracket + 1, lastCloseBracket)
+        val lastOpenBracket = entityPath.format.lastIndexOf('{')
+        val lastCloseBracket = entityPath.format.lastIndexOf('}')
+        val idMemberPropertyName = entityPath.format.substring(lastOpenBracket + 1, lastCloseBracket)
         idMemberProperty = kclass.declaredMemberProperties
                 .first { it.name == idMemberPropertyName } as KProperty1<E, UUID>
+        val lastForwardSlash = entityPath.format.lastIndexOf('/')
+        listingPath = File(root, entityPath.format.substring(0..lastForwardSlash))
     }
 
     fun get(id: UUID): E {
@@ -42,8 +46,20 @@ class Resource<E : Entity>(
         file.delete()
     }
 
+    fun list(): List<E> {
+        val files = listingPath.listFiles()
+                .filter { it.isFile && it.extension == "json" }
+        return files.parallelStream()
+                .map { file ->
+                    file.inputStream().use {
+                        objectMapper.readValue(it, kclass.java)
+                    }
+                }
+                .toList()
+    }
+
     private fun file(id: UUID): File {
         // TODO: extract to specialized class
-        return File(root, path.format.replace("{${idMemberProperty.name}}", id.toString()) + ".json")
+        return File(root, entityPath.format.replace("{${idMemberProperty.name}}", id.toString()) + ".json")
     }
 }

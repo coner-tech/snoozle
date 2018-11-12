@@ -63,4 +63,23 @@ class WidgetTest {
         assertThat(file).doesNotExist()
     }
 
+    @Test
+    fun itShouldList() {
+        val database = Database(folder.root, Widget::class)
+        val expected = listOf(
+                Widget(
+                        id = UUID.fromString("1f30d7b6-0296-489a-9615-55868aeef78a"),
+                        name = "One"
+                ),
+                Widget(
+                        id = UUID.fromString("94aa3940-1183-4e91-b329-d9dc9c688540"),
+                        name = "Two"
+                )
+        )
+
+        val actual: List<Widget> = database.list()
+
+        assertThat(actual).isEqualTo(expected)
+    }
+
 }

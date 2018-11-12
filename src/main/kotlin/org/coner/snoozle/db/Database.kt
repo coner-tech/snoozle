@@ -36,4 +36,9 @@ class Database(
         val resource = resources[E::class as KClass<Entity>]!! as Resource<E>
         resource.delete(entity)
     }
+
+    inline fun <reified E : Entity> list(): List<E> {
+        val resource = resources[E::class as KClass<Entity>]!! as Resource<E>
+        return resource.list()
+    }
 }
