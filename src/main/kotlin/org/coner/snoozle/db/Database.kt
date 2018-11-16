@@ -7,21 +7,25 @@ import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 
-class Database(
-        root: File,
-        vararg entities: KClass<out Entity>,
-        objectMapper: ObjectMapper = jacksonObjectMapper()
-) {
+class Database {
 
-    val resources: Map<KClass<Entity>, Resource<Entity>>
-
-    init {
+    constructor(
+            root: File,
+            vararg entities: KClass<out Entity>,
+            objectMapper: ObjectMapper = jacksonObjectMapper()
+    ) {
         val resourcesBuilder = mutableMapOf<KClass<Entity>, Resource<Entity>>()
         for (entityType in entities) {
             resourcesBuilder[entityType as KClass<Entity>] = Resource(root, entityType, objectMapper)
         }
-        resources = resourcesBuilder.toMap()
+        this.resources = resourcesBuilder.toMap()
     }
+
+    constructor(resources: Map<KClass<Entity>, Resource<Entity>>) {
+        this.resources = resources
+    }
+
+    val resources: Map<KClass<Entity>, Resource<Entity>>
 
     inline fun <reified E : Entity> get(vararg ids: Pair<KProperty1<E, UUID>, UUID>): E {
         val resource: Resource<E> = resources[E::class as KClass<Entity>]!!  as Resource<E>

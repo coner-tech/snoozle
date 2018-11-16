@@ -1,4 +1,4 @@
-package org.coner.snoozle.db
+package org.coner.snoozle.db.sample
 
 import org.junit.rules.TemporaryFolder
 import java.io.File

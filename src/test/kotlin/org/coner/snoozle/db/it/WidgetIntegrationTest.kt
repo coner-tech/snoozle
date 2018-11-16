@@ -1,16 +1,17 @@
-package org.coner.snoozle.db
+package org.coner.snoozle.db.it
 
 import com.gregwoodfill.assert.shouldEqualJson
 import org.assertj.core.api.Assertions.assertThat
+import org.coner.snoozle.db.Database
+import org.coner.snoozle.db.sample.SampleDb
+import org.coner.snoozle.db.sample.Widget
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import java.io.File
 import java.util.*
-import kotlin.reflect.KProperty1
 
-class WidgetTest {
+class WidgetIntegrationTest {
 
     @Rule
     @JvmField

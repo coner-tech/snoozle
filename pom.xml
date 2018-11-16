@@ -15,6 +15,7 @@
         <junit.version>4.12</junit.version>
         <assertj.version>3.11.1</assertj.version>
         <kotlin-json-assert.version>0.1.0</kotlin-json-assert.version>
+        <mockk.version>1.8.13.kotlin13</mockk.version>
     </properties>
 
     <dependencies>
@@ -52,7 +53,12 @@
             <version>${kotlin-json-assert.version}</version>
             <scope>test</scope>
         </dependency>
-
+        <dependency>
+            <groupId>io.mockk</groupId>
+            <artifactId>mockk</artifactId>
+            <version>${mockk.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

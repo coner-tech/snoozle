@@ -107,7 +107,6 @@ class Resource<E : Entity>(
     }
 
     private fun file(entity: E): File {
-        // TODO: extract to specialized class
         return File(root, findPathToEntity(entity))
     }
 }
