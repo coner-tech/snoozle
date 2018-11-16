@@ -8,6 +8,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 import java.util.*
+import kotlin.reflect.KProperty1
 
 class WidgetTest {
 
@@ -17,19 +18,15 @@ class WidgetTest {
 
     @Before
     fun before() {
-        val uri = File(javaClass.getResource("/sample-db").toURI())
-        uri.absoluteFile.copyRecursively(folder.root)
+        SampleDb.copyTo(folder)
     }
 
     @Test
     fun itShouldGetEntityById() {
         val database = Database(folder.root, Widget::class)
-        val expected = Widget(
-                id = UUID.fromString("1f30d7b6-0296-489a-9615-55868aeef78a"),
-                name = "One"
-        )
+        val expected = SampleDb.Widgets.One
 
-        val actual: Widget = database.get(expected.id)
+        val actual = database.get(Widget::id to SampleDb.Widgets.One.id)
 
         assertThat(actual).isEqualTo(expected)
     }
@@ -39,24 +36,23 @@ class WidgetTest {
         val database = Database(folder.root, Widget::class)
         val entity = Widget(
                 id = UUID.randomUUID(),
-                name = "Three"
+                name = "Widget Three"
         )
 
         database.put(entity)
 
-        val record = File(folder.root, "/widgets/${entity.id}.json")
+        val record = SampleDb.Widgets.tempFile(folder, entity)
         assertThat(record).exists()
         val actual = record.readText()
-        actual.shouldEqualJson("""{"id":"${entity.id}","name":"Three"}""")
+        actual.shouldEqualJson("""{"id":"${entity.id}","name":"Widget Three"}""")
     }
 
     @Test
-    fun itShouldRemoveById() {
+    fun itShouldRemoveEntity() {
         val database = Database(folder.root, Widget::class)
-        val id = UUID.fromString("1f30d7b6-0296-489a-9615-55868aeef78a")
-        val file = File(folder.root, "/widgets/$id.json")
+        val entity = SampleDb.Widgets.One
+        val file = SampleDb.Widgets.tempFile(folder, entity)
         assertThat(file).exists() // sanity check
-        val entity: Widget = database.get(id)
 
         database.remove(entity)
 
@@ -66,16 +62,7 @@ class WidgetTest {
     @Test
     fun itShouldList() {
         val database = Database(folder.root, Widget::class)
-        val expected = listOf(
-                Widget(
-                        id = UUID.fromString("1f30d7b6-0296-489a-9615-55868aeef78a"),
-                        name = "One"
-                ),
-                Widget(
-                        id = UUID.fromString("94aa3940-1183-4e91-b329-d9dc9c688540"),
-                        name = "Two"
-                )
-        )
+        val expected = listOf(SampleDb.Widgets.One, SampleDb.Widgets.Two)
 
         val actual: List<Widget> = database.list()
 

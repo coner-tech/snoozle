@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.io.File
 import java.util.*
 import kotlin.reflect.KClass
+import kotlin.reflect.KProperty1
 
 class Database(
         root: File,
@@ -22,9 +23,9 @@ class Database(
         resources = resourcesBuilder.toMap()
     }
 
-    inline fun <reified E : Entity> get(id: UUID): E {
-        val resource = resources[E::class as KClass<Entity>]!!
-        return resource.get(id) as E
+    inline fun <reified E : Entity> get(vararg ids: Pair<KProperty1<E, UUID>, UUID>): E {
+        val resource: Resource<E> = resources[E::class as KClass<Entity>]!!  as Resource<E>
+        return resource.get(*ids)
     }
 
     inline fun <reified E : Entity> put(entity: E) {
@@ -37,8 +38,8 @@ class Database(
         resource.delete(entity)
     }
 
-    inline fun <reified E : Entity> list(): List<E> {
-        val resource = resources[E::class as KClass<Entity>]!! as Resource<E>
-        return resource.list()
+    inline fun <reified E: Entity> list(vararg ids: Pair<KProperty1<E, UUID>, UUID>): List<E> {
+        val resource: Resource<E> = resources[E::class as KClass<Entity>]!!  as Resource<E>
+        return resource.list(*ids)
     }
 }
