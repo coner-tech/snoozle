@@ -73,4 +73,18 @@ class ResourceTest {
         ) }
     }
 
+    @Test
+    fun itShouldDelete() {
+        val widget = SampleDb.Widgets.One
+        val filePath = "/widgets/${widget.id}.json"
+        every { path.findEntity(widget) }.returns(filePath)
+        val record = SampleDb.Widgets.tempFile(folder, widget)
+        assertThat(record).exists() // sanity check
+
+        resource.delete(widget)
+
+        verify { path.findEntity(widget) }
+        assertThat(record).doesNotExist()
+    }
+
 }
