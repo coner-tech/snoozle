@@ -10,14 +10,9 @@ import kotlin.streams.toList
 class Resource<E : Entity>(
         val root: File,
         val kclass: KClass<E>,
-        val objectMapper: ObjectMapper
+        val objectMapper: ObjectMapper,
+        val path: Pathfinder<E> = Pathfinder(kclass)
 ) {
-
-    val path: Pathfinder<E>
-
-    init {
-        path = Pathfinder(kclass)
-    }
 
     fun get(vararg ids: Pair<KProperty1<E, UUID>, UUID>): E {
         val file = File(root, path.findEntity(*ids))

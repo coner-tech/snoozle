@@ -17,7 +17,6 @@ import kotlin.reflect.KClass
 
 class DatabaseTest {
 
-
     @MockK
     lateinit var widgetResource: Resource<Widget>
     @MockK
