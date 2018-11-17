@@ -21,9 +21,7 @@ class Resource<E : Entity>(
 
     fun put(entity: E) {
         val file = File(root, path.findEntity(entity))
-        file.outputStream().use {
-            objectMapper.writeValue(it, entity)
-        }
+        objectMapper.writeValue(file, entity)
     }
 
     fun delete(entity: E) {

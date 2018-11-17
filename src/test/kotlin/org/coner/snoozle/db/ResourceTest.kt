@@ -13,6 +13,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 import java.io.FileOutputStream
+import java.io.OutputStream
 
 class ResourceTest {
 
@@ -29,6 +30,7 @@ class ResourceTest {
 
     @Before
     fun before() {
+        SampleDb.copyTo(folder)
         MockKAnnotations.init(this)
         resource = Resource(
                 root = folder.root,
@@ -54,6 +56,21 @@ class ResourceTest {
                     Widget::class.java
         )}
         assertThat(actual).isSameAs(widget)
+    }
+
+    @Test
+    fun itShouldPut() {
+        val widget = SampleDb.Widgets.One
+        val filePath = "/widgets/${widget.id}.json"
+        every { path.findEntity(widget) }.returns(filePath)
+        every { objectMapper.writeValue(any<File>(), any()) } just Runs
+
+        resource.put(widget)
+
+        verify { objectMapper.writeValue(
+                match<File> { it.absolutePath.endsWith(filePath) },
+                widget
+        ) }
     }
 
 }
