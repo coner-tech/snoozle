@@ -42,18 +42,17 @@ class ResourceTest {
     fun itShouldGet() {
         val widget = SampleDb.Widgets.One
         val ids = arrayOf(Widget::id to widget.id)
-        val fileSlot = slot<File>()
         val filePath = "/widgets/${widget.id}.json"
         every { path.findEntity(*ids) }.returns(filePath)
-        every { objectMapper.readValue(capture(fileSlot), Widget::class.java) }.returns(widget)
+        every { objectMapper.readValue(any<File>(), Widget::class.java) }.returns(widget)
 
         val actual = resource.get(*ids)
 
         verify { path.findEntity(*ids) }
-        verify { objectMapper.readValue(fileSlot.captured, Widget::class.java) }
-        assertThat(fileSlot.captured)
-                .hasParent(File(folder.root, "/widgets"))
-                .hasName("${widget.id}.json")
+        verify { objectMapper.readValue(
+                    match<File> { it.absolutePath.endsWith(filePath) },
+                    Widget::class.java
+        )}
         assertThat(actual).isSameAs(widget)
     }
 
