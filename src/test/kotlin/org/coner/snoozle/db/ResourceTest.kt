@@ -14,6 +14,8 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
+import java.util.*
+import kotlin.reflect.KProperty1
 
 class ResourceTest {
 
@@ -85,6 +87,34 @@ class ResourceTest {
 
         verify { path.findEntity(widget) }
         assertThat(record).doesNotExist()
+    }
+
+    @Test
+    fun itShouldList() {
+        val widgets = listOf(
+                SampleDb.Widgets.One,
+                SampleDb.Widgets.Two
+        )
+        val ids = emptyArray<Pair<KProperty1<Widget, UUID>, UUID>>()
+        val listingPath = "/widgets"
+        every { path.findListing(*ids) }.returns(listingPath)
+        every { objectMapper.readValue(
+                match<File> { it.nameWithoutExtension == widgets[0].id.toString() },
+                Widget::class.java
+        ) }.returns(widgets[0])
+        every { objectMapper.readValue(
+                match<File> { it.nameWithoutExtension == widgets[1].id.toString() },
+                Widget::class.java
+        ) }.returns(widgets[1])
+
+        val actual = resource.list(*ids)
+
+        assertThat(actual).isEqualTo(widgets)
+        val listedIds = widgets.map { it.id.toString() }
+        verify(exactly = widgets.size) { objectMapper.readValue(
+                match<File> { listedIds.contains(it.nameWithoutExtension) },
+                Widget::class.java
+        ) }
     }
 
 }

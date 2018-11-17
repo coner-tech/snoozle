@@ -34,11 +34,7 @@ class Resource<E : Entity>(
                 .listFiles()
                 .filter { it.isFile && it.extension == "json" }
                 .parallelStream()
-                .map { file ->
-                    file.inputStream().use {
-                        objectMapper.readValue(it, kclass.java)
-                    }
-                }
+                .map { objectMapper.readValue(it, kclass.java) }
                 .toList()
     }
 }
