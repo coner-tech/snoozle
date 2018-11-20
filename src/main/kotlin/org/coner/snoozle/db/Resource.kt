@@ -34,6 +34,7 @@ class Resource<E : Entity>(
                 .listFiles()
                 .filter { it.isFile && it.extension == "json" }
                 .parallelStream()
+                .sorted(compareBy(File::getName))
                 .map { objectMapper.readValue(it, kclass.java) }
                 .toList()
     }
