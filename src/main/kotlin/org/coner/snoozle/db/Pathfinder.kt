@@ -10,10 +10,10 @@ import kotlin.reflect.full.findAnnotation
 class Pathfinder<E : Entity>(
         val kclass: KClass<E>
 ) {
-    private val entityPathFormat: String
-    private val entityPathReplaceProperties: List<KProperty1<E, UUID>>
-    private val listingPathFormat: String
-    private val listingPathReplaceProperties: List<KProperty1<E, UUID>>
+    val entityPathFormat: String
+    val entityPathReplaceProperties: List<KProperty1<E, UUID>>
+    val listingPathFormat: String
+    val listingPathReplaceProperties: List<KProperty1<E, UUID>>
 
     init {
         fun buildPathReplacementProperties(pathReplacementFormat: String): List<KProperty1<E, UUID>> {
@@ -41,7 +41,7 @@ class Pathfinder<E : Entity>(
 
         val entityPath: EntityPath = kclass.findAnnotation()
             ?: throw EntityDefinitionException("""
-                ${kclass.qualifiedName} is not annotated with ${EntityPath::class.qualifiedName}
+                ${kclass.qualifiedName} lacks ${EntityPath::class.qualifiedName} annotation
             """.trimIndent())
         entityPathFormat = entityPath.value
         entityPathReplaceProperties = buildPathReplacementProperties(entityPathFormat)
