@@ -5,7 +5,10 @@ import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.declaredMemberProperties
+import kotlin.reflect.full.defaultType
 import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.jvm.javaType
+import kotlin.reflect.jvm.jvmErasure
 
 class Pathfinder<E : Entity>(
         val kclass: KClass<E>
@@ -19,7 +22,13 @@ class Pathfinder<E : Entity>(
         fun buildPathReplacementProperties(pathReplacementFormat: String): List<KProperty1<E, UUID>> {
             val openBrackets = pathReplacementFormat.count { it == '{' }
             val closeBrackets = pathReplacementFormat.count { it == '}' }
-            // TODO: handling for malformed entity path value
+            if (openBrackets != closeBrackets) {
+                throw EntityDefinitionException("""
+                    ${kclass.qualifiedName} has a malformed EntityPath: $pathReplacementFormat.
+
+                    There are $openBrackets open bracket(s) and $closeBrackets close bracket(s).
+                """.trimIndent())
+            }
             val entityPathReplacements = openBrackets
             val entityPathReplacementProperties = mutableListOf<KProperty1<E, UUID>>()
             var openBracketPosition: Int
@@ -31,10 +40,26 @@ class Pathfinder<E : Entity>(
                         openBracketPosition + 1,
                         closeBracketPosition
                 )
-                entityPathReplacementProperties.add(
-                        kclass.declaredMemberProperties
-                                .first { it.name ==  entityPathReplacementPropertyName} as KProperty1<E, UUID>
-                )
+                val property = kclass.declaredMemberProperties
+                        .firstOrNull { it.name ==  entityPathReplacementPropertyName } as KProperty1<E, UUID>?
+                if (property != null) {
+                    if (property.returnType != UUID::class.defaultType) {
+                        throw EntityDefinitionException("""
+                            ${kclass.qualifiedName} has an invalid EntityPath: $pathReplacementFormat.
+
+                            References property with unexpected type: ${property.returnType.jvmErasure.qualifiedName}.
+
+                            Only ${UUID::class.qualifiedName} is supported.
+                        """.trimIndent())
+                    }
+                } else {
+                    throw EntityDefinitionException("""
+                        ${kclass.qualifiedName} has a malformed EntityPath: $pathReplacementFormat.
+
+                        No such property: $entityPathReplacementPropertyName
+                    """.trimIndent())
+                }
+                entityPathReplacementProperties.add(property)
             }
             return entityPathReplacementProperties.toList()
         }
