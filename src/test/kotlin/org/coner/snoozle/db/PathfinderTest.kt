@@ -3,6 +3,7 @@ package org.coner.snoozle.db
 import assertk.assert
 import assertk.assertions.*
 import assertk.catch
+import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Subwidget
 import org.coner.snoozle.db.sample.Widget
 import org.junit.Test
@@ -85,6 +86,35 @@ class PathfinderTest {
                 it.endsWith("Only ${UUID::class.qualifiedName} is supported.")
             }
         }
+    }
+
+    @Test
+    fun itShouldFindPathToEntityForSampleDbWidgetOneById() {
+        val widgetOne = SampleDb.Widgets.One
+        val pathfinder = Pathfinder(Widget::class)
+
+        val actual = pathfinder.findEntity(Widget::id to widgetOne.id)
+
+        assert(actual).isEqualTo("""
+            /widgets/1f30d7b6-0296-489a-9615-55868aeef78a.json
+        """.trimIndent()
+        )
+    }
+
+    @Test
+    fun itShouldFindPathToEntityForSampleDbWidgetOneSubwidgetOneById() {
+        val widgetOneSubwidgetOne = SampleDb.Subwidgets.WidgetOneSubwidgetOne
+        val pathfinder = Pathfinder(Subwidget::class)
+
+        val actual = pathfinder.findEntity(
+                Subwidget::id to widgetOneSubwidgetOne.id,
+                Subwidget::widgetId to widgetOneSubwidgetOne.widgetId
+        )
+
+        assert(actual).isEqualTo("""
+            /widgets/1f30d7b6-0296-489a-9615-55868aeef78a/subwidgets/220460be-27d4-4e6d-8ac3-34cf5139b229.json
+        """.trimIndent()
+        )
     }
 
 }
