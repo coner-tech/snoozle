@@ -2,35 +2,27 @@
 
 Snoozle is a toolkit for building curiously simple distributed software applications.
 
-## Goals
+Why does the world need yet another database, event queue, etc? Snoozle aims to meet the data storage needs of the autocross event operations software [Coner](https://github.com/caeos):
 
-Snoozle seeks to fulfill the goals below. The goals are given in order of importance, the most important one being the first.
-
-### 1. Cater to individuals and small groups
-
-Snoozle should empower individuals and small groups to build, own, and operate distributed software applications by themselves and for themselves.
-
-### 2. Simplicity
-
-Snoozle should make it easy for its target audience to build, own, and operate their systems upon it.
-
-### 3. Reliability
-
-Snoozle should allow distributed software applications built upon it to be resilient in the face of power failures and network outages.
-
-> It should describe the conventions it relies upon to maintain system integrity.
-
-> It should implement passive safeguards through careful design to make it simple for developers to build reliable systems.
- 
-> It should implement automatic detections of problematic scenarios where passive safeguards are infeasible in order to help operators use their systems correctly and with confidence, within reason.
-
+- Single primary nodes
+    - Core business logic must continue working uninterrupted in the face of low and/or no connectivity to other participating nodes
+    - Role ownership (as the primary node) must not be tied to any physical device
+    - Expected to be powered off for weeks or months at a time when not in use
+- Unlimited secondary nodes
+    - Needs to access data owned by primaries 24/7 on a read-only basis, regardless of primary node availability
+    - Participate in business logic functions in the face of low and/or no connectivity for other participant nodes
+- Relatively low storage and performance needs
+- Sheer simplicity
+    - Simple to understand
+    - Simple to develop applications
+    - Simple to own and operate
 
 ## Components
 
 There are a few common themes throughout Snoozle's components:
 
-- Nodes read and write only to their own local filesystem.
-  - Use your favorite [file synchronization software](https://en.wikipedia.org/wiki/Comparison_of_file_synchronization_software) to replicate those files to all the participating nodes.
+- Nodes read/write only to their own local filesystem.
+- Nodes rely on separate [file synchronization software](https://en.wikipedia.org/wiki/Comparison_of_file_synchronization_software) to replicate files to all participating nodes.
 - Records use UUIDs as unique identifiers.
 
 ### Snoozle Database
