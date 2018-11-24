@@ -143,6 +143,28 @@ class PathfinderTest {
         )
     }
 
+    @Test
+    fun itShouldFindPathToListingForSampleDbWidgets() {
+        val pathfinder = Pathfinder(Widget::class)
+
+        val actual = pathfinder.findListing()
+
+        assert(actual).isEqualTo("/widgets/")
+    }
+
+    @Test
+    fun itShouldFindPathToListingForSampleDbWidgetOneSubwidgets() {
+        val pathfinder = Pathfinder(Subwidget::class)
+
+        val actual = pathfinder.findListing(
+                Subwidget::widgetId to SampleDb.Subwidgets.WidgetOneSubwidgetOne.widgetId
+        )
+
+        assert(actual).isEqualTo("""
+            /widgets/1f30d7b6-0296-489a-9615-55868aeef78a/subwidgets/
+        """.trimIndent())
+    }
+
 }
 
 private class LackingEntityPathAnnotation : Entity
