@@ -1,13 +1,11 @@
 package org.coner.snoozle.db
 
-import java.lang.Exception
 import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.declaredMemberProperties
-import kotlin.reflect.full.defaultType
 import kotlin.reflect.full.findAnnotation
-import kotlin.reflect.jvm.javaType
+import kotlin.reflect.full.starProjectedType
 import kotlin.reflect.jvm.jvmErasure
 
 class Pathfinder<E : Entity>(
@@ -43,7 +41,7 @@ class Pathfinder<E : Entity>(
                 val property = kclass.declaredMemberProperties
                         .firstOrNull { it.name ==  entityPathReplacementPropertyName } as KProperty1<E, UUID>?
                 if (property != null) {
-                    if (property.returnType != UUID::class.defaultType) {
+                    if (property.returnType != UUID::class.starProjectedType) {
                         throw EntityDefinitionException("""
                             ${kclass.qualifiedName} has an invalid EntityPath: $pathReplacementFormat.
 
