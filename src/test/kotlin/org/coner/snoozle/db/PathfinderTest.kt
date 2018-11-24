@@ -118,6 +118,26 @@ class PathfinderTest {
     }
 
     @Test
+    fun itShouldThrowWhenFindPathPassedIncorrectProperties() {
+        val pathfinder = Pathfinder(EntityWithNonPathUuidProperty::class)
+
+        val exception = catch { pathfinder.findEntity() }
+
+        assert(exception).isNotNull {
+            it.isInstanceOf(IllegalArgumentException::class)
+            it.message().isNotNull {
+                it.isEqualTo("""
+                    The passed ids ()
+                    differ from the expected length: 1.
+
+                    org.coner.snoozle.db.EntityWithNonPathUuidProperty references the following properties in paths:
+                    id
+                """.trimIndent())
+            }
+        }
+    }
+
+    @Test
     fun itShouldFindPathToEntityForSampleDbWidgetOneByInstance() {
         val widgetOne = SampleDb.Widgets.One
         val pathfinder = Pathfinder(Widget::class)
@@ -182,4 +202,10 @@ private class ReferencingMissingProperty(
 @EntityPath("/foo/{id}")
 private class ReferencingNonUuidProperty (
         val id: String
+) : Entity
+
+@EntityPath("/foo/{id}")
+private class EntityWithNonPathUuidProperty(
+    val id: UUID,
+    val nonPathUuidProperty: UUID
 ) : Entity

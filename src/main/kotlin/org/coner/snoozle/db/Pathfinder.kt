@@ -73,6 +73,13 @@ class Pathfinder<E : Entity>(
     }
 
     fun findEntity(vararg ids: Pair<KProperty1<E, UUID>, UUID>): String {
+        if (entityPathReplaceProperties.size != ids.size) throw IllegalArgumentException("""
+            The passed ids (${ids.joinToString(", ") { it.first.name }})
+            differ from the expected length: ${entityPathReplaceProperties.size}.
+
+            ${kclass.qualifiedName} references the following properties in paths:
+            ${entityPathReplaceProperties.joinToString(", ") { it.name }}
+        """.trimIndent())
         var path = entityPathFormat
         for (id in ids) {
             path = path.replace("{${id.first.name}}", id.second.toString())
