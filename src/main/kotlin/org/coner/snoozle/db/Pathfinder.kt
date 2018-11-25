@@ -90,6 +90,7 @@ class Pathfinder<E : Entity>(
     }
 
     fun findListing(vararg ids: Pair<KProperty1<E, UUID>, UUID>): String {
+        enforcePropertyArgumentsMatch(ids, listingPathReplaceProperties, listingPathFormat)
         var path = listingPathFormat
         if (ids.isNotEmpty()) {
             for (id in ids) {
@@ -104,13 +105,13 @@ class Pathfinder<E : Entity>(
             replacementProperties: List<KProperty1<E, UUID>>,
             replacementFormat: String
     ) {
-        // check count matches
-        if (entityPathReplaceProperties.size != ids.size) throw IllegalArgumentException("""
+        // check counts match
+        if (replacementProperties.size != ids.size) throw IllegalArgumentException("""
             The passed ids (${ids.joinToString(", ") { it.first.name }})
-            differ from the expected length: ${entityPathReplaceProperties.size}.
+            differ from the expected length: ${replacementProperties.size}.
 
-            ${kclass.qualifiedName} references the following properties in paths:
-            ${entityPathReplaceProperties.joinToString(", ") { it.name }}
+            ${kclass.qualifiedName} requires the following properties:
+            ${replacementProperties.joinToString(", ") { it.name }}
         """.trimIndent())
 
         // check all passed properties match
@@ -121,7 +122,7 @@ class Pathfinder<E : Entity>(
 
             Verify the arguments passed only contain properties referenced by the above format.
 
-            Expected: ${entityPathReplaceProperties.joinToString(", ") { it.name }}
+            Expected: ${replacementProperties.joinToString(", ") { it.name }}
             Actual: ${ids.joinToString(", ") { it.first.name }}
         """.trimIndent())
     }

@@ -130,7 +130,7 @@ class PathfinderTest {
                     The passed ids ()
                     differ from the expected length: 1.
 
-                    org.coner.snoozle.db.EntityWithNonPathUuidProperty references the following properties in paths:
+                    org.coner.snoozle.db.EntityWithNonPathUuidProperty requires the following properties:
                     id
                 """.trimIndent())
             }
@@ -138,7 +138,7 @@ class PathfinderTest {
     }
 
     @Test
-    fun itShouldThrowWhenFindPathPassedAnIncorrectProperty() {
+    fun itShouldThrowWhenFindPathToEntityPassedAnIncorrectProperty() {
         val pathfinder = Pathfinder(EntityWithNonPathUuidProperty::class)
 
         val exception = catch { pathfinder.findEntity(
@@ -208,6 +208,26 @@ class PathfinderTest {
         assert(actual).isEqualTo("""
             /widgets/1f30d7b6-0296-489a-9615-55868aeef78a/subwidgets/
         """.trimIndent())
+    }
+
+    @Test
+    fun itShouldThrowWhenFindPathToListingPassedWrongAmountOfProperties() {
+        val pathfinder = Pathfinder(Subwidget::class)
+
+        val exception = catch { pathfinder.findListing() }
+
+        assert(exception).isNotNull {
+            it.isInstanceOf(IllegalArgumentException::class)
+            it.message().isNotNull {
+                it.isEqualTo("""
+                    The passed ids ()
+                    differ from the expected length: 1.
+
+                    org.coner.snoozle.db.sample.Subwidget requires the following properties:
+                    widgetId
+                """.trimIndent())
+            }
+        }
     }
 
 }
