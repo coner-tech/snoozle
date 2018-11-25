@@ -118,7 +118,7 @@ class PathfinderTest {
     }
 
     @Test
-    fun itShouldThrowWhenFindPathPassedIncorrectProperties() {
+    fun itShouldThrowWhenFindPathPassedWrongAmountOfProperties() {
         val pathfinder = Pathfinder(EntityWithNonPathUuidProperty::class)
 
         val exception = catch { pathfinder.findEntity() }
@@ -132,6 +132,31 @@ class PathfinderTest {
 
                     org.coner.snoozle.db.EntityWithNonPathUuidProperty references the following properties in paths:
                     id
+                """.trimIndent())
+            }
+        }
+    }
+
+    @Test
+    fun itShouldThrowWhenFindPathPassedAnIncorrectProperty() {
+        val pathfinder = Pathfinder(EntityWithNonPathUuidProperty::class)
+
+        val exception = catch { pathfinder.findEntity(
+                EntityWithNonPathUuidProperty::nonPathUuidProperty to UUID.randomUUID()
+        ) }
+
+        assert(exception).isNotNull {
+            it.isInstanceOf(IllegalArgumentException::class)
+            it.message().isNotNull {
+                it.isEqualTo("""
+                    The passed id properties do not contain the expected properties referenced by the format:
+
+                    /foo/{id}
+
+                    Verify the arguments passed only contain properties referenced by the above format.
+
+                    Expected: id
+                    Actual: nonPathUuidProperty
                 """.trimIndent())
             }
         }

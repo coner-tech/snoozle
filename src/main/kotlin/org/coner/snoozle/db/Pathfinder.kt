@@ -73,13 +73,7 @@ class Pathfinder<E : Entity>(
     }
 
     fun findEntity(vararg ids: Pair<KProperty1<E, UUID>, UUID>): String {
-        if (entityPathReplaceProperties.size != ids.size) throw IllegalArgumentException("""
-            The passed ids (${ids.joinToString(", ") { it.first.name }})
-            differ from the expected length: ${entityPathReplaceProperties.size}.
-
-            ${kclass.qualifiedName} references the following properties in paths:
-            ${entityPathReplaceProperties.joinToString(", ") { it.name }}
-        """.trimIndent())
+        enforcePropertyArgumentsMatch(ids, entityPathReplaceProperties, entityPathFormat)
         var path = entityPathFormat
         for (id in ids) {
             path = path.replace("{${id.first.name}}", id.second.toString())
@@ -103,5 +97,32 @@ class Pathfinder<E : Entity>(
             }
         }
         return path
+    }
+
+    private fun enforcePropertyArgumentsMatch(
+            ids: Array<out Pair<KProperty1<E, UUID>, UUID>>,
+            replacementProperties: List<KProperty1<E, UUID>>,
+            replacementFormat: String
+    ) {
+        // check count matches
+        if (entityPathReplaceProperties.size != ids.size) throw IllegalArgumentException("""
+            The passed ids (${ids.joinToString(", ") { it.first.name }})
+            differ from the expected length: ${entityPathReplaceProperties.size}.
+
+            ${kclass.qualifiedName} references the following properties in paths:
+            ${entityPathReplaceProperties.joinToString(", ") { it.name }}
+        """.trimIndent())
+
+        // check all passed properties match
+        if (!ids.map { it.first }.containsAll(replacementProperties)) throw IllegalArgumentException("""
+            The passed id properties do not contain the expected properties referenced by the format:
+
+            $replacementFormat
+
+            Verify the arguments passed only contain properties referenced by the above format.
+
+            Expected: ${entityPathReplaceProperties.joinToString(", ") { it.name }}
+            Actual: ${ids.joinToString(", ") { it.first.name }}
+        """.trimIndent())
     }
 }
