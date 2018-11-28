@@ -12,6 +12,8 @@
         <kotlin.version>1.3.10</kotlin.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <jackson.version>2.9.7</jackson.version>
+        <rxjava2.version>2.2.4</rxjava2.version>
+        <rxfilewatcher.version>1.0.0-SNAPSHOT</rxfilewatcher.version>
         <junit.version>4.12</junit.version>
         <assertj.version>3.11.1</assertj.version>
         <assertk.version>0.12</assertk.version>
@@ -34,6 +36,16 @@
             <groupId>com.fasterxml.jackson.module</groupId>
             <artifactId>jackson-module-kotlin</artifactId>
             <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.reactivex.rxjava2</groupId>
+            <artifactId>rxjava</artifactId>
+            <version>${rxjava2.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>de.helmbold</groupId>
+            <artifactId>rxfilewatcher</artifactId>
+            <version>${rxfilewatcher.version}</version>
         </dependency>
 
         <dependency>
