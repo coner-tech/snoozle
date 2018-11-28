@@ -1,5 +1,7 @@
 package org.coner.snoozle.db
 
+import org.coner.snoozle.util.isValidUuid
+import java.io.File
 import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
@@ -98,6 +100,16 @@ class Pathfinder<E : Entity>(
             }
         }
         return path
+    }
+
+    /**
+     * Checks that the passed `candidate` has the appearance of being a valid entity.
+     *
+     * More specifically, it checks that the file extension is correct, and the file name is a UUID.
+     */
+    fun isValidEntity(candidate: File): Boolean {
+        if (candidate.extension != "json") return false
+        return candidate.nameWithoutExtension.isValidUuid()
     }
 
     private fun enforcePropertyArgumentsMatch(

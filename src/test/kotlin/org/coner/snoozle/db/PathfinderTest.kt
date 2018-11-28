@@ -7,6 +7,7 @@ import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Subwidget
 import org.coner.snoozle.db.sample.Widget
 import org.junit.Test
+import java.io.File
 import java.util.*
 import kotlin.reflect.full.findAnnotation
 
@@ -230,6 +231,54 @@ class PathfinderTest {
         }
     }
 
+    @Test
+    fun itShouldValidateCorrectEntity() {
+        val pathfinder = Pathfinder(Widget::class)
+        val entity = File(
+                "/home/foo/db/widgets/1f30d7b6-0296-489a-9615-55868aeef78a.json"
+        )
+
+        val actual = pathfinder.isValidEntity(entity)
+
+        assert(actual).isTrue()
+    }
+
+    @Test
+    fun itShouldValidateCompletelyWrongGarbage() {
+        val pathfinder = Pathfinder(Widget::class)
+        val completelyWrongGarbage = File(
+                "/home/foo/db/widgets/completelyWrongGarbage"
+        )
+
+        val actual = pathfinder.isValidEntity(completelyWrongGarbage)
+
+        assert(actual).isFalse()
+    }
+
+    @Test
+    fun itShouldValidateSyncthingTmp() {
+        // syncthing <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3 <3
+        val pathfinder = Pathfinder(Widget::class)
+        val syncthingTmp = File(
+                "/home/foo/db/widgets/.syncthing.1f30d7b6-0296-489a-9615-55868aeef78a.json.tmp"
+        )
+
+        val actual = pathfinder.isValidEntity(syncthingTmp)
+
+        assert(actual).isFalse()
+    }
+
+    @Test
+    fun itShouldValidateNonUuidJson() {
+        val pathfinder = Pathfinder(Widget::class)
+        val entity = File(
+                "/home/foo/db/widgets/1f30d7z6-0296-489a-9615-55868aeef78a.json"
+        ) // transposed "b" to "z" -- non-conformant UUID
+
+        val actual = pathfinder.isValidEntity(entity)
+
+        assert(actual).isFalse()
+    }
 }
 
 private class LackingEntityPathAnnotation : Entity

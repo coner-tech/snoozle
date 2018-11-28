@@ -12,6 +12,7 @@ import kotlin.reflect.KProperty1
 fun <E : Entity> Resource<E>.watchListing(vararg ids: Pair<KProperty1<E, UUID>, UUID>): Observable<EntityEvent<E>> {
     val file = File(root, path.findListing(*ids))
     return PathObservables.watchNonRecursive(file.toPath())
+            .filter { path.isValidEntity((it.context() as Path).toFile()) }
             .map {
                 val file = File(file, (it.context() as Path).toFile().name)
                 val entity = if (file.exists() && file.length() > 0) {
