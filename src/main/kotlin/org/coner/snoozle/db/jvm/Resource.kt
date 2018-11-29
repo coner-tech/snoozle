@@ -4,6 +4,7 @@ import de.helmbold.rxfilewatcher.PathObservables
 import io.reactivex.Observable
 import org.coner.snoozle.db.Entity
 import org.coner.snoozle.db.Resource
+import org.coner.snoozle.util.uuid
 import java.io.File
 import java.nio.file.Path
 import java.util.*
@@ -20,6 +21,6 @@ fun <E : Entity> Resource<E>.watchListing(vararg ids: Pair<KProperty1<E, UUID>, 
                 } else {
                     null
                 }
-                EntityEvent(it, entity)
+                EntityEvent(it, uuid(file.nameWithoutExtension), entity)
             }
 }

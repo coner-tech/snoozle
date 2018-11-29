@@ -1,5 +1,6 @@
 package org.coner.snoozle.util
 
+import java.util.*
 import java.util.regex.Pattern
 
 private val pattern by lazy { Pattern.compile(
@@ -9,3 +10,5 @@ private val pattern by lazy { Pattern.compile(
 fun CharSequence.isValidUuid(): Boolean {
     return pattern.matcher(this).matches()
 }
+
+fun uuid(string: String) = UUID.fromString(string)
