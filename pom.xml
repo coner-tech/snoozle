@@ -4,7 +4,7 @@
 
     <groupId>org.coner</groupId>
     <artifactId>snoozle</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0</version>
 
     <properties>
         <kotlin.version>1.3.10</kotlin.version>
@@ -43,7 +43,7 @@
         <dependency>
             <groupId>de.helmbold</groupId>
             <artifactId>rxfilewatcher</artifactId>
-            <version>${rxfilewatcher.version}</version>
+            <version>1.0.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
