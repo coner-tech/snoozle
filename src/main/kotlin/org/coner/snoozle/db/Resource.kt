@@ -46,7 +46,7 @@ class Resource<E : Entity>(
                 .filter { it.isFile && it.extension == "json" }
                 .parallelStream()
                 .sorted(compareBy(File::getName))
-                .map { reader.readValue(it) as E }
+                .map { reader.readValue<E>(it) }
                 .toList()
     }
 }
