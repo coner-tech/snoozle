@@ -16,7 +16,11 @@ class Database {
     ) {
         val resourcesBuilder = mutableMapOf<KClass<Entity>, Resource<Entity>>()
         for (entityType in entities) {
-            resourcesBuilder[entityType as KClass<Entity>] = Resource(root, entityType, objectMapper)
+            resourcesBuilder[entityType as KClass<Entity>] = Resource(
+                    root = root,
+                    kclass = entityType,
+                    objectMapper = objectMapper
+            )
         }
         this.resources = resourcesBuilder.toMap()
     }

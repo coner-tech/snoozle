@@ -1,6 +1,8 @@
 package org.coner.snoozle.db
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.ObjectReader
+import com.fasterxml.jackson.databind.ObjectWriter
 import java.io.File
 import java.util.*
 import kotlin.reflect.KClass
@@ -10,18 +12,27 @@ import kotlin.streams.toList
 class Resource<E : Entity>(
         val root: File,
         val kclass: KClass<E>,
-        val objectMapper: ObjectMapper,
-        val path: Pathfinder<E> = Pathfinder(kclass)
+        val path: Pathfinder<E>,
+        val reader: ObjectReader,
+        val writer: ObjectWriter
 ) {
+
+    constructor(root: File, kclass: KClass<E>, objectMapper: ObjectMapper) : this(
+            root,
+            kclass,
+            Pathfinder(kclass),
+            objectMapper.readerFor(kclass.java),
+            objectMapper.writerFor(kclass.javaObjectType)
+    )
 
     fun get(vararg ids: Pair<KProperty1<E, UUID>, UUID>): E {
         val file = File(root, path.findEntity(*ids))
-        return objectMapper.readValue(file, kclass.java)
+        return reader.readValue(file)
     }
 
     fun put(entity: E) {
         val file = File(root, path.findEntity(entity))
-        objectMapper.writeValue(file, entity)
+        writer.writeValue(file, entity)
     }
 
     fun delete(entity: E) {
@@ -35,7 +46,7 @@ class Resource<E : Entity>(
                 .filter { it.isFile && it.extension == "json" }
                 .parallelStream()
                 .sorted(compareBy(File::getName))
-                .map { objectMapper.readValue(it, kclass.java) }
+                .map { reader.readValue(it) as E }
                 .toList()
     }
 }

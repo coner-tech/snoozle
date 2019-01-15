@@ -17,7 +17,7 @@ fun <E : Entity> Resource<E>.watchListing(vararg ids: Pair<KProperty1<E, UUID>, 
             .map {
                 val file = File(file, (it.context() as Path).toFile().name)
                 val entity = if (file.exists() && file.length() > 0) {
-                    objectMapper.readValue(file, kclass.java)
+                    reader.readValue<E>(file)
                 } else {
                     null
                 }

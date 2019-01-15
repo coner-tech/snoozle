@@ -1,6 +1,8 @@
 package org.coner.snoozle.db
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.ObjectReader
+import com.fasterxml.jackson.databind.ObjectWriter
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import org.assertj.core.api.Assertions.assertThat
@@ -26,7 +28,9 @@ class ResourceTest {
     lateinit var resource: Resource<Widget>
 
     @MockK
-    lateinit var objectMapper: ObjectMapper
+    lateinit var reader:ObjectReader
+    @MockK
+    lateinit var writer: ObjectWriter
     @MockK
     lateinit var path: Pathfinder<Widget>
 
@@ -37,8 +41,9 @@ class ResourceTest {
         resource = Resource(
                 root = folder.root,
                 kclass = Widget::class,
-                objectMapper = objectMapper,
-                path = path
+                path = path,
+                reader = reader,
+                writer = writer
         )
     }
 
@@ -48,14 +53,13 @@ class ResourceTest {
         val ids = arrayOf(Widget::id to widget.id)
         val filePath = "/widgets/${widget.id}.json"
         every { path.findEntity(*ids) }.returns(filePath)
-        every { objectMapper.readValue(any<File>(), Widget::class.java) }.returns(widget)
+        every { reader.readValue<Widget>(any<File>()) }.returns(widget)
 
         val actual = resource.get(*ids)
 
         verify { path.findEntity(*ids) }
-        verify { objectMapper.readValue(
-                    match<File> { it.absolutePath.endsWith(filePath) },
-                    Widget::class.java
+        verify { reader.readValue<Widget>(
+                    match<File> { it.absolutePath.endsWith(filePath) }
         )}
         assertThat(actual).isSameAs(widget)
     }
@@ -65,11 +69,11 @@ class ResourceTest {
         val widget = SampleDb.Widgets.One
         val filePath = "/widgets/${widget.id}.json"
         every { path.findEntity(widget) }.returns(filePath)
-        every { objectMapper.writeValue(any<File>(), any()) } just Runs
+        every { writer.writeValue(any<File>(), any()) } just Runs
 
         resource.put(widget)
 
-        verify { objectMapper.writeValue(
+        verify { writer.writeValue(
                 match<File> { it.absolutePath.endsWith(filePath) },
                 widget
         ) }
@@ -98,22 +102,19 @@ class ResourceTest {
         val ids = emptyArray<Pair<KProperty1<Widget, UUID>, UUID>>()
         val listingPath = "/widgets"
         every { path.findListing(*ids) }.returns(listingPath)
-        every { objectMapper.readValue(
-                match<File> { it.nameWithoutExtension == widgets[0].id.toString() },
-                Widget::class.java
+        every { reader.readValue<Widget>(
+                match<File> { it.nameWithoutExtension == widgets[0].id.toString() }
         ) }.returns(widgets[0])
-        every { objectMapper.readValue(
-                match<File> { it.nameWithoutExtension == widgets[1].id.toString() },
-                Widget::class.java
+        every { reader.readValue<Widget>(
+                match<File> { it.nameWithoutExtension == widgets[1].id.toString() }
         ) }.returns(widgets[1])
 
         val actual = resource.list(*ids)
 
         assertThat(actual).isEqualTo(widgets)
         val listedIds = widgets.map { it.id.toString() }
-        verify(exactly = widgets.size) { objectMapper.readValue(
-                match<File> { listedIds.contains(it.nameWithoutExtension) },
-                Widget::class.java
+        verify(exactly = widgets.size) { reader.readValue(
+                match<File> { listedIds.contains(it.nameWithoutExtension) }
         ) }
     }
 

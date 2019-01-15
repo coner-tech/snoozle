@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1-SNAPSHOT
+
+Enhancements:
+- [#4](https://github.com/caeos/snoozle/issues/4) Implement Jackson performance tips
+  - Done: #1
+  - TODO: #2, #3
+
 ## 0.1.0 (2018-12-03)
 
 Initial release.
