@@ -10,6 +10,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 import java.util.*
 
 class SubwidgetIntegrationTest {
@@ -60,6 +61,20 @@ class SubwidgetIntegrationTest {
     }
 
     @Test
+    fun itShouldCreateParentOfWidgetOneSubwidgetOneIfNotExistsWhenPut() {
+        val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
+        val subwidgetsFolder = File(folder.root, "/widgets/${subwidget.widgetId}/subwidgets/")
+        assertThat(subwidgetsFolder).exists() // sanity check 1
+        subwidgetsFolder.deleteRecursively()
+        assertThat(subwidgetsFolder).doesNotExist() // sanity check 2
+        val database = Database(folder.root, Subwidget::class)
+
+        database.put(subwidget)
+
+        assertThat(subwidgetsFolder).exists()
+    }
+
+    @Test
     fun itShouldRemoveEntity() {
         val database = Database(folder.root, Widget::class, Subwidget::class)
         val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
@@ -79,5 +94,20 @@ class SubwidgetIntegrationTest {
         val actual = database.list(Subwidget::widgetId to SampleDb.Subwidgets.WidgetOneSubwidgetOne.widgetId)
 
         assertThat(actual).isEqualTo(expected)
+    }
+
+    @Test
+    fun itShouldCreateListingIfNotExistWhenList() {
+        val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
+        val subwidgetsFolder = File(folder.root, "/widgets/${subwidget.widgetId}/subwidgets/")
+        assertThat(subwidgetsFolder).exists() // sanity check 1
+        subwidgetsFolder.deleteRecursively()
+        assertThat(subwidgetsFolder).doesNotExist() // sanity check 2
+        val database = Database(folder.root, Subwidget::class)
+
+        val actual = database.list(Subwidget::widgetId to subwidget.widgetId)
+
+        assertThat(subwidgetsFolder).exists()
+        assertThat(actual).isEmpty()
     }
 }

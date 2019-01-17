@@ -67,6 +67,8 @@ class ResourceTest {
     @Test
     fun itShouldPut() {
         val widget = SampleDb.Widgets.One
+        val entityParentPath = "/widgets/${widget.id}/"
+        every { path.findParentOfEntity(widget)}.returns(entityParentPath)
         val filePath = "/widgets/${widget.id}.json"
         every { path.findEntity(widget) }.returns(filePath)
         every { writer.writeValue(any<File>(), any()) } just Runs

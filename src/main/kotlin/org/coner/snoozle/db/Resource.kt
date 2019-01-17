@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.ObjectReader
 import com.fasterxml.jackson.databind.ObjectWriter
 import java.io.File
+import java.io.FileNotFoundException
 import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
@@ -31,6 +32,17 @@ class Resource<E : Entity>(
     }
 
     fun put(entity: E) {
+        val entityParentPath = path.findParentOfEntity(entity)
+        val parent = File(root, entityParentPath)
+        if (!parent.exists()) {
+            if (!parent.mkdir()) {
+                throw FileNotFoundException("""
+                    Failed to create parent folder at $entityParentPath.
+
+                    Does its parent exist?
+                """.trimIndent())
+            }
+        }
         val file = File(root, path.findEntity(entity))
         writer.writeValue(file, entity)
     }
@@ -41,8 +53,17 @@ class Resource<E : Entity>(
     }
 
     fun list(vararg ids: Pair<KProperty1<E, UUID>, UUID>): List<E> {
-        return File(root, path.findListing(*ids))
-                .listFiles()
+        val listingPath = path.findListing(*ids)
+        val listing = File(root, listingPath)
+        if (!listing.exists()) {
+            if (!listing.mkdir())
+                throw FileNotFoundException("""
+                    Failed to create listing at $listingPath.
+
+                    Does its parent exist?
+                """.trimMargin())
+        }
+        return listing.listFiles()
                 .filter { it.isFile && it.extension == "json" }
                 .parallelStream()
                 .sorted(compareBy(File::getName))

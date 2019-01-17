@@ -190,6 +190,26 @@ class PathfinderTest {
     }
 
     @Test
+    fun itShouldFindParentOfEntityForSampleDbWidgetOne() {
+        val widgetOne = SampleDb.Widgets.One
+        val pathfinder = Pathfinder(Widget::class)
+
+        val actual = pathfinder.findParentOfEntity(widgetOne)
+
+        assert(actual).isEqualTo("/widgets/")
+    }
+
+    @Test
+    fun itShouldFindParentOfEntityForSampleDbWidgetOneSubwidgetOne() {
+        val widgetOneSubwidgetOne = SampleDb.Subwidgets.WidgetOneSubwidgetOne
+        val pathfinder = Pathfinder(Subwidget::class)
+
+        val actual = pathfinder.findParentOfEntity(widgetOneSubwidgetOne)
+
+        assert(actual).isEqualTo("/widgets/1f30d7b6-0296-489a-9615-55868aeef78a/subwidgets/")
+    }
+
+    @Test
     fun itShouldFindPathToListingForSampleDbWidgets() {
         val pathfinder = Pathfinder(Widget::class)
 

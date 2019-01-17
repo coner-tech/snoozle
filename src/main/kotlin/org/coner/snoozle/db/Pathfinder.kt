@@ -3,6 +3,7 @@ package org.coner.snoozle.db
 import org.coner.snoozle.util.isValidUuid
 import java.io.File
 import java.util.*
+import kotlin.math.max
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.declaredMemberProperties
@@ -89,6 +90,17 @@ class Pathfinder<E : Entity>(
             path = path.replace("{${property.name}}", property.get(entity).toString())
         }
         return "$path.json"
+    }
+
+    fun findParentOfEntity(entity: E): String {
+        var path = entityPathFormat
+        for ((i, property) in entityPathReplaceProperties.withIndex()) {
+            path = if (i < entityPathReplaceProperties.lastIndex)
+                path.replace("{${property.name}}", property.get(entity).toString())
+            else
+                path.replace("{${property.name}}", "")
+        }
+        return path
     }
 
     fun findListing(vararg ids: Pair<KProperty1<E, UUID>, UUID>): String {

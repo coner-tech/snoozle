@@ -3,6 +3,9 @@ package org.coner.snoozle.db.it
 import assertk.assert
 import assertk.assertions.*
 import com.gregwoodfill.assert.shouldEqualJson
+import io.mockk.Runs
+import io.mockk.every
+import io.mockk.just
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
 import org.assertj.core.api.Assertions.assertThat
@@ -15,6 +18,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 import java.nio.file.StandardWatchEventKinds
 import java.nio.file.WatchEvent
 import java.util.*
@@ -58,6 +62,20 @@ class WidgetIntegrationTest {
     }
 
     @Test
+    fun itShouldCreateParentOfWidgetOneIfNotExistsWhenPut() {
+        val widgetsFolder = File(folder.root, "/widgets/")
+        assertThat(widgetsFolder).exists() // sanity check 1
+        widgetsFolder.deleteRecursively()
+        assertThat(widgetsFolder).doesNotExist() // sanity check 2
+        val database = Database(folder.root, Widget::class)
+        val widget = SampleDb.Widgets.One
+
+        database.put(widget)
+
+        assertThat(widgetsFolder).exists()
+    }
+
+    @Test
     fun itShouldRemoveEntity() {
         val database = Database(folder.root, Widget::class)
         val entity = SampleDb.Widgets.One
@@ -77,6 +95,20 @@ class WidgetIntegrationTest {
         val actual: List<Widget> = database.list()
 
         assertThat(actual).isEqualTo(expected)
+    }
+
+    @Test
+    fun itShouldCreateListingIfNotExistWhenList() {
+        val widgetsFolder = File(folder.root, "/widgets/")
+        assertThat(widgetsFolder).exists() // sanity check 1
+        widgetsFolder.deleteRecursively()
+        assertThat(widgetsFolder).doesNotExist() // sanity check 2
+        val database = Database(folder.root, Widget::class)
+
+        val actual = database.list<Widget>()
+
+        assertThat(widgetsFolder).exists()
+        assertThat(actual).isEmpty()
     }
 
     @Test
