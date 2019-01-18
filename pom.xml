@@ -11,7 +11,7 @@
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <jackson.version>2.9.7</jackson.version>
         <rxjava2.version>2.2.4</rxjava2.version>
-        <rxfilewatcher.version>1.0.0-SNAPSHOT</rxfilewatcher.version>
+        <rxfilewatcher.version>1.0.0</rxfilewatcher.version>
         <junit.version>4.12</junit.version>
         <assertj.version>3.11.1</assertj.version>
         <assertk.version>0.12</assertk.version>
@@ -43,7 +43,7 @@
         <dependency>
             <groupId>de.helmbold</groupId>
             <artifactId>rxfilewatcher</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
+            <version>${rxfilewatcher.version}</version>
         </dependency>
 
         <dependency>
