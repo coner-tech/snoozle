@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.1-SNAPSHOT
+## 0.1.1 (2019-01-17)
 
 Enhancements:
 - [#3](https://github.com/caeos/snoozle/issues/3) Auto-create entity folders
