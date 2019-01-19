@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.2-SNAPSHOT
+## 0.1.2 (2019-01-18)
 
 Fixes:
 - [#6](https://github.com/caeos/snoozle/issues/6) Db entity listing auto-creates parent folder
