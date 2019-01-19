@@ -36,9 +36,9 @@ class Resource<E : Entity>(
         val parent = File(root, entityParentPath)
         if (!parent.exists()) {
             if (!parent.mkdir()) {
-                throw FileNotFoundException("""
-                    Failed to create parent folder at $entityParentPath.
-
+                throw EntityIoException("""
+                    Failed to create parent folder:
+                    $entityParentPath
                     Does its parent exist?
                 """.trimIndent())
             }
