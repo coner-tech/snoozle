@@ -56,12 +56,12 @@ class Resource<E : Entity>(
         val listingPath = path.findListing(*ids)
         val listing = File(root, listingPath)
         if (!listing.exists()) {
-            if (!listing.mkdir())
-                throw FileNotFoundException("""
-                    Failed to create listing at $listingPath.
-
+            if (!listing.mkdirs())
+                throw EntityIoException("""
+                    Failed to create listing:
+                    $listingPath
                     Does its parent exist?
-                """.trimMargin())
+                """.trimIndent())
         }
         return listing.listFiles()
                 .filter { it.isFile && it.extension == "json" }
