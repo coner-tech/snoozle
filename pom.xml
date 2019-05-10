@@ -4,7 +4,7 @@
 
     <groupId>org.coner</groupId>
     <artifactId>snoozle</artifactId>
-    <version>0.1.3-SNAPSHOT</version>
+    <version>0.2.0-SNAPSHOT</version>
 
     <properties>
         <kotlin.version>1.3.10</kotlin.version>
@@ -14,8 +14,8 @@
         <rxfilewatcher.version>1.0.0</rxfilewatcher.version>
         <junit.version>4.12</junit.version>
         <assertj.version>3.11.1</assertj.version>
-        <assertk.version>0.12</assertk.version>
-        <kotlin-json-assert.version>0.1.0</kotlin-json-assert.version>
+        <assertk.version>0.14</assertk.version>
+        <jsonassert.version>1.5.0</jsonassert.version>
         <mockk.version>1.8.13.kotlin13</mockk.version>
     </properties>
 
@@ -64,9 +64,9 @@
             <version>${assertk.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.gregwoodfill.assert</groupId>
-            <artifactId>kotlin-json-assert</artifactId>
-            <version>${kotlin-json-assert.version}</version>
+            <groupId>org.skyscreamer</groupId>
+            <artifactId>jsonassert</artifactId>
+            <version>${jsonassert.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>

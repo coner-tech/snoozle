@@ -3,7 +3,6 @@ package org.coner.snoozle.db
 import org.coner.snoozle.util.isValidUuid
 import java.io.File
 import java.util.*
-import kotlin.math.max
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.declaredMemberProperties

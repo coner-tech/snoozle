@@ -1,4 +1,6 @@
 {
-  "id": "94aa3940-1183-4e91-b329-d9dc9c688540",
-  "name": "Widget Two"
+  "entity": {
+    "id": "94aa3940-1183-4e91-b329-d9dc9c688540",
+    "name": "Widget Two"
+  }
 }

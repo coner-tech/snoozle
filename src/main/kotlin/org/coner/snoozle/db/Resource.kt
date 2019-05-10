@@ -1,34 +1,36 @@
 package org.coner.snoozle.db
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.ObjectReader
-import com.fasterxml.jackson.databind.ObjectWriter
+import com.fasterxml.jackson.databind.node.ObjectNode
+import de.helmbold.rxfilewatcher.PathObservables
+import io.reactivex.Observable
+import org.coner.snoozle.util.uuid
 import java.io.File
-import java.io.FileNotFoundException
+import java.nio.file.Path
 import java.util.*
-import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.streams.toList
 
 class Resource<E : Entity>(
         val root: File,
-        val kclass: KClass<E>,
-        val path: Pathfinder<E>,
-        val reader: ObjectReader,
-        val writer: ObjectWriter
+        val entityDefinition: EntityDefinition<E>,
+        val objectMapper: ObjectMapper,
+        val path: Pathfinder<E> = Pathfinder(entityDefinition.kClass),
+        internal val entityIoDelegate: EntityIoDelegate<E> = EntityIoDelegate(
+                objectMapper,
+                objectMapper.readerFor(entityDefinition.kClass.java),
+                objectMapper.writerFor(entityDefinition.kClass.java)
+        )
 ) {
 
-    constructor(root: File, kclass: KClass<E>, objectMapper: ObjectMapper) : this(
-            root,
-            kclass,
-            Pathfinder(kclass),
-            objectMapper.readerFor(kclass.java),
-            objectMapper.writerFor(kclass.javaObjectType)
-    )
-
     fun get(vararg ids: Pair<KProperty1<E, UUID>, UUID>): E {
-        val file = File(root, path.findEntity(*ids))
-        return reader.readValue(file)
+        val entityPath = path.findEntity(*ids)
+        val file = File(root, entityPath)
+        if (!file.exists()) {
+            throw EntityIoException("Entity does not exist: $entityPath")
+        }
+        val rootNode = objectMapper.readTree(file) as ObjectNode
+        return entityIoDelegate.read(rootNode)
     }
 
     fun put(entity: E) {
@@ -44,7 +46,13 @@ class Resource<E : Entity>(
             }
         }
         val file = File(root, path.findEntity(entity))
-        writer.writeValue(file, entity)
+        val oldRoot = if (file.exists())
+            objectMapper.readTree(file) as ObjectNode
+        else
+            null
+        val newRoot = objectMapper.createObjectNode()
+        entityIoDelegate.write(oldRoot = oldRoot, newRoot = newRoot, newContent = entity)
+        objectMapper.writeValue(file, newRoot)
     }
 
     fun delete(entity: E) {
@@ -67,7 +75,26 @@ class Resource<E : Entity>(
                 .filter { it.isFile && it.extension == "json" }
                 .parallelStream()
                 .sorted(compareBy(File::getName))
-                .map { reader.readValue<E>(it) }
+                .map { file ->
+                    val rootNode = objectMapper.readTree(file) as ObjectNode
+                    entityIoDelegate.read(rootNode)
+                }
                 .toList()
+    }
+
+    fun watchListing(vararg ids: Pair<KProperty1<E, UUID>, UUID>): Observable<EntityEvent<E>> {
+        val listing = File(root, path.findListing(*ids))
+        return PathObservables.watchNonRecursive(listing.toPath())
+                .filter { path.isValidEntity((it.context() as Path).toFile()) }
+                .map {
+                    val file = File(listing, (it.context() as Path).toFile().name)
+                    val entity = if (file.exists() && file.length() > 0) {
+                        val rootNode = objectMapper.readTree(file) as ObjectNode
+                        entityIoDelegate.read(rootNode)
+                    } else {
+                        null
+                    }
+                    EntityEvent(it, uuid(file.nameWithoutExtension), entity)
+                }
     }
 }

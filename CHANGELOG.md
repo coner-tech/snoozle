@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0-SNAPSHOT (YYYY-MM-DD)
+
+- [#7](https://github.com/caeos/snoozle/issues/7) Store entities at rest wrapped in an object
+
 ## 0.1.2 (2019-01-18)
 
 Fixes:
