@@ -1,8 +1,9 @@
 package org.coner.snoozle.db.sample
 
+import org.coner.snoozle.db.Entity
+import org.coner.snoozle.util.uuid
 import org.junit.rules.TemporaryFolder
 import java.io.File
-import java.util.*
 
 object SampleDb {
 
@@ -13,58 +14,90 @@ object SampleDb {
         return SampleDatabase(root = temporaryFolder.root)
     }
 
-    object Widgets {
-        val One = Widget(
-                id = UUID.fromString("1f30d7b6-0296-489a-9615-55868aeef78a"),
-                name = "Widget One"
-        )
-        val Two = Widget(
-                id = UUID.fromString("94aa3940-1183-4e91-b329-d9dc9c688540"),
-                name = "Widget Two"
-        )
+    object Widgets : SampleEntity<Widget> {
+        val One
+            get() = Widget(
+                    id = uuid("1f30d7b6-0296-489a-9615-55868aeef78a"),
+                    name = "Widget One"
+            )
+        val Two
+            get() = Widget(
+                    id = uuid("94aa3940-1183-4e91-b329-d9dc9c688540"),
+                    name = "Widget Two"
+            )
 
-        fun tempFile(temporaryFolder: TemporaryFolder, widget: Widget): File {
-            return File(temporaryFolder.root, "/widgets/${widget.id}.json")
+        override fun tempFile(temporaryFolder: TemporaryFolder, entity: Widget): File {
+            return File(temporaryFolder.root, "/widgets/${entity.id}.json")
         }
 
-        fun asJson(widget: Widget): String {
+        override fun asJson(entity: Widget): String {
             return """
                 {
                     entity: {
-                        id: "${widget.id}",
-                        name: "${widget.name}"
+                        id: "${entity.id}",
+                        name: "${entity.name}"
                     }
                 }
             """.trimIndent()
         }
     }
 
-    object Subwidgets {
-        val WidgetOneSubwidgetOne = Subwidget(
-                id = UUID.fromString("220460be-27d4-4e6d-8ac3-34cf5139b229"),
-                widgetId = SampleDb.Widgets.One.id,
-                name = "Widget One's Subwidget One"
-        )
-        val WidgetTwoSubwidgetOne = Subwidget(
-                id = UUID.fromString("0dc69a13-b911-4c39-bf56-19fcdb7a8baf"),
-                widgetId = SampleDb.Widgets.Two.id,
-                name = "Widget Two's Subwidget One"
-        )
+    object Subwidgets : SampleEntity<Subwidget> {
+        val WidgetOneSubwidgetOne
+                get() = Subwidget(
+                        id = uuid("220460be-27d4-4e6d-8ac3-34cf5139b229"),
+                        widgetId = SampleDb.Widgets.One.id,
+                        name = "Widget One's Subwidget One"
+                )
+        val WidgetTwoSubwidgetOne
+                get() = Subwidget(
+                        id = uuid("0dc69a13-b911-4c39-bf56-19fcdb7a8baf"),
+                        widgetId = SampleDb.Widgets.Two.id,
+                        name = "Widget Two's Subwidget One"
+                )
 
-        fun tempFile(temporaryFolder: TemporaryFolder, subwidget: Subwidget): File {
-            return File(temporaryFolder.root, "/widgets/${subwidget.widgetId}/subwidgets/${subwidget.id}.json")
+        override fun tempFile(temporaryFolder: TemporaryFolder, entity: Subwidget): File {
+            return File(temporaryFolder.root, "/widgets/${entity.widgetId}/subwidgets/${entity.id}.json")
         }
 
-        fun asJson(subwidget: Subwidget): String {
+        override fun asJson(entity: Subwidget): String {
             return """
                 {
                     "entity": {
-                        "id": "${subwidget.id}",
-                        "widgetId": "${subwidget.widgetId}",
-                        "name": "${subwidget.name}"
+                        "id": "${entity.id}",
+                        "widgetId": "${entity.widgetId}",
+                        "name": "${entity.name}"
                     }
                 }
             """.trimIndent()
         }
+    }
+
+    object Gadgets : SampleEntity<Gadget> {
+        val GadgetOne
+            get() = Gadget(
+                    id = uuid("3d34e72e-14a5-4ab6-9bda-3d9262799274"),
+                    name = "Gadget One"
+            )
+
+        override fun tempFile(temporaryFolder: TemporaryFolder, entity: Gadget): File {
+            return File(temporaryFolder.root, "/gadgets/${entity.id}.json")
+        }
+
+        override fun asJson(entity: Gadget): String {
+            return """
+                {
+                    entity: {
+                        id: "3d34e72e-14a5-4ab6-9bda-3d9262799274",
+                        name: "Gadget One"
+                    }
+                }
+            """.trimIndent()
+        }
+    }
+
+    private interface SampleEntity<E : Entity> {
+        fun tempFile(temporaryFolder: TemporaryFolder, entity: E): File
+        fun asJson(entity: E): String
     }
 }
