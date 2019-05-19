@@ -1,9 +1,11 @@
 package org.coner.snoozle.db.sample
 
 import org.coner.snoozle.db.Entity
+import org.coner.snoozle.util.snoozleJacksonObjectMapper
 import org.coner.snoozle.util.uuid
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.time.format.DateTimeFormatter
 
 object SampleDb {
 
@@ -11,7 +13,10 @@ object SampleDb {
 
     fun factory(temporaryFolder: TemporaryFolder): SampleDatabase {
         resourceUri.copyRecursively(temporaryFolder.root)
-        return SampleDatabase(root = temporaryFolder.root)
+        return SampleDatabase(
+                root = temporaryFolder.root,
+                objectMapper = snoozleJacksonObjectMapper()
+        )
     }
 
     object Widgets : SampleEntity<Widget> {
@@ -62,12 +67,10 @@ object SampleDb {
 
         override fun asJson(entity: Subwidget): String {
             return """
-                {
-                    "entity": {
-                        "id": "${entity.id}",
-                        "widgetId": "${entity.widgetId}",
-                        "name": "${entity.name}"
-                    }
+                "entity": {
+                    "id": "${entity.id}",
+                    "widgetId": "${entity.widgetId}",
+                    "name": "${entity.name}"
                 }
             """.trimIndent()
         }
@@ -85,12 +88,18 @@ object SampleDb {
         }
 
         override fun asJson(entity: Gadget): String {
+            val silly = if (entity.silly != null) {
+                DateTimeFormatter.ISO_INSTANT.format(entity.silly)
+                        .padStart(1, '"')
+                        .padEnd(1, '"')
+            } else {
+                null
+            }
             return """
-                {
-                    entity: {
-                        id: "3d34e72e-14a5-4ab6-9bda-3d9262799274",
-                        name: "Gadget One"
-                    }
+                "entity": {
+                    "id": "${entity.id}",
+                    "name": "${entity.name}",
+                    "silly": $silly
                 }
             """.trimIndent()
         }

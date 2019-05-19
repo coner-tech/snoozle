@@ -11,13 +11,15 @@ class EntityIoDelegate<E : Entity>(
         private val writer: ObjectWriter
 ) : IoDelegate<E> {
 
-    override val field = "entity"
+    private val entityField = "entity"
+
+    override val fields = listOf(entityField)
 
     override fun write(oldRoot: ObjectNode?, newRoot: ObjectNode, newContent: E) {
-        newRoot.set(field, objectMapper.valueToTree(newContent))
+        newRoot.set(entityField, objectMapper.valueToTree(newContent))
     }
 
     override fun read(root: ObjectNode): E {
-        return reader.readValue(root.get(field))
+        return reader.readValue(root.get(entityField))
     }
 }

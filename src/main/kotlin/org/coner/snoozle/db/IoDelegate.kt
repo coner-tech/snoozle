@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 
 interface IoDelegate<T> {
 
-    val field: String
+    val fields: List<String>
 
     fun write(oldRoot: ObjectNode?, newRoot: ObjectNode, newContent: T)
 

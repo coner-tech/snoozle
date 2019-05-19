@@ -9,6 +9,7 @@ import java.io.File
 import java.nio.file.Path
 import java.util.*
 import kotlin.reflect.KProperty1
+import kotlin.reflect.full.findAnnotation
 import kotlin.streams.toList
 
 class Resource<E : Entity>(
@@ -16,12 +17,28 @@ class Resource<E : Entity>(
         val entityDefinition: EntityDefinition<E>,
         val objectMapper: ObjectMapper,
         val path: Pathfinder<E> = Pathfinder(entityDefinition.kClass),
-        internal val entityIoDelegate: EntityIoDelegate<E> = EntityIoDelegate(
+        private val entityIoDelegate: EntityIoDelegate<E> = EntityIoDelegate(
                 objectMapper,
                 objectMapper.readerFor(entityDefinition.kClass.java),
                 objectMapper.writerFor(entityDefinition.kClass.java)
-        )
+        ),
+        automaticEntityVersionIoDelegate: AutomaticEntityVersionIoDelegate<E>? = null
 ) {
+
+    private val automaticEntityVersionIoDelegate: AutomaticEntityVersionIoDelegate<E>?
+
+    init {
+        val useAutomaticEntityVersionIoDelegate = entityDefinition.kClass
+                .findAnnotation<AutomaticVersionedEntity>() != null
+        this.automaticEntityVersionIoDelegate = if (automaticEntityVersionIoDelegate != null) {
+            automaticEntityVersionIoDelegate
+        } else if (useAutomaticEntityVersionIoDelegate) {
+            AutomaticEntityVersionIoDelegate(objectMapper, entityIoDelegate)
+        } else {
+            null
+        }
+    }
+
 
     fun get(vararg ids: Pair<KProperty1<E, UUID>, UUID>): E {
         val entityPath = path.findEntity(*ids)
@@ -51,7 +68,16 @@ class Resource<E : Entity>(
         else
             null
         val newRoot = objectMapper.createObjectNode()
-        entityIoDelegate.write(oldRoot = oldRoot, newRoot = newRoot, newContent = entity)
+        entityIoDelegate.write(
+                oldRoot = oldRoot,
+                newRoot = newRoot,
+                newContent = entity
+        )
+        automaticEntityVersionIoDelegate?.write(
+                oldRoot = oldRoot,
+                newRoot = newRoot,
+                newContent = entity
+        )
         objectMapper.writeValue(file, newRoot)
     }
 

@@ -1,13 +1,11 @@
 package org.coner.snoozle.db
 
 import assertk.all
+import assertk.assertThat
 import assertk.assertions.hasSize
 import assertk.assertions.isNotNull
 import assertk.assertions.isSameAs
-import org.coner.snoozle.db.sample.SampleDatabase
-import org.coner.snoozle.db.sample.SampleDb
-import org.coner.snoozle.db.sample.Subwidget
-import org.coner.snoozle.db.sample.Widget
+import org.coner.snoozle.db.sample.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -28,12 +26,13 @@ class DatabaseTest {
 
     @Test
     fun itShouldInitResourcesWithItsFirstConstructor() {
-        assertk.assertThat(database.resources).all {
+        assertThat(database.resources).all {
             isNotNull()
-            hasSize(2)
+            hasSize(3)
         }
-        assertk.assertThat(database.findResource<Widget>().entityDefinition.kClass).isSameAs(Widget::class)
-        assertk.assertThat(database.findResource<Subwidget>().entityDefinition.kClass).isSameAs(Subwidget::class)
+        assertThat(database.findResource<Widget>().entityDefinition.kClass).isSameAs(Widget::class)
+        assertThat(database.findResource<Subwidget>().entityDefinition.kClass).isSameAs(Subwidget::class)
+        assertThat(database.findResource<Gadget>().entityDefinition.kClass).isSameAs(Gadget::class)
     }
 
 }

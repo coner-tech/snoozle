@@ -1,8 +1,8 @@
 package org.coner.snoozle.db
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.reactivex.Observable
+import org.coner.snoozle.util.snoozleJacksonObjectMapper
 import java.io.File
 import java.util.*
 import kotlin.reflect.KClass
@@ -10,12 +10,13 @@ import kotlin.reflect.KProperty1
 
 abstract class Database(
         protected val root: File,
-        protected val objectMapper: ObjectMapper = jacksonObjectMapper()
+        protected val objectMapper: ObjectMapper = snoozleJacksonObjectMapper()
 ) {
 
     protected abstract val entities: List<EntityDefinition<*>>
     val resources by lazy {
         entities.map {
+
             it.kClass to Resource(
                     root = root,
                     entityDefinition = it,
