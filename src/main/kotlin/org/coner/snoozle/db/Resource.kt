@@ -69,13 +69,13 @@ class Resource<E : Entity>(
             null
         val newRoot = objectMapper.createObjectNode()
         entityIoDelegate.write(
-                oldRoot = oldRoot,
-                newRoot = newRoot,
+                old = oldRoot,
+                new = newRoot,
                 newContent = entity
         )
         automaticEntityVersionIoDelegate?.write(
-                oldRoot = oldRoot,
-                newRoot = newRoot,
+                old = oldRoot,
+                new = newRoot,
                 newContent = entity
         )
         objectMapper.writeValue(file, newRoot)

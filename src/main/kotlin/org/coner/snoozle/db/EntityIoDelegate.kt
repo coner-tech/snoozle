@@ -15,8 +15,8 @@ class EntityIoDelegate<E : Entity>(
 
     override val fields = listOf(entityField)
 
-    override fun write(oldRoot: ObjectNode?, newRoot: ObjectNode, newContent: E) {
-        newRoot.set(entityField, objectMapper.valueToTree(newContent))
+    override fun write(old: ObjectNode?, new: ObjectNode, newContent: E) {
+        new.set(entityField, objectMapper.valueToTree(newContent))
     }
 
     override fun read(root: ObjectNode): E {

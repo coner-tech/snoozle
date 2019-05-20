@@ -16,8 +16,8 @@ class AutomaticEntityVersionIoDelegate<E : Entity>(
 
     override val fields = listOf(historyField, currentVersionField)
 
-    override fun write(oldRoot: ObjectNode?, newRoot: ObjectNode, newContent: E) {
-        val oldCurrentVersionNode = oldRoot?.get(currentVersionField)
+    override fun write(old: ObjectNode?, new: ObjectNode, newContent: E) {
+        val oldCurrentVersionNode = old?.get(currentVersionField)
         val oldCurrentVersionRecord: CurrentVersionRecord? = oldCurrentVersionNode?.run {
             try {
                 objectMapper.treeToValue<CurrentVersionRecord>(this)
@@ -25,7 +25,7 @@ class AutomaticEntityVersionIoDelegate<E : Entity>(
                 throw EntityIoException("Failed to get old current version record", t)
             }
         }
-        val oldHistoryNode = oldRoot?.get(historyField)
+        val oldHistoryNode = old?.get(historyField)
         val oldEntityHistoryRecords: List<HistoricVersionRecord<E>>? = oldHistoryNode?.run {
             try {
                 objectMapper.treeToValue<List<HistoricVersionRecord<E>>>(this)
@@ -38,7 +38,7 @@ class AutomaticEntityVersionIoDelegate<E : Entity>(
         oldEntityHistoryRecords?.run {
             newEntityHistoryRecords.addAll(this)
         }
-        oldRoot?.let { oldRootNode ->
+        old?.let { oldRootNode ->
             newEntityHistoryRecords.add(
                     HistoricVersionRecord(
                             entity = entityIoDelegate.read(oldRootNode),
@@ -52,8 +52,8 @@ class AutomaticEntityVersionIoDelegate<E : Entity>(
                 version = (priorVersion?.version ?: -1) + 1,
                 ts = ZonedDateTime.now()
         )
-        newRoot.set(historyField, objectMapper.valueToTree(newEntityHistoryRecords))
-        newRoot.set(currentVersionField, objectMapper.valueToTree(newCurrentVersionRecord))
+        new.set(historyField, objectMapper.valueToTree(newEntityHistoryRecords))
+        new.set(currentVersionField, objectMapper.valueToTree(newCurrentVersionRecord))
     }
 
     override fun read(root: ObjectNode): E {
