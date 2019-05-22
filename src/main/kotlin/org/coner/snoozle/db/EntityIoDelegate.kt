@@ -5,21 +5,22 @@ import com.fasterxml.jackson.databind.ObjectReader
 import com.fasterxml.jackson.databind.ObjectWriter
 import com.fasterxml.jackson.databind.node.ObjectNode
 
-class EntityIoDelegate<E : Entity>(
+internal class EntityIoDelegate<E : Entity>(
         private val objectMapper: ObjectMapper,
         private val reader: ObjectReader,
         private val writer: ObjectWriter
 ) : IoDelegate<E> {
 
-    private val entityField = "entity"
-
-    override val fields = listOf(entityField)
-
-    override fun write(old: ObjectNode?, new: ObjectNode, newContent: E) {
-        new.set(entityField, objectMapper.valueToTree(newContent))
+    override fun write(old: WholeRecord<E>?, new: WholeRecord.Builder<E>, newContent: E) {
+        new.apply {
+            entityValue = newContent
+            entityObjectNode = objectMapper.valueToTree(newContent)
+        }
     }
 
-    override fun read(root: ObjectNode): E {
-        return reader.readValue(root.get(entityField))
+    override fun read(wholeRecord: WholeRecord.Builder<E>) {
+        wholeRecord.apply {
+            entityValue = reader.readValue(wholeRecord.entityObjectNode)
+        }
     }
 }

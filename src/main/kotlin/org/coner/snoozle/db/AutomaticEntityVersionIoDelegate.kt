@@ -6,44 +6,23 @@ import com.fasterxml.jackson.module.kotlin.treeToValue
 import java.time.Instant
 import java.time.ZonedDateTime
 
-class AutomaticEntityVersionIoDelegate<E : Entity>(
+internal class AutomaticEntityVersionIoDelegate<E : Entity>(
         private val objectMapper: ObjectMapper,
         private val entityIoDelegate: EntityIoDelegate<E>
 ) : IoDelegate<E> {
 
-    private val historyField = "history"
-    private val currentVersionField = "currentVersion"
-
-    override val fields = listOf(historyField, currentVersionField)
-
-    override fun write(old: ObjectNode?, new: ObjectNode, newContent: E) {
-        val oldCurrentVersionNode = old?.get(currentVersionField)
-        val oldCurrentVersionRecord: CurrentVersionRecord? = oldCurrentVersionNode?.run {
-            try {
-                objectMapper.treeToValue<CurrentVersionRecord>(this)
-            } catch (t: Throwable) {
-                throw EntityIoException("Failed to get old current version record", t)
-            }
-        }
-        val oldHistoryNode = old?.get(historyField)
-        val oldEntityHistoryRecords: List<HistoricVersionRecord<E>>? = oldHistoryNode?.run {
-            try {
-                objectMapper.treeToValue<List<HistoricVersionRecord<E>>>(this)
-            } catch (t: Throwable) {
-                throw EntityIoException("Failed to get old historic version records", t)
-            }
-        }
-
+    override fun write(old: WholeRecord<E>?, new: WholeRecord.Builder<E>, newContent: E) {
         val newEntityHistoryRecords = mutableListOf<HistoricVersionRecord<E>>()
-        oldEntityHistoryRecords?.run {
+        old?.history?.run {
             newEntityHistoryRecords.addAll(this)
         }
-        old?.let { oldRootNode ->
+        old?.run {
             newEntityHistoryRecords.add(
                     HistoricVersionRecord(
-                            entity = entityIoDelegate.read(oldRootNode),
-                            version = oldCurrentVersionRecord?.version ?: 0,
-                            ts = oldCurrentVersionRecord?.ts ?: ZonedDateTime.from(Instant.EPOCH)
+                            entityObjectNode = this.entityObjectNode,
+                            entityValue = this.entityValue,
+                            version = this.currentVersion?.version ?: 0,
+                            ts = this.currentVersion?.ts ?: ZonedDateTime.from(Instant.EPOCH)
                     )
             )
         }
@@ -52,11 +31,13 @@ class AutomaticEntityVersionIoDelegate<E : Entity>(
                 version = (priorVersion?.version ?: -1) + 1,
                 ts = ZonedDateTime.now()
         )
-        new.set(historyField, objectMapper.valueToTree(newEntityHistoryRecords))
-        new.set(currentVersionField, objectMapper.valueToTree(newCurrentVersionRecord))
+        new.apply {
+            history = newEntityHistoryRecords.toList()
+            currentVersion = newCurrentVersionRecord
+        }
     }
 
-    override fun read(root: ObjectNode): E {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    override fun read(wholeRecord: WholeRecord.Builder<E>) {
+        // no-op
     }
 }
