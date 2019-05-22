@@ -50,7 +50,10 @@ class Resource<E : Entity> internal constructor(
                 .findAnnotation<AutomaticVersionedEntity>() != null
         this.automaticEntityVersionIoDelegate = when {
             automaticEntityVersionIoDelegate != null -> automaticEntityVersionIoDelegate
-            useAutomaticEntityVersionIoDelegate -> AutomaticEntityVersionIoDelegate(objectMapper, this.entityIoDelegate)
+            useAutomaticEntityVersionIoDelegate -> AutomaticEntityVersionIoDelegate(
+                    reader = objectMapper.readerFor(entityDefinition.kClass.java),
+                    entityDefinition = entityDefinition
+            )
             else -> null
         }
         this.path = when {
@@ -60,9 +63,13 @@ class Resource<E : Entity> internal constructor(
     }
 
     fun get(vararg ids: Pair<KProperty1<E, UUID>, UUID>): E {
+        return getWholeRecord(*ids).entityValue
+    }
+
+    fun getWholeRecord(vararg ids: Pair<KProperty1<E, UUID>, UUID>): WholeRecord<E> {
         val entityPath = path.findEntity(*ids)
         val file = File(root, entityPath)
-        return read(file).entityValue
+        return read(file)
     }
 
     fun put(entity: E) {

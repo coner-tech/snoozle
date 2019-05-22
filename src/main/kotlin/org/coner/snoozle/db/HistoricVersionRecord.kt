@@ -8,6 +8,6 @@ import java.time.ZonedDateTime
 data class HistoricVersionRecord<E : Entity>(
         val version: Int,
         val ts: ZonedDateTime,
-        @JsonProperty("entity") val entityObjectNode: ObjectNode,
+        @JsonProperty("entity") internal val entityObjectNode: ObjectNode? = null,
         @JsonIgnore val entityValue: E?
 )

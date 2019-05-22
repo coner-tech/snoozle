@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonValue
 import com.fasterxml.jackson.databind.node.ObjectNode
 
 data class WholeRecord<E : Entity>(
-        @JsonProperty("entity") internal val entityObjectNode: ObjectNode,
+        @JsonProperty("entity") internal val entityObjectNode: ObjectNode? = null,
         @JsonIgnore val entityValue: E,
         val currentVersion: CurrentVersionRecord?,
         val history: List<HistoricVersionRecord<E>>?

@@ -5,7 +5,6 @@ import io.reactivex.Observable
 import org.coner.snoozle.util.snoozleJacksonObjectMapper
 import java.io.File
 import java.util.*
-import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 
 abstract class Database(
@@ -27,6 +26,10 @@ abstract class Database(
 
     inline fun <reified E : Entity> get(vararg ids: Pair<KProperty1<E, UUID>, UUID>): E {
         return findResource<E>().get(*ids)
+    }
+
+    inline fun <reified E : Entity> getWholeRecord(vararg ids: Pair<KProperty1<E, UUID>, UUID>): WholeRecord<E> {
+        return findResource<E>().getWholeRecord(*ids)
     }
 
     inline fun <reified E : Entity> put(entity: E) {
@@ -54,8 +57,4 @@ abstract class Database(
         return (resources[E::class] ?: throw IllegalArgumentException("No resource for ${E::class.qualifiedName}")) as Resource<E>
     }
 }
-
-data class EntityDefinition<E : Entity>(
-        val kClass: KClass<E>
-)
 

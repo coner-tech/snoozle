@@ -1,10 +1,14 @@
 package org.coner.snoozle.db.sample
 
+import org.coner.snoozle.db.CurrentVersionRecord
 import org.coner.snoozle.db.Entity
+import org.coner.snoozle.db.HistoricVersionRecord
+import org.coner.snoozle.db.WholeRecord
 import org.coner.snoozle.util.snoozleJacksonObjectMapper
 import org.coner.snoozle.util.uuid
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 object SampleDb {
@@ -80,7 +84,37 @@ object SampleDb {
         val GadgetOne
             get() = Gadget(
                     id = uuid("3d34e72e-14a5-4ab6-9bda-3d9262799274"),
-                    name = "Gadget One"
+                    name = "Gadget One",
+                    silly = null
+            )
+
+        val GadgetOneWholeRecord
+            get() = WholeRecord<Gadget>(
+                    entityValue = GadgetOne,
+                    currentVersion = CurrentVersionRecord(
+                            version = 2,
+                            ts = ZonedDateTime.parse("2019-05-16T21:43:00-05:00")
+                    ),
+                    history = listOf(
+                            HistoricVersionRecord(
+                                    version = 0,
+                                    ts = ZonedDateTime.parse("2019-05-16T21:40:00-05:00"),
+                                    entityValue = Gadget(
+                                            id = GadgetOne.id,
+                                            name = null,
+                                            silly = null
+                                    )
+                            ),
+                            HistoricVersionRecord(
+                                    version = 1,
+                                    ts = ZonedDateTime.parse("2019-05-16T21:42:00-05:00"),
+                                    entityValue = Gadget(
+                                            id = GadgetOne.id,
+                                            name = "Gadget Won",
+                                            silly = ZonedDateTime.parse("2019-05-16T21:41:59-05:00")
+                                    )
+                            )
+                    )
             )
 
         override fun tempFile(temporaryFolder: TemporaryFolder, entity: Gadget): File {
