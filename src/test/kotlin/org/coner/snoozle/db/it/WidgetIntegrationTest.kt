@@ -16,6 +16,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
+import java.nio.file.Files
 
 class WidgetIntegrationTest {
 
@@ -49,8 +50,9 @@ class WidgetIntegrationTest {
 
         val expectedFile = SampleDb.Widgets.tempFile(folder, widget)
         val expectedJson = SampleDb.Widgets.asJson(widget)
-        assertk.assertThat(expectedFile).exists()
-        JSONAssert.assertEquals(expectedJson, expectedFile.readText(), JSONCompareMode.LENIENT)
+        Assertions.assertThat(expectedFile).exists()
+        val actual = Files.readAllLines(expectedFile).joinToString("\n")
+        JSONAssert.assertEquals(expectedJson, actual, JSONCompareMode.LENIENT)
     }
 
     @Test

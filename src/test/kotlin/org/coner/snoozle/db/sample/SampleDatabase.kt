@@ -2,10 +2,10 @@ package org.coner.snoozle.db.sample
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.coner.snoozle.db.Database
-import java.io.File
+import java.nio.file.Path
 
 class SampleDatabase(
-        root: File,
+        root: Path,
         objectMapper: ObjectMapper
 ) : Database(
         root = root,

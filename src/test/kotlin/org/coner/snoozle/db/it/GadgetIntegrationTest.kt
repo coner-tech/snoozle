@@ -11,12 +11,15 @@ import org.coner.snoozle.db.WholeRecord
 import org.coner.snoozle.db.sample.Gadget
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
+import org.json.JSONObject
+import org.json.JSONStringer
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
+import java.nio.file.Files
 import java.time.ZonedDateTime
 import kotlin.reflect.KProperty1
 
@@ -48,7 +51,8 @@ class GadgetIntegrationTest {
                 "history": []
             }
         """.trimIndent()
-        JSONAssert.assertEquals(expected, path.readText(), JSONCompareMode.LENIENT)
+        val actual = Files.readAllLines(path).joinToString("\n")
+        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
@@ -77,7 +81,8 @@ class GadgetIntegrationTest {
             }
         """.trimIndent()
         val path = SampleDb.Gadgets.tempFile(folder, firstRevision)
-        JSONAssert.assertEquals(expected, path.readText(), JSONCompareMode.LENIENT)
+        val actual = Files.readAllLines(path).joinToString("\n")
+        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
@@ -95,7 +100,8 @@ class GadgetIntegrationTest {
                 }
             }
         """.trimIndent()
-        JSONAssert.assertEquals(expected, file.readText(), JSONCompareMode.LENIENT)
+        val actual = Files.readAllLines(file).joinToString("\n")
+        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
@@ -127,7 +133,8 @@ class GadgetIntegrationTest {
             }
         """.trimIndent()
         val path = SampleDb.Gadgets.tempFile(folder, secondRevision)
-        JSONAssert.assertEquals(expected, path.readText(), JSONCompareMode.LENIENT)
+        val actual = Files.readAllLines(path).joinToString("\n")
+        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
     @Test

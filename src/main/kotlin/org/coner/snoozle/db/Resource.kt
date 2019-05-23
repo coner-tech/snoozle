@@ -1,11 +1,13 @@
 package org.coner.snoozle.db
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.node.ObjectNode
 import de.helmbold.rxfilewatcher.PathObservables
 import io.reactivex.Observable
+import org.coner.snoozle.util.extension
+import org.coner.snoozle.util.nameWithoutExtension
 import org.coner.snoozle.util.uuid
-import java.io.File
+import java.nio.file.FileAlreadyExistsException
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.*
 import kotlin.reflect.KProperty1
@@ -13,7 +15,7 @@ import kotlin.reflect.full.findAnnotation
 import kotlin.streams.toList
 
 class Resource<E : Entity> internal constructor(
-        private val root: File,
+        private val root: Path,
         internal val entityDefinition: EntityDefinition<E>,
         private val objectMapper: ObjectMapper,
         path: Pathfinder<E>? = null,
@@ -22,7 +24,7 @@ class Resource<E : Entity> internal constructor(
 ) {
 
     constructor(
-            root: File,
+            root: Path,
             entityDefinition: EntityDefinition<E>,
             objectMapper: ObjectMapper
     ) : this(
@@ -68,42 +70,47 @@ class Resource<E : Entity> internal constructor(
 
     fun getWholeRecord(vararg ids: Pair<KProperty1<E, UUID>, UUID>): WholeRecord<E> {
         val entityPath = path.findEntity(*ids)
-        val file = File(root, entityPath)
+        val file = root.resolve(entityPath)
         return read(file)
     }
 
     fun put(entity: E) {
         val entityParentPath = path.findParentOfEntity(entity)
-        val parent = File(root, entityParentPath)
-        if (!parent.exists()) {
-            if (!parent.mkdir()) {
-                throw EntityIoException.WriteFailure("""
-                    Failed to create parent folder:
-                    $entityParentPath
-                    Does its parent exist?
-                """.trimIndent())
-            }
+        val parent = root.resolve(entityParentPath)
+        try {
+            Files.createDirectory(parent)
+        } catch (fileAlreadyExists: FileAlreadyExistsException) {
+            // that's fine
+        } catch (t: Throwable) {
+            val message = """
+                Failed to create parent folder:
+                $entityParentPath
+                Does its parent exist?
+            """.trimIndent()
+            throw EntityIoException.WriteFailure(message, t)
         }
-        val file = File(root, path.findEntity(entity))
+        val file = root.resolve(path.findEntity(entity))
         write(file, entity)
     }
 
-    private fun read(file: File): WholeRecord<E> {
-        return if (file.exists()) {
-            try {
-                val builder = (objectMapper.readValue(file, WholeRecord.Builder::class.java) as WholeRecord.Builder<E>)
-                entityIoDelegate.read(builder)
-                automaticEntityVersionIoDelegate?.read(builder)
-                builder.build()
-            } catch (t: Throwable) {
-                throw EntityIoException.ReadFailure("Failed to read/build entity: ${file.relativeTo(root)}", t)
+    private fun read(file: Path): WholeRecord<E> {
+        return if (Files.exists(file)) {
+            Files.newInputStream(file).use { inputStream ->
+                try {
+                    val builder = (objectMapper.readValue(inputStream, WholeRecord.Builder::class.java) as WholeRecord.Builder<E>)
+                    entityIoDelegate.read(builder)
+                    automaticEntityVersionIoDelegate?.read(builder)
+                    builder.build()
+                } catch (t: Throwable) {
+                    throw EntityIoException.ReadFailure("Failed to read/build entity: ${file.relativize(root)}", t)
+                }
             }
         } else {
-            throw EntityIoException.NotFound("Entity not found: ${file.relativeTo(root)}")
+            throw EntityIoException.NotFound("Entity not found: ${root.relativize(file)}")
         }
     }
 
-    private fun write(file: File, entity: E) {
+    private fun write(file: Path, entity: E) {
         val old = try {
             read(file)
         } catch (entityIoException: EntityIoException.NotFound) {
@@ -112,40 +119,45 @@ class Resource<E : Entity> internal constructor(
         val new = WholeRecord.Builder<E>()
         entityIoDelegate.write(old, new, entity)
         automaticEntityVersionIoDelegate?.write(old, new, entity)
-        objectMapper.writeValue(file, new)
+        Files.newOutputStream(file).use { outputStream ->
+            objectMapper.writeValue(outputStream, new)
+        }
     }
 
     fun delete(entity: E) {
-        val file = File(root, path.findEntity(entity))
-        file.delete()
+        val file = root.resolve(path.findEntity(entity))
+        Files.delete(file)
     }
 
     fun list(vararg ids: Pair<KProperty1<E, UUID>, UUID>): List<E> {
         val listingPath = path.findListing(*ids)
-        val listing = File(root, listingPath)
-        if (!listing.exists()) {
-            if (!listing.mkdirs())
-                throw EntityIoException.WriteFailure("""
+        val listing = root.resolve(listingPath)
+        if (!Files.exists(listing)) {
+            try {
+                Files.createDirectories(listing)
+            } catch (t: Throwable) {
+                val message = """
                     Failed to create listing:
                     $listingPath
                     Does its parent exist?
-                """.trimIndent())
+                """.trimIndent()
+                throw EntityIoException.WriteFailure(message, t)
+            }
         }
-        return listing.listFiles()
-                .filter { it.isFile && it.extension == "json" }
-                .parallelStream()
-                .sorted(compareBy(File::getName))
+        return Files.list(listing)
+                .filter { Files.isRegularFile(it) && it.extension == "json" }
+                .sorted(compareBy(Path::toString))
                 .map { file -> read(file).entityValue }
                 .toList()
     }
 
     fun watchListing(vararg ids: Pair<KProperty1<E, UUID>, UUID>): Observable<EntityEvent<E>> {
-        val listing = File(root, path.findListing(*ids))
-        return PathObservables.watchNonRecursive(listing.toPath())
-                .filter { path.isValidEntity((it.context() as Path).toFile()) }
+        val listing = root.resolve(path.findListing(*ids))
+        return PathObservables.watchNonRecursive(listing)
+                .filter { path.isValidEntity((it.context() as Path)) }
                 .map {
-                    val file = File(listing, (it.context() as Path).toFile().name)
-                    val entity = if (file.exists() && file.length() > 0) {
+                    val file = listing.resolve(it.context() as Path)
+                    val entity = if (Files.exists(file) && Files.size(file) > 0) {
                         read(file).entityValue
                     } else {
                         null
