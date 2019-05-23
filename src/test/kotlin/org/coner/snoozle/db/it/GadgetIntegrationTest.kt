@@ -1,16 +1,11 @@
 package org.coner.snoozle.db.it
 
-import assertk.all
-import assertk.assertions.isEqualTo
-import assertk.assertions.isEqualToWithGivenProperties
-import assertk.assertions.prop
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assumptions
-import org.assertj.core.api.SoftAssertions
-import org.coner.snoozle.db.WholeRecord
 import org.coner.snoozle.db.sample.Gadget
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
+import org.coner.snoozle.util.readText
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -18,7 +13,6 @@ import org.junit.rules.TemporaryFolder
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
 import java.time.ZonedDateTime
-import kotlin.reflect.KProperty1
 
 class GadgetIntegrationTest {
 
@@ -48,7 +42,8 @@ class GadgetIntegrationTest {
                 "history": []
             }
         """.trimIndent()
-        JSONAssert.assertEquals(expected, path.readText(), JSONCompareMode.LENIENT)
+        val actual = path.readText()
+        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
@@ -77,7 +72,8 @@ class GadgetIntegrationTest {
             }
         """.trimIndent()
         val path = SampleDb.Gadgets.tempFile(folder, firstRevision)
-        JSONAssert.assertEquals(expected, path.readText(), JSONCompareMode.LENIENT)
+        val actual = path.readText()
+        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
@@ -95,7 +91,8 @@ class GadgetIntegrationTest {
                 }
             }
         """.trimIndent()
-        JSONAssert.assertEquals(expected, file.readText(), JSONCompareMode.LENIENT)
+        val actual = file.readText()
+        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
@@ -127,7 +124,8 @@ class GadgetIntegrationTest {
             }
         """.trimIndent()
         val path = SampleDb.Gadgets.tempFile(folder, secondRevision)
-        JSONAssert.assertEquals(expected, path.readText(), JSONCompareMode.LENIENT)
+        val actual = path.readText()
+        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
     @Test

@@ -3,12 +3,12 @@ package org.coner.snoozle.db
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.reactivex.Observable
 import org.coner.snoozle.util.snoozleJacksonObjectMapper
-import java.io.File
+import java.nio.file.Path
 import java.util.*
 import kotlin.reflect.KProperty1
 
 abstract class Database(
-        protected val root: File,
+        protected val root: Path,
         protected val objectMapper: ObjectMapper = snoozleJacksonObjectMapper()
 ) {
 

@@ -1,7 +1,6 @@
 package org.coner.snoozle.db.it
 
 import assertk.all
-import assertk.assertions.exists
 import assertk.assertions.hasSize
 import assertk.assertions.index
 import assertk.assertions.isEqualTo
@@ -10,6 +9,7 @@ import org.assertj.core.api.Assumptions
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Widget
+import org.coner.snoozle.util.readText
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -49,8 +49,9 @@ class WidgetIntegrationTest {
 
         val expectedFile = SampleDb.Widgets.tempFile(folder, widget)
         val expectedJson = SampleDb.Widgets.asJson(widget)
-        assertk.assertThat(expectedFile).exists()
-        JSONAssert.assertEquals(expectedJson, expectedFile.readText(), JSONCompareMode.LENIENT)
+        Assertions.assertThat(expectedFile).exists()
+        val actual = expectedFile.readText()
+        JSONAssert.assertEquals(expectedJson, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
