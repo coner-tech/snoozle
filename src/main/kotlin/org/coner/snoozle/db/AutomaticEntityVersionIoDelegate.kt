@@ -1,9 +1,6 @@
 package org.coner.snoozle.db
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.ObjectReader
-import com.fasterxml.jackson.databind.node.ObjectNode
-import com.fasterxml.jackson.module.kotlin.treeToValue
 import java.time.Instant
 import java.time.ZonedDateTime
 
@@ -20,7 +17,7 @@ internal class AutomaticEntityVersionIoDelegate<E : Entity>(
         old?.run {
             newEntityHistoryRecords.add(
                     HistoricVersionRecord(
-                            entityObjectNode = this.entityObjectNode,
+                            _entityObjectNode = this._entityObjectNode,
                             entityValue = this.entityValue,
                             version = this.currentVersion?.version ?: 0,
                             ts = this.currentVersion?.ts ?: ZonedDateTime.from(Instant.EPOCH)
@@ -40,11 +37,11 @@ internal class AutomaticEntityVersionIoDelegate<E : Entity>(
 
     override fun read(wholeRecord: WholeRecord.Builder<E>) {
         wholeRecord.history = wholeRecord.history?.map { historicRecord ->
-            if (historicRecord.entityObjectNode == null) throw EntityIoException.ReadFailure(
+            if (historicRecord._entityObjectNode == null) throw EntityIoException.ReadFailure(
                     "Historic record missing entity, unable to read"
             )
             historicRecord.copy(entityValue = reader.treeToValue(
-                    historicRecord.entityObjectNode,
+                    historicRecord._entityObjectNode,
                     entityDefinition.kClass.java
             ))
         }

@@ -140,13 +140,13 @@ class GadgetIntegrationTest {
         Assertions.assertThat(actual)
                 .isEqualToIgnoringGivenFields(
                         expected,
-                        "entityObjectNode",
+                        "_entityObjectNode",
                         "history"
                 )
         Assertions.assertThat(actual.history)
                 .isNotNull
                 .hasSameSizeAs(expected.history)
-        Assertions.assertThat(actual.history!![0]).isEqualToIgnoringGivenFields(expected.history!![0], "entityObjectNode")
-        Assertions.assertThat(actual.history!![1]).isEqualToIgnoringGivenFields(expected.history!![1], "entityObjectNode")
+        Assertions.assertThat(actual.history!![0]).isEqualToIgnoringGivenFields(expected.history!![0], "_entityObjectNode")
+        Assertions.assertThat(actual.history!![1]).isEqualToIgnoringGivenFields(expected.history!![1], "_entityObjectNode")
     }
 }
