@@ -1,12 +1,8 @@
 package org.coner.snoozle.db
 
-import com.fasterxml.jackson.databind.node.ObjectNode
+internal interface IoDelegate<E : Entity> {
 
-interface IoDelegate<T> {
+    fun write(old: WholeRecord<E>?, new: WholeRecord.Builder<E>, newContent: E)
 
-    val field: String
-
-    fun write(oldRoot: ObjectNode?, newRoot: ObjectNode, newContent: T)
-
-    fun read(root: ObjectNode): T
+    fun read(wholeRecord: WholeRecord.Builder<E>)
 }

@@ -57,7 +57,11 @@ class SubwidgetIntegrationTest {
         database.put(subwidget)
 
         val expectedFile = SampleDb.Subwidgets.tempFile(folder, subwidget)
-        val expectedJson = SampleDb.Subwidgets.asJson(subwidget)
+        val expectedJson = """
+            {
+                ${SampleDb.Subwidgets.asJson(subwidget)}
+            }
+        """.trimIndent()
         assertk.assertThat(expectedFile).exists()
         JSONAssert.assertEquals(expectedJson, expectedFile.readText(), JSONCompareMode.LENIENT)
     }

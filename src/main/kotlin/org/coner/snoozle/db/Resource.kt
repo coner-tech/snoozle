@@ -9,28 +9,67 @@ import java.io.File
 import java.nio.file.Path
 import java.util.*
 import kotlin.reflect.KProperty1
+import kotlin.reflect.full.findAnnotation
 import kotlin.streams.toList
 
-class Resource<E : Entity>(
-        val root: File,
-        val entityDefinition: EntityDefinition<E>,
-        val objectMapper: ObjectMapper,
-        val path: Pathfinder<E> = Pathfinder(entityDefinition.kClass),
-        internal val entityIoDelegate: EntityIoDelegate<E> = EntityIoDelegate(
+class Resource<E : Entity> internal constructor(
+        private val root: File,
+        internal val entityDefinition: EntityDefinition<E>,
+        private val objectMapper: ObjectMapper,
+        path: Pathfinder<E>? = null,
+        entityIoDelegate: EntityIoDelegate<E>? = null,
+        automaticEntityVersionIoDelegate: AutomaticEntityVersionIoDelegate<E>? = null
+) {
+
+    constructor(
+            root: File,
+            entityDefinition: EntityDefinition<E>,
+            objectMapper: ObjectMapper
+    ) : this(
+        root = root,
+        entityDefinition = entityDefinition,
+        objectMapper = objectMapper,
+        path = null,
+        entityIoDelegate = null,
+        automaticEntityVersionIoDelegate = null
+    )
+
+    val path: Pathfinder<E>
+    private val automaticEntityVersionIoDelegate: AutomaticEntityVersionIoDelegate<E>?
+    private val entityIoDelegate: EntityIoDelegate<E> = when {
+        entityIoDelegate != null -> entityIoDelegate
+        else -> EntityIoDelegate(
                 objectMapper,
                 objectMapper.readerFor(entityDefinition.kClass.java),
                 objectMapper.writerFor(entityDefinition.kClass.java)
         )
-) {
+    }
+
+    init {
+        val useAutomaticEntityVersionIoDelegate = entityDefinition.kClass
+                .findAnnotation<AutomaticVersionedEntity>() != null
+        this.automaticEntityVersionIoDelegate = when {
+            automaticEntityVersionIoDelegate != null -> automaticEntityVersionIoDelegate
+            useAutomaticEntityVersionIoDelegate -> AutomaticEntityVersionIoDelegate(
+                    reader = objectMapper.readerFor(entityDefinition.kClass.java),
+                    entityDefinition = entityDefinition
+            )
+            else -> null
+        }
+        this.path = when {
+            path != null -> path
+            else -> Pathfinder(entityDefinition.kClass)
+        }
+    }
 
     fun get(vararg ids: Pair<KProperty1<E, UUID>, UUID>): E {
+        return getWholeRecord(*ids).entityValue
+    }
+
+    fun getWholeRecord(vararg ids: Pair<KProperty1<E, UUID>, UUID>): WholeRecord<E> {
         val entityPath = path.findEntity(*ids)
         val file = File(root, entityPath)
-        if (!file.exists()) {
-            throw EntityIoException("Entity does not exist: $entityPath")
-        }
-        val rootNode = objectMapper.readTree(file) as ObjectNode
-        return entityIoDelegate.read(rootNode)
+        return read(file)
     }
 
     fun put(entity: E) {
@@ -38,7 +77,7 @@ class Resource<E : Entity>(
         val parent = File(root, entityParentPath)
         if (!parent.exists()) {
             if (!parent.mkdir()) {
-                throw EntityIoException("""
+                throw EntityIoException.WriteFailure("""
                     Failed to create parent folder:
                     $entityParentPath
                     Does its parent exist?
@@ -46,13 +85,34 @@ class Resource<E : Entity>(
             }
         }
         val file = File(root, path.findEntity(entity))
-        val oldRoot = if (file.exists())
-            objectMapper.readTree(file) as ObjectNode
-        else
+        write(file, entity)
+    }
+
+    private fun read(file: File): WholeRecord<E> {
+        return if (file.exists()) {
+            try {
+                val builder = (objectMapper.readValue(file, WholeRecord.Builder::class.java) as WholeRecord.Builder<E>)
+                entityIoDelegate.read(builder)
+                automaticEntityVersionIoDelegate?.read(builder)
+                builder.build()
+            } catch (t: Throwable) {
+                throw EntityIoException.ReadFailure("Failed to read/build entity: ${file.relativeTo(root)}", t)
+            }
+        } else {
+            throw EntityIoException.NotFound("Entity not found: ${file.relativeTo(root)}")
+        }
+    }
+
+    private fun write(file: File, entity: E) {
+        val old = try {
+            read(file)
+        } catch (entityIoException: EntityIoException.NotFound) {
             null
-        val newRoot = objectMapper.createObjectNode()
-        entityIoDelegate.write(oldRoot = oldRoot, newRoot = newRoot, newContent = entity)
-        objectMapper.writeValue(file, newRoot)
+        }
+        val new = WholeRecord.Builder<E>()
+        entityIoDelegate.write(old, new, entity)
+        automaticEntityVersionIoDelegate?.write(old, new, entity)
+        objectMapper.writeValue(file, new)
     }
 
     fun delete(entity: E) {
@@ -65,7 +125,7 @@ class Resource<E : Entity>(
         val listing = File(root, listingPath)
         if (!listing.exists()) {
             if (!listing.mkdirs())
-                throw EntityIoException("""
+                throw EntityIoException.WriteFailure("""
                     Failed to create listing:
                     $listingPath
                     Does its parent exist?
@@ -75,10 +135,7 @@ class Resource<E : Entity>(
                 .filter { it.isFile && it.extension == "json" }
                 .parallelStream()
                 .sorted(compareBy(File::getName))
-                .map { file ->
-                    val rootNode = objectMapper.readTree(file) as ObjectNode
-                    entityIoDelegate.read(rootNode)
-                }
+                .map { file -> read(file).entityValue }
                 .toList()
     }
 
@@ -89,8 +146,7 @@ class Resource<E : Entity>(
                 .map {
                     val file = File(listing, (it.context() as Path).toFile().name)
                     val entity = if (file.exists() && file.length() > 0) {
-                        val rootNode = objectMapper.readTree(file) as ObjectNode
-                        entityIoDelegate.read(rootNode)
+                        read(file).entityValue
                     } else {
                         null
                     }
