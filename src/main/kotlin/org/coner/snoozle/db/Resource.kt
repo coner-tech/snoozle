@@ -36,7 +36,7 @@ class Resource<E : Entity> internal constructor(
         automaticEntityVersionIoDelegate = null
     )
 
-    val path: Pathfinder<E>
+    val pathfinder: Pathfinder<E>
     private val automaticEntityVersionIoDelegate: AutomaticEntityVersionIoDelegate<E>?
     private val entityIoDelegate: EntityIoDelegate<E> = when {
         entityIoDelegate != null -> entityIoDelegate
@@ -58,7 +58,7 @@ class Resource<E : Entity> internal constructor(
             )
             else -> null
         }
-        this.path = when {
+        this.pathfinder = when {
             path != null -> path
             else -> Pathfinder(entityDefinition.kClass)
         }
@@ -69,13 +69,13 @@ class Resource<E : Entity> internal constructor(
     }
 
     fun getWholeRecord(vararg ids: Pair<KProperty1<E, UUID>, UUID>): WholeRecord<E> {
-        val entityPath = path.findEntity(*ids)
+        val entityPath = pathfinder.findEntity(*ids)
         val file = root.resolve(entityPath)
         return read(file)
     }
 
     fun put(entity: E) {
-        val entityParentPath = path.findParentOfEntity(entity)
+        val entityParentPath = pathfinder.findParentOfEntity(entity)
         val parent = root.resolve(entityParentPath)
         try {
             Files.createDirectory(parent)
@@ -89,7 +89,7 @@ class Resource<E : Entity> internal constructor(
             """.trimIndent()
             throw EntityIoException.WriteFailure(message, t)
         }
-        val file = root.resolve(path.findEntity(entity))
+        val file = root.resolve(pathfinder.findEntity(entity))
         write(file, entity)
     }
 
@@ -125,12 +125,12 @@ class Resource<E : Entity> internal constructor(
     }
 
     fun delete(entity: E) {
-        val file = root.resolve(path.findEntity(entity))
+        val file = root.resolve(pathfinder.findEntity(entity))
         Files.delete(file)
     }
 
     fun list(vararg ids: Pair<KProperty1<E, UUID>, UUID>): List<E> {
-        val listingPath = path.findListing(*ids)
+        val listingPath = pathfinder.findListing(*ids)
         val listing = root.resolve(listingPath)
         if (!Files.exists(listing)) {
             try {
@@ -152,9 +152,9 @@ class Resource<E : Entity> internal constructor(
     }
 
     fun watchListing(vararg ids: Pair<KProperty1<E, UUID>, UUID>): Observable<EntityEvent<E>> {
-        val listing = root.resolve(path.findListing(*ids))
+        val listing = root.resolve(pathfinder.findListing(*ids))
         return PathObservables.watchNonRecursive(listing)
-                .filter { path.isValidEntity((it.context() as Path)) }
+                .filter { pathfinder.isValidEntity((it.context() as Path)) }
                 .map {
                     val file = listing.resolve(it.context() as Path)
                     val entity = if (Files.exists(file) && Files.size(file) > 0) {
