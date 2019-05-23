@@ -1,27 +1,18 @@
 package org.coner.snoozle.db.it
 
-import assertk.all
-import assertk.assertions.isEqualTo
-import assertk.assertions.isEqualToWithGivenProperties
-import assertk.assertions.prop
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assumptions
-import org.assertj.core.api.SoftAssertions
-import org.coner.snoozle.db.WholeRecord
 import org.coner.snoozle.db.sample.Gadget
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
-import org.json.JSONObject
-import org.json.JSONStringer
+import org.coner.snoozle.util.readText
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
-import java.nio.file.Files
 import java.time.ZonedDateTime
-import kotlin.reflect.KProperty1
 
 class GadgetIntegrationTest {
 
@@ -51,7 +42,7 @@ class GadgetIntegrationTest {
                 "history": []
             }
         """.trimIndent()
-        val actual = Files.readAllLines(path).joinToString("\n")
+        val actual = path.readText()
         JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
@@ -81,7 +72,7 @@ class GadgetIntegrationTest {
             }
         """.trimIndent()
         val path = SampleDb.Gadgets.tempFile(folder, firstRevision)
-        val actual = Files.readAllLines(path).joinToString("\n")
+        val actual = path.readText()
         JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
@@ -100,7 +91,7 @@ class GadgetIntegrationTest {
                 }
             }
         """.trimIndent()
-        val actual = Files.readAllLines(file).joinToString("\n")
+        val actual = file.readText()
         JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
@@ -133,7 +124,7 @@ class GadgetIntegrationTest {
             }
         """.trimIndent()
         val path = SampleDb.Gadgets.tempFile(folder, secondRevision)
-        val actual = Files.readAllLines(path).joinToString("\n")
+        val actual = path.readText()
         JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
