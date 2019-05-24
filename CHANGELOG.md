@@ -2,6 +2,9 @@
 
 ## 0.2.0-SNAPSHOT (YYYY-MM-DD)
 
+- [#11](https://github.com/caeos/snoozle/issues/11) Upgrade to JUnit 5
+- [#10](https://github.com/caeos/snoozle/issues/10) Switch to java.nio.Path
+- [#8](https://github.com/caeos/snoozle/issues/8) Optional automatic entity versioning
 - [#7](https://github.com/caeos/snoozle/issues/7) Store entities at rest wrapped in an object
 
 ## 0.1.2 (2019-01-18)
