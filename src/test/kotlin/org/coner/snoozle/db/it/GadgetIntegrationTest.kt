@@ -6,25 +6,23 @@ import org.coner.snoozle.db.sample.Gadget
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.util.readText
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
-import org.junit.rules.TemporaryFolder
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
+import java.nio.file.Path
 import java.time.ZonedDateTime
 
 class GadgetIntegrationTest {
 
-    @JvmField
-    @Rule
-    val folder = TemporaryFolder()
-
+    @TempDir
+    lateinit var root: Path
     private lateinit var database: SampleDatabase
 
-    @Before
+    @BeforeEach
     fun before() {
-        database = SampleDb.factory(folder)
+        database = SampleDb.factory(root)
     }
 
     @Test
@@ -33,7 +31,7 @@ class GadgetIntegrationTest {
 
         database.put(original)
 
-        val path = SampleDb.Gadgets.tempFile(folder, original)
+        val path = SampleDb.Gadgets.tempFile(root, original)
         val expected = """
             {
                 "currentVersion": {
@@ -71,7 +69,7 @@ class GadgetIntegrationTest {
                 ]
             }
         """.trimIndent()
-        val path = SampleDb.Gadgets.tempFile(folder, firstRevision)
+        val path = SampleDb.Gadgets.tempFile(root, firstRevision)
         val actual = path.readText()
         JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
@@ -83,7 +81,7 @@ class GadgetIntegrationTest {
 
         database.put(gadget)
 
-        val file = SampleDb.Gadgets.tempFile(folder, gadget)
+        val file = SampleDb.Gadgets.tempFile(root, gadget)
         val expected = """
             {
                 "entity": {
@@ -123,7 +121,7 @@ class GadgetIntegrationTest {
                 ]
             }
         """.trimIndent()
-        val path = SampleDb.Gadgets.tempFile(folder, secondRevision)
+        val path = SampleDb.Gadgets.tempFile(root, secondRevision)
         val actual = path.readText()
         JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }

@@ -10,24 +10,23 @@ import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Widget
 import org.coner.snoozle.util.readText
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
-import org.junit.rules.TemporaryFolder
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
+import java.nio.file.Path
 
 class WidgetIntegrationTest {
 
-    @JvmField
-    @Rule
-    val folder = TemporaryFolder()
+    @TempDir
+    lateinit var root: Path
 
     private lateinit var database: SampleDatabase
 
-    @Before
+    @BeforeEach
     fun before() {
-        database = SampleDb.factory(folder)
+        database = SampleDb.factory(root!!)
     }
 
     @Test
@@ -47,7 +46,7 @@ class WidgetIntegrationTest {
 
         database.put(widget)
 
-        val expectedFile = SampleDb.Widgets.tempFile(folder, widget)
+        val expectedFile = SampleDb.Widgets.tempFile(root, widget)
         val expectedJson = SampleDb.Widgets.asJson(widget)
         Assertions.assertThat(expectedFile).exists()
         val actual = expectedFile.readText()
@@ -59,7 +58,7 @@ class WidgetIntegrationTest {
         val widgets = arrayOf(SampleDb.Widgets.One, SampleDb.Widgets.Two)
 
         for (widget in widgets) {
-            val actualFile = SampleDb.Widgets.tempFile(folder, widget)
+            val actualFile = SampleDb.Widgets.tempFile(root, widget)
             Assumptions.assumeThat(actualFile).exists()
 
             database.remove(widget)
