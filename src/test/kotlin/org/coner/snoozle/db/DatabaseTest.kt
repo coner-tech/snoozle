@@ -6,22 +6,22 @@ import assertk.assertions.hasSize
 import assertk.assertions.isNotNull
 import assertk.assertions.isSameAs
 import org.coner.snoozle.db.sample.*
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
-import org.junit.rules.TemporaryFolder
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Path
+
 
 class DatabaseTest {
 
-    @JvmField
-    @Rule
-    val folder = TemporaryFolder()
+    @TempDir
+    lateinit var root: Path
 
     private lateinit var database: SampleDatabase
 
-    @Before
+    @BeforeEach
     fun before() {
-        database = SampleDb.factory(folder)
+        database = SampleDb.factory(root)
     }
 
     @Test

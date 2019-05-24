@@ -6,7 +6,6 @@ import org.coner.snoozle.db.HistoricVersionRecord
 import org.coner.snoozle.db.WholeRecord
 import org.coner.snoozle.util.snoozleJacksonObjectMapper
 import org.coner.snoozle.util.uuid
-import org.junit.rules.TemporaryFolder
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.ZonedDateTime
@@ -16,10 +15,10 @@ object SampleDb {
 
     private val resourceUri = Paths.get(javaClass.getResource("/sample-db").toURI())
 
-    fun factory(temporaryFolder: TemporaryFolder): SampleDatabase {
-        resourceUri.toFile().copyRecursively(temporaryFolder.root)
+    fun factory(root: Path): SampleDatabase {
+        resourceUri.toFile().copyRecursively(root.toFile())
         return SampleDatabase(
-                root = temporaryFolder.root.toPath(),
+                root = root,
                 objectMapper = snoozleJacksonObjectMapper()
         )
     }
@@ -36,8 +35,8 @@ object SampleDb {
                     name = "Widget Two"
             )
 
-        override fun tempFile(temporaryFolder: TemporaryFolder, entity: Widget): Path {
-            return temporaryFolder.root.toPath().resolve("widgets/${entity.id}.json")
+        override fun tempFile(root: Path, entity: Widget): Path {
+            return root.resolve("widgets/${entity.id}.json")
         }
 
         override fun asJson(entity: Widget): String {
@@ -66,8 +65,8 @@ object SampleDb {
                         name = "Widget Two's Subwidget One"
                 )
 
-        override fun tempFile(temporaryFolder: TemporaryFolder, entity: Subwidget): Path {
-            return temporaryFolder.root.toPath().resolve("widgets/${entity.widgetId}/subwidgets/${entity.id}.json")
+        override fun tempFile(root: Path, entity: Subwidget): Path {
+            return root.resolve("widgets/${entity.widgetId}/subwidgets/${entity.id}.json")
         }
 
         override fun asJson(entity: Subwidget): String {
@@ -118,8 +117,8 @@ object SampleDb {
                     )
             )
 
-        override fun tempFile(temporaryFolder: TemporaryFolder, entity: Gadget): Path {
-            return temporaryFolder.root.toPath().resolve("gadgets/${entity.id}.json")
+        override fun tempFile(root: Path, entity: Gadget): Path {
+            return root.resolve("gadgets/${entity.id}.json")
         }
 
         override fun asJson(entity: Gadget): String {
@@ -141,7 +140,7 @@ object SampleDb {
     }
 
     private interface SampleEntity<E : Entity> {
-        fun tempFile(temporaryFolder: TemporaryFolder, entity: E): Path
+        fun tempFile(root: Path, entity: E): Path
         fun asJson(entity: E): String
     }
 }

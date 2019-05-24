@@ -12,7 +12,8 @@
         <jackson.version>2.9.9</jackson.version>
         <rxjava2.version>2.2.4</rxjava2.version>
         <rxfilewatcher.version>1.0.0</rxfilewatcher.version>
-        <junit.version>4.12</junit.version>
+        <junit5.platform.version>1.4.2</junit5.platform.version>
+        <junit5.jupiter.version>5.4.2</junit5.jupiter.version>
         <assertj.version>3.11.1</assertj.version>
         <assertk.version>0.14</assertk.version>
         <jsonassert.version>1.5.0</jsonassert.version>
@@ -52,9 +53,21 @@
         </dependency>
 
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-runner</artifactId>
+            <version>${junit5.platform.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit5.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit5.jupiter.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>

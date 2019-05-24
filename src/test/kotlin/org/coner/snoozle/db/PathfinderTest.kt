@@ -4,8 +4,8 @@ import org.assertj.core.api.Assertions
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Subwidget
 import org.coner.snoozle.db.sample.Widget
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import java.nio.file.Paths
 
 
@@ -14,7 +14,7 @@ class PathfinderTest {
     lateinit var widgetPathfinder: Pathfinder<Widget>
     lateinit var subwidgetPathfinder: Pathfinder<Subwidget>
 
-    @Before
+    @BeforeEach
     fun before() {
         widgetPathfinder = Pathfinder(Widget::class)
         subwidgetPathfinder = Pathfinder(Subwidget::class)
