@@ -26,7 +26,7 @@ class WidgetIntegrationTest {
 
     @BeforeEach
     fun before() {
-        database = SampleDb.factory(root!!)
+        database = SampleDb.factory(root)
     }
 
     @Test
