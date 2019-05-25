@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0-SNAPSHOT (YYYY-MM-DD)
+## 0.2.0 (2019-05-24)
 
 - [#11](https://github.com/caeos/snoozle/issues/11) Upgrade to JUnit 5
 - [#10](https://github.com/caeos/snoozle/issues/10) Switch to java.nio.Path
