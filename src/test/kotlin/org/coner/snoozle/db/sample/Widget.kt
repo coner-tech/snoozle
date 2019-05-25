@@ -6,6 +6,6 @@ import java.util.*
 
 @EntityPath("/widgets/{id}")
 data class Widget(
-        val id: UUID,
+        val id: UUID = UUID.randomUUID(),
         val name: String
 ) : Entity

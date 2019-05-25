@@ -6,7 +6,7 @@ import java.util.*
 
 @EntityPath("/widgets/{widgetId}/subwidgets/{id}")
 data class Subwidget(
-        val id: UUID,
+        val id: UUID = UUID.randomUUID(),
         val widgetId: UUID,
         val name: String
 ) : Entity

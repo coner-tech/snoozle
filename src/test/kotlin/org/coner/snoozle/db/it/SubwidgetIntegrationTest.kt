@@ -1,113 +1,98 @@
 package org.coner.snoozle.db.it
 
-import com.gregwoodfill.assert.shouldEqualJson
-import org.assertj.core.api.Assertions.assertThat
-import org.coner.snoozle.db.Database
+import assertk.all
+import assertk.assertions.hasSize
+import assertk.assertions.index
+import assertk.assertions.isEqualTo
+import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assumptions
+import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Subwidget
-import org.coner.snoozle.db.sample.Widget
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
-import org.junit.rules.TemporaryFolder
-import java.io.File
-import java.util.*
+import org.coner.snoozle.util.readText
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import org.skyscreamer.jsonassert.JSONAssert
+import org.skyscreamer.jsonassert.JSONCompareMode
+import java.nio.file.Path
 
 class SubwidgetIntegrationTest {
 
-    @Rule
-    @JvmField
-    val folder = TemporaryFolder()
+    @TempDir
+    lateinit var root: Path
 
-    @Before
+    private lateinit var database: SampleDatabase
+
+    @BeforeEach
     fun before() {
-        SampleDb.copyTo(folder)
+        database = SampleDb.factory(root)
     }
 
     @Test
-    fun itShouldGetSubwidgetById() {
-        val database = Database(folder.root, Widget::class, Subwidget::class)
-        val expected = SampleDb.Subwidgets.WidgetOneSubwidgetOne
-
-        val actual = database.get(
-                Subwidget::widgetId to SampleDb.Widgets.One.id,
-                Subwidget::id to SampleDb.Subwidgets.WidgetOneSubwidgetOne.id
+    fun itShouldGetSubwidgets() {
+        val subwidgets = arrayOf(
+                SampleDb.Subwidgets.WidgetOneSubwidgetOne,
+                SampleDb.Subwidgets.WidgetTwoSubwidgetOne
         )
 
-        assertThat(actual).isEqualTo(expected)
+        for (expected in subwidgets) {
+            val actual = database.get(
+                    Subwidget::widgetId to expected.widgetId,
+                    Subwidget::id to expected.id
+            )
+
+            assertk.assertThat(actual).isEqualTo(expected)
+        }
     }
 
     @Test
-    fun itShouldPutSubwidgetById() {
-        val database = Database(folder.root, Widget::class, Subwidget::class)
+    fun itShouldPutSubwidget() {
         val subwidget = Subwidget(
-                id = UUID.randomUUID(),
                 widgetId = SampleDb.Widgets.Two.id,
-                name = "Widget Two's Subwidget Two"
+                name = "Widget Two Subwidget Two"
         )
 
         database.put(subwidget)
 
-        val record = SampleDb.Subwidgets.tempFile(folder, subwidget)
-        assertThat(record).exists()
-        val actual = record.readText()
-        actual.shouldEqualJson("""
+        val expectedFile = SampleDb.Subwidgets.tempFile(root, subwidget)
+        val expectedJson = """
             {
-                "id":"${subwidget.id}",
-                "widgetId":"${SampleDb.Widgets.Two.id}",
-                "name":"Widget Two's Subwidget Two"
+                ${SampleDb.Subwidgets.asJson(subwidget)}
             }
-        """)
+        """.trimIndent()
+        Assertions.assertThat(expectedFile).exists()
+        val actual = expectedFile.readText()
+        JSONAssert.assertEquals(expectedJson, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
-    fun itShouldCreateParentOfWidgetOneSubwidgetOneIfNotExistsWhenPut() {
-        val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
-        val subwidgetsFolder = File(folder.root, "/widgets/${subwidget.widgetId}/subwidgets/")
-        assertThat(subwidgetsFolder).exists() // sanity check 1
-        subwidgetsFolder.deleteRecursively()
-        assertThat(subwidgetsFolder).doesNotExist() // sanity check 2
-        val database = Database(folder.root, Subwidget::class)
+    fun itShouldRemoveSubwidget() {
+        val subwidgets = arrayOf(
+                SampleDb.Subwidgets.WidgetOneSubwidgetOne,
+                SampleDb.Subwidgets.WidgetTwoSubwidgetOne
+        )
 
-        database.put(subwidget)
+        for (subwidget in subwidgets) {
+            val actualFile = SampleDb.Subwidgets.tempFile(root, subwidget)
+            Assumptions.assumeThat(actualFile).exists()
 
-        assertThat(subwidgetsFolder).exists()
+            database.remove(subwidget)
+
+            Assertions.assertThat(actualFile).doesNotExist()
+        }
     }
 
     @Test
-    fun itShouldRemoveEntity() {
-        val database = Database(folder.root, Widget::class, Subwidget::class)
-        val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
-        val file = SampleDb.Subwidgets.tempFile(folder, subwidget)
-        assertThat(file).exists() // sanity check
+    fun itShouldListSubwidget() {
+        val subwidgets: List<Subwidget> = database.list(
+                Subwidget::widgetId to SampleDb.Widgets.One.id
+        )
 
-        database.remove(subwidget)
-
-        assertThat(file).doesNotExist()
+        assertk.assertThat(subwidgets).all {
+            hasSize(1)
+            index(0).isEqualTo(SampleDb.Subwidgets.WidgetOneSubwidgetOne)
+        }
     }
 
-    @Test
-    fun itShouldList() {
-        val database = Database(folder.root, Widget::class, Subwidget::class)
-        val expected = listOf(SampleDb.Subwidgets.WidgetOneSubwidgetOne)
-
-        val actual = database.list(Subwidget::widgetId to SampleDb.Subwidgets.WidgetOneSubwidgetOne.widgetId)
-
-        assertThat(actual).isEqualTo(expected)
-    }
-
-    @Test
-    fun itShouldCreateListingIfNotExistWhenList() {
-        val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
-        val subwidgetsFolder = File(folder.root, "/widgets/${subwidget.widgetId}/subwidgets/")
-        assertThat(subwidgetsFolder).exists() // sanity check 1
-        subwidgetsFolder.deleteRecursively()
-        assertThat(subwidgetsFolder).doesNotExist() // sanity check 2
-        val database = Database(folder.root, Subwidget::class)
-
-        val actual = database.list(Subwidget::widgetId to subwidget.widgetId)
-
-        assertThat(subwidgetsFolder).exists()
-        assertThat(actual).isEmpty()
-    }
 }

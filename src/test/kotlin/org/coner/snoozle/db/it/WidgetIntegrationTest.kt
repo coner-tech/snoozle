@@ -1,189 +1,80 @@
 package org.coner.snoozle.db.it
 
-import assertk.assert
-import assertk.assertions.*
-import com.gregwoodfill.assert.shouldEqualJson
-import io.mockk.Runs
-import io.mockk.every
-import io.mockk.just
-import io.reactivex.Single
-import io.reactivex.schedulers.Schedulers
-import org.assertj.core.api.Assertions.assertThat
-import org.coner.snoozle.db.Database
-import org.coner.snoozle.db.jvm.EntityEvent
-import org.coner.snoozle.db.jvm.watchListing
+import assertk.all
+import assertk.assertions.hasSize
+import assertk.assertions.index
+import assertk.assertions.isEqualTo
+import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assumptions
+import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Widget
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
-import org.junit.rules.TemporaryFolder
-import java.io.File
-import java.nio.file.StandardWatchEventKinds
-import java.nio.file.WatchEvent
-import java.util.*
-import java.util.concurrent.TimeUnit
+import org.coner.snoozle.util.readText
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import org.skyscreamer.jsonassert.JSONAssert
+import org.skyscreamer.jsonassert.JSONCompareMode
+import java.nio.file.Path
 
 class WidgetIntegrationTest {
 
-    @Rule
-    @JvmField
-    val folder = TemporaryFolder()
+    @TempDir
+    lateinit var root: Path
 
-    @Before
+    private lateinit var database: SampleDatabase
+
+    @BeforeEach
     fun before() {
-        SampleDb.copyTo(folder)
+        database = SampleDb.factory(root)
     }
 
     @Test
-    fun itShouldGetEntityById() {
-        val database = Database(folder.root, Widget::class)
-        val expected = SampleDb.Widgets.One
+    fun itShouldGetWidgets() {
+        val widgets = arrayOf(SampleDb.Widgets.One, SampleDb.Widgets.Two)
 
-        val actual = database.get(Widget::id to SampleDb.Widgets.One.id)
+        for (expected in widgets) {
+            val actual = database.get(Widget::id to expected.id)
 
-        assertThat(actual).isEqualTo(expected)
+            assertk.assertThat(actual).isEqualTo(expected)
+        }
     }
 
     @Test
-    fun itShouldPutEntityById() {
-        val database = Database(folder.root, Widget::class)
-        val entity = Widget(
-                id = UUID.randomUUID(),
-                name = "Widget Three"
-        )
-
-        database.put(entity)
-
-        val record = SampleDb.Widgets.tempFile(folder, entity)
-        assertThat(record).exists()
-        val actual = record.readText()
-        actual.shouldEqualJson("""{"id":"${entity.id}","name":"Widget Three"}""")
-    }
-
-    @Test
-    fun itShouldCreateParentOfWidgetOneIfNotExistsWhenPut() {
-        val widgetsFolder = File(folder.root, "/widgets/")
-        assertThat(widgetsFolder).exists() // sanity check 1
-        widgetsFolder.deleteRecursively()
-        assertThat(widgetsFolder).doesNotExist() // sanity check 2
-        val database = Database(folder.root, Widget::class)
-        val widget = SampleDb.Widgets.One
+    fun itShouldPutWidget() {
+        val widget = Widget(name = "Put Widget")
 
         database.put(widget)
 
-        assertThat(widgetsFolder).exists()
+        val expectedFile = SampleDb.Widgets.tempFile(root, widget)
+        val expectedJson = SampleDb.Widgets.asJson(widget)
+        Assertions.assertThat(expectedFile).exists()
+        val actual = expectedFile.readText()
+        JSONAssert.assertEquals(expectedJson, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
-    fun itShouldRemoveEntity() {
-        val database = Database(folder.root, Widget::class)
-        val entity = SampleDb.Widgets.One
-        val file = SampleDb.Widgets.tempFile(folder, entity)
-        assertThat(file).exists() // sanity check
+    fun itShouldRemoveWidget() {
+        val widgets = arrayOf(SampleDb.Widgets.One, SampleDb.Widgets.Two)
 
-        database.remove(entity)
+        for (widget in widgets) {
+            val actualFile = SampleDb.Widgets.tempFile(root, widget)
+            Assumptions.assumeThat(actualFile).exists()
 
-        assertThat(file).doesNotExist()
-    }
+            database.remove(widget)
 
-    @Test
-    fun itShouldList() {
-        val database = Database(folder.root, Widget::class)
-        val expected = listOf(SampleDb.Widgets.One, SampleDb.Widgets.Two)
-
-        val actual: List<Widget> = database.list()
-
-        assertThat(actual).isEqualTo(expected)
-    }
-
-    @Test
-    fun itShouldCreateListingIfNotExistWhenList() {
-        val widgetsFolder = File(folder.root, "/widgets/")
-        assertThat(widgetsFolder).exists() // sanity check 1
-        widgetsFolder.deleteRecursively()
-        assertThat(widgetsFolder).doesNotExist() // sanity check 2
-        val database = Database(folder.root, Widget::class)
-
-        val actual = database.list<Widget>()
-
-        assertThat(widgetsFolder).exists()
-        assertThat(actual).isEmpty()
-    }
-
-    @Test
-    fun itShouldWatchEntityAdded() {
-        val database = Database(folder.root, Widget::class)
-        val widget = Widget(
-                UUID.randomUUID(),
-                "Added Widget"
-        )
-
-        val actual = database.watchListing<Widget>()
-                .doOnSubscribe {
-                    Single.just(widget)
-                            .observeOn(Schedulers.io())
-                            .delay(20, TimeUnit.MILLISECONDS)
-                            .subscribe { widget -> database.put(widget) }
-                }
-                .filter { it.entity != null }
-                .blockingFirst()
-
-        assert(actual).isNotNull {
-            it.prop(EntityEvent<Widget>::watchEvent)
-                    .prop(WatchEvent<*>::kind)
-                    .isIn(StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY)
-            it.prop(EntityEvent<Widget>::entity).isNotNull {
-                it.isEqualTo(widget)
-            }
+            Assertions.assertThat(actualFile).doesNotExist()
         }
     }
 
     @Test
-    fun itShouldWatchEntityModified() {
-        val database = Database(folder.root, Widget::class)
-        val widget = SampleDb.Widgets.One
-        val changed = widget.copy(name = "Changed")
+    fun itShouldListWidget() {
+        val widgets: List<Widget> = database.list()
 
-        val actual = database.watchListing<Widget>()
-                .doOnSubscribe { Single.just(widget)
-                        .observeOn(Schedulers.io())
-                        .delay(20, TimeUnit.MILLISECONDS)
-                        .subscribe { widget -> database.put(changed) }
-                }
-                .filter { it.watchEvent.kind() == StandardWatchEventKinds.ENTRY_MODIFY }
-                .filter { it.entity != null }
-                .blockingFirst()
-
-        assert(actual).isNotNull {
-            it.prop(EntityEvent<Widget>::watchEvent)
-                    .prop(WatchEvent<*>::kind)
-                    .isEqualTo(StandardWatchEventKinds.ENTRY_MODIFY)
-            it.prop(EntityEvent<Widget>::entity).isNotNull {
-                it.isEqualTo(changed)
-            }
+        assertk.assertThat(widgets).all {
+            hasSize(2)
+            index(0).isEqualTo(SampleDb.Widgets.One)
+            index(1).isEqualTo(SampleDb.Widgets.Two)
         }
     }
-
-    @Test
-    fun itShouldWatchEntityDeleted() {
-        val database = Database(folder.root, Widget::class)
-        val widget = SampleDb.Widgets.One
-
-        val actual = database.watchListing<Widget>()
-                .doOnSubscribe { Single.just(widget)
-                        .observeOn(Schedulers.io())
-                        .delay(20, TimeUnit.MILLISECONDS)
-                        .subscribe { widget -> database.remove(widget) }
-                }
-                .blockingFirst()
-
-        assert(actual).isNotNull {
-            it.prop(EntityEvent<Widget>::watchEvent)
-                    .prop(WatchEvent<*>::kind)
-                    .isEqualTo(StandardWatchEventKinds.ENTRY_DELETE)
-            it.prop(EntityEvent<Widget>::entity).isNull()
-        }
-    }
-
 }

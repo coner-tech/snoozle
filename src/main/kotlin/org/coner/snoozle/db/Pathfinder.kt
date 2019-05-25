@@ -1,9 +1,11 @@
 package org.coner.snoozle.db
 
+import org.coner.snoozle.util.extension
 import org.coner.snoozle.util.isValidUuid
-import java.io.File
+import org.coner.snoozle.util.nameWithoutExtension
+import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.*
-import kotlin.math.max
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.declaredMemberProperties
@@ -18,6 +20,8 @@ class Pathfinder<E : Entity>(
     val entityPathReplaceProperties: List<KProperty1<E, UUID>>
     val listingPathFormat: String
     val listingPathReplaceProperties: List<KProperty1<E, UUID>>
+
+    private val rootAbsolute = Paths.get("/")
 
     init {
         fun buildPathReplacementProperties(pathReplacementFormat: String): List<KProperty1<E, UUID>> {
@@ -75,24 +79,24 @@ class Pathfinder<E : Entity>(
         listingPathReplaceProperties = buildPathReplacementProperties(listingPathFormat)
     }
 
-    fun findEntity(vararg ids: Pair<KProperty1<E, UUID>, UUID>): String {
+    fun findEntity(vararg ids: Pair<KProperty1<E, UUID>, UUID>): Path {
         enforcePropertyArgumentsMatch(ids, entityPathReplaceProperties, entityPathFormat)
         var path = entityPathFormat
         for (id in ids) {
             path = path.replace("{${id.first.name}}", id.second.toString())
         }
-        return "$path.json"
+        return rootAbsolute.relativize(Paths.get("$path.json"))
     }
 
-    fun findEntity(entity: E): String {
+    fun findEntity(entity: E): Path {
         var path = entityPathFormat
         for (property in entityPathReplaceProperties) {
             path = path.replace("{${property.name}}", property.get(entity).toString())
         }
-        return "$path.json"
+        return rootAbsolute.relativize(Paths.get("$path.json"))
     }
 
-    fun findParentOfEntity(entity: E): String {
+    fun findParentOfEntity(entity: E): Path {
         var path = entityPathFormat
         for ((i, property) in entityPathReplaceProperties.withIndex()) {
             path = if (i < entityPathReplaceProperties.lastIndex)
@@ -100,10 +104,10 @@ class Pathfinder<E : Entity>(
             else
                 path.replace("{${property.name}}", "")
         }
-        return path
+        return rootAbsolute.relativize(Paths.get(path))
     }
 
-    fun findListing(vararg ids: Pair<KProperty1<E, UUID>, UUID>): String {
+    fun findListing(vararg ids: Pair<KProperty1<E, UUID>, UUID>): Path {
         enforcePropertyArgumentsMatch(ids, listingPathReplaceProperties, listingPathFormat)
         var path = listingPathFormat
         if (ids.isNotEmpty()) {
@@ -111,7 +115,7 @@ class Pathfinder<E : Entity>(
                 path = path.replace("{${id.first.name}}", id.second.toString())
             }
         }
-        return path
+        return rootAbsolute.relativize(Paths.get(path))
     }
 
     /**
@@ -119,7 +123,7 @@ class Pathfinder<E : Entity>(
      *
      * More specifically, it checks that the file extension is correct, and the file name is a UUID.
      */
-    fun isValidEntity(candidate: File): Boolean {
+    fun isValidEntity(candidate: Path): Boolean {
         if (candidate.extension != "json") return false
         return candidate.nameWithoutExtension.isValidUuid()
     }

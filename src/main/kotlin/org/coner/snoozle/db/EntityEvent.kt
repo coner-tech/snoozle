@@ -1,6 +1,5 @@
-package org.coner.snoozle.db.jvm
+package org.coner.snoozle.db
 
-import org.coner.snoozle.db.Entity
 import java.nio.file.WatchEvent
 import java.util.*
 

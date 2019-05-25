@@ -1,53 +1,60 @@
 package org.coner.snoozle.db
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import java.io.File
+import io.reactivex.Observable
+import org.coner.snoozle.util.snoozleJacksonObjectMapper
+import java.nio.file.Path
 import java.util.*
-import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 
-class Database {
+abstract class Database(
+        protected val root: Path,
+        protected val objectMapper: ObjectMapper = snoozleJacksonObjectMapper()
+) {
 
-    constructor(
-            root: File,
-            vararg entities: KClass<out Entity>,
-            objectMapper: ObjectMapper = jacksonObjectMapper()
-    ) {
-        val resourcesBuilder = mutableMapOf<KClass<Entity>, Resource<Entity>>()
-        for (entityType in entities) {
-            resourcesBuilder[entityType as KClass<Entity>] = Resource(
+    protected abstract val entities: List<EntityDefinition<*>>
+    val resources by lazy {
+        entities.map {
+
+            it.kClass to Resource(
                     root = root,
-                    kclass = entityType,
+                    entityDefinition = it,
                     objectMapper = objectMapper
             )
-        }
-        this.resources = resourcesBuilder.toMap()
+        }.toMap()
     }
-
-    constructor(resources: Map<KClass<Entity>, Resource<Entity>>) {
-        this.resources = resources
-    }
-
-    val resources: Map<KClass<Entity>, Resource<Entity>>
 
     inline fun <reified E : Entity> get(vararg ids: Pair<KProperty1<E, UUID>, UUID>): E {
-        val resource: Resource<E> = resources[E::class as KClass<Entity>]!!  as Resource<E>
-        return resource.get(*ids)
+        return findResource<E>().get(*ids)
+    }
+
+    inline fun <reified E : Entity> getWholeRecord(vararg ids: Pair<KProperty1<E, UUID>, UUID>): WholeRecord<E> {
+        return findResource<E>().getWholeRecord(*ids)
     }
 
     inline fun <reified E : Entity> put(entity: E) {
-        val resource = resources[E::class as KClass<Entity>]!! as Resource<E>
-        resource.put(entity)
+        findResource<E>().put(entity)
     }
 
     inline fun <reified E : Entity> remove(entity: E) {
-        val resource = resources[E::class as KClass<Entity>]!! as Resource<E>
-        resource.delete(entity)
+        findResource<E>().delete(entity)
     }
 
-    inline fun <reified E: Entity> list(vararg ids: Pair<KProperty1<E, UUID>, UUID>): List<E> {
-        val resource: Resource<E> = resources[E::class as KClass<Entity>]!!  as Resource<E>
-        return resource.list(*ids)
+    inline fun <reified E : Entity> list(vararg ids: Pair<KProperty1<E, UUID>, UUID>): List<E> {
+        return findResource<E>().list(*ids)
+    }
+
+    inline fun <reified E : Entity> entityDefinition(): EntityDefinition<E> {
+        return EntityDefinition(E::class)
+    }
+
+    inline fun <reified E : Entity> watchListing(vararg ids: Pair<KProperty1<E, UUID>, UUID>): Observable<EntityEvent<E>> {
+        val resource: Resource<E> = findResource()
+        return resource.watchListing(*ids)
+    }
+
+    inline fun <reified E : Entity> findResource(): Resource<E> {
+        return (resources[E::class] ?: throw IllegalArgumentException("No resource for ${E::class.qualifiedName}")) as Resource<E>
     }
 }
+

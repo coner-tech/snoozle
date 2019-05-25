@@ -1,5 +1,7 @@
 {
-  "id":"220460be-27d4-4e6d-8ac3-34cf5139b229",
-  "widgetId":"1f30d7b6-0296-489a-9615-55868aeef78a",
-  "name":"Widget One's Subwidget One"
+  "entity": {
+    "id":"220460be-27d4-4e6d-8ac3-34cf5139b229",
+    "widgetId":"1f30d7b6-0296-489a-9615-55868aeef78a",
+    "name":"Widget One's Subwidget One"
+  }
 }
