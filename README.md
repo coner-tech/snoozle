@@ -2,7 +2,7 @@
 
 Snoozle is a toolkit for building curiously simple distributed software applications.
 
-Why does the world need yet another database, event queue, etc? Snoozle aims to meet the data storage needs of the autocross event operations software [Coner](https://github.com/caeos):
+Snoozle aims to meet the data storage needs of the autocross event operations software [Coner](https://github.com/caeos).
 
 - Single primary nodes
     - Core business logic must continue working uninterrupted in the face of low and/or no connectivity to other participating nodes
@@ -34,13 +34,13 @@ Simply define classes for your entities with an annotation describing where to s
 ```kotlin
 @EntityPath("/widgets/{id}")
 data class Widget(
-        val id: UUID,
+        val id: UUID = UUID.randomUUID(),
         val name: String
 ) : Entity
 
 @EntityPath("/widgets/{widgetId}/subwidgets/{id}")
 data class Subwidget(
-        val id: UUID,
+        val id: UUID = UUID.randomUUID(),
         val widgetId: UUID,
         val name: String
 ) : Entity
@@ -49,11 +49,11 @@ data class Subwidget(
 Safely, compactly, but expressively create, read, update, and delete entities:
 
 ```kotlin
-val db = Database(File("/sample-db"), Widget::class, Subwidget::class)
+val db = SampleDatabase(path, objectMapper)
 
 // create/update
 val widget = Widget(
-    id = UUID.fromString("1f30d7b6-0296-489a-9615-55868aeef78a"),
+    id = uuid("1f30d7b6-0296-489a-9615-55868aeef78a"),
     name = "Widget One"
 )
 database.put(widget)
@@ -62,7 +62,7 @@ database.put(widget)
 val widgetOne = db.get(Widget::id to widget.id)
 val subwidget = db.get(
         Subwidget::widgetId to widgetOne.id,
-        Subwidget::id to UUID.fromString("220460be-27d4-4e6d-8ac3-34cf5139b229")
+        Subwidget::id to uuid("220460be-27d4-4e6d-8ac3-34cf5139b229")
 )
 
 // list all widgets
@@ -75,11 +75,29 @@ val subwidgets = db.list(Subwidget::widgetId to widgetOne.id)
 db.delete(widget)
 ```
 
-Prior to the delete call, the example above would write these files to disk. 
+Opt into automatic entity verisioning with `@AutomaticVersionedEntity`. Snoozle Database will automatically increment a version number, attach a timestamp, and retain prior versions of the entity.
 
-```no-highlight
-sample-db/widgets/1f30d7b6-0296-489a-9615-55868aeef78a.json
-sample-db/widgets/1f30d7b6-0296-489a-9615-55868aeef78a/subwidgets/220460be-27d4-4e6d-8ac3-34cf5139b229.json
+```kotlin
+@EntityPath("/gadgets/{id}")
+@AutomaticVersionedEntity
+data class Gadget(
+        val id: UUID = UUID.randomUUID(),
+        var name: String? = null,
+        var silly: ZonedDateTime? = null
+) : Entity
+
+val db = SampleDatabase(path, objectMapper)
+val gadget = Gadget(name = "Original")
+db.put(gadget)
+var record = db.getWholeRecord(Gadget::id to gadget.id)
+println(record.currentVersion.version) // 0
+gadget.name = "Revised"
+db.put(gadget)
+record = db.getWholeRecord(Gadget::id to gadget.id)
+println(record.currentVersion.version) // 1
+println(record.entity.name) // Revised
+println(record.history[0].version) // 0
+println(record.history[0].entity.name) // Original
 ```
 
 ### Snoozle Queue
