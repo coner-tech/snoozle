@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 (2019-06-25)
+
+- [#16](https://github.com/caeos/snoozle/issues/16) Explicitly register Jackson Java Time module
+
 ## 0.2.0 (2019-05-24)
 
 - [#11](https://github.com/caeos/snoozle/issues/11) Upgrade to JUnit 5
