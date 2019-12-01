@@ -9,11 +9,23 @@ class SampleDatabase(
         objectMapper: ObjectMapper
 ) : Database(
         root = root,
-        objectMapper = objectMapper) {
+        objectMapper = objectMapper
+) {
 
-    override val entities = listOf(
-            entityDefinition<Widget>(),
-            entityDefinition<Subwidget>(),
-            entityDefinition<Gadget>()
-    )
+    override val resources = resources {
+        entity<Widget> {
+            path = "widgets" / Widget::id
+        }
+        entity<Subwidget> {
+            path = "widgets" / Subwidget::widgetId / "subwidgets" / Subwidget::id
+        }
+        entity<Gadget> {
+            path = "gadgets" / Gadget::id
+            versioning = EntityVersioningStrategy.AutomaticInternalVersioning
+        }
+        blob<Foo> {
+            path = "foos" / Foo::id
+            extension = ".foo"
+        }
+    }
 }

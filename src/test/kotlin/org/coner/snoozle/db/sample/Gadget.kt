@@ -7,7 +7,6 @@ import java.time.Instant
 import java.time.ZonedDateTime
 import java.util.*
 
-@EntityPath("/gadgets/{id}")
 @AutomaticVersionedEntity
 data class Gadget(
         val id: UUID = UUID.randomUUID(),
