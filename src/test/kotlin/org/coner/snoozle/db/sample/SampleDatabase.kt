@@ -12,20 +12,23 @@ class SampleDatabase(
         objectMapper = objectMapper
 ) {
 
-    override val resources = resources {
+    override val entities = entities {
         entity<Widget> {
-            path = "widgets" / Widget::id
+            path = "widgets" / { it.id }
         }
         entity<Subwidget> {
-            path = "widgets" / Subwidget::widgetId / "subwidgets" / Subwidget::id
+            path = "widgets" / { it.widgetId } / "subwidgets" / { it.id }
         }
         entity<Gadget> {
-            path = "gadgets" / Gadget::id
+            path = "gadgets" / { it.id }
             versioning = EntityVersioningStrategy.AutomaticInternalVersioning
         }
-        blob<Foo> {
-            path = "foos" / Foo::id
-            extension = ".foo"
-        }
     }
+
+//    override val blobs = blobs {
+//        blob<Foo> {
+//            path = "foos" / { it.id },
+//            extension = ".foo"
+//        }
+//    }
 }

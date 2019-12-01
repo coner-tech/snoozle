@@ -14,7 +14,7 @@ import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 import kotlin.streams.toList
 
-class Resource<E : Entity> internal constructor(
+class EntityResource<E : Entity> internal constructor(
         private val root: Path,
         internal val entityDefinition: EntityDefinition<E>,
         private val objectMapper: ObjectMapper,

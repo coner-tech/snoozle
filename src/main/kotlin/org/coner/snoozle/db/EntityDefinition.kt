@@ -1,7 +1,7 @@
 package org.coner.snoozle.db
 
-import kotlin.reflect.KClass
+import org.coner.snoozle.db.path.PathPart
 
-data class EntityDefinition<E : Entity>(
-        val kClass: KClass<E>
-)
+class EntityDefinition<E : Entity> {
+    private var pathParts: List<PathPart> = mutableListOf()
+}
