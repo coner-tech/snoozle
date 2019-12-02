@@ -1,4 +1,4 @@
 package org.coner.snoozle.db.path;
 
-public interface PathPart {
+public interface PathPart<E> {
 }

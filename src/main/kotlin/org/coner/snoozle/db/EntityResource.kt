@@ -18,7 +18,6 @@ class EntityResource<E : Entity> internal constructor(
         private val root: Path,
         internal val entityDefinition: EntityDefinition<E>,
         private val objectMapper: ObjectMapper,
-        path: Pathfinder<E>? = null,
         entityIoDelegate: EntityIoDelegate<E>? = null,
         automaticEntityVersionIoDelegate: AutomaticEntityVersionIoDelegate<E>? = null
 ) {

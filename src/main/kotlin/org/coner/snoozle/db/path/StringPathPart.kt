@@ -1,3 +1,3 @@
 package org.coner.snoozle.db.path
 
-class StringPathPart(val part: String) : PathPart
+class StringPathPart<E>(val part: String) : PathPart<E>
