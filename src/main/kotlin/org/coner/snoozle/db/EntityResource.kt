@@ -4,14 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import de.helmbold.rxfilewatcher.PathObservables
 import io.reactivex.Observable
 import org.coner.snoozle.util.extension
-import org.coner.snoozle.util.nameWithoutExtension
 import org.coner.snoozle.util.uuid
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.*
 import kotlin.reflect.KProperty1
-import kotlin.reflect.full.findAnnotation
 import kotlin.streams.toList
 
 class EntityResource<E : Entity> internal constructor(
@@ -63,12 +61,12 @@ class EntityResource<E : Entity> internal constructor(
         }
     }
 
-    fun get(vararg ids: Pair<KProperty1<E, UUID>, UUID>): E {
-        return getWholeRecord(*ids).entityValue
+    fun get(vararg variablePathParts: Any): E {
+        return getWholeRecord(*variablePathParts).entityValue
     }
 
-    fun getWholeRecord(vararg ids: Pair<KProperty1<E, UUID>, UUID>): WholeRecord<E> {
-        val entityPath = pathfinder.findEntity(*ids)
+    fun getWholeRecord(vararg variablePathParts: Any): WholeRecord<E> {
+        val entityPath = pathfinder.findEntity(*variablePathParts)
         val file = root.resolve(entityPath)
         return read(file)
     }

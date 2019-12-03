@@ -2,7 +2,9 @@ package org.coner.snoozle.db.sample
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.coner.snoozle.db.Database
+import org.coner.snoozle.db.EntityResource
 import java.nio.file.Path
+import java.util.*
 
 class SampleDatabase(
         root: Path,
@@ -12,7 +14,7 @@ class SampleDatabase(
         objectMapper = objectMapper
 ) {
 
-    override val entities = entities {
+    override val entities = registerEntity {
         entity<Widget> {
             path = "widgets" / { it.id }
         }
@@ -32,3 +34,5 @@ class SampleDatabase(
 //        }
 //    }
 }
+
+fun EntityResource<Widget>.getWidget(id: UUID) = get(id)

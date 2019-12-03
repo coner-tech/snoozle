@@ -9,6 +9,7 @@ import org.assertj.core.api.Assumptions
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Widget
+import org.coner.snoozle.db.sample.getWidget
 import org.coner.snoozle.util.readText
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -34,7 +35,7 @@ class WidgetIntegrationTest {
         val widgets = arrayOf(SampleDb.Widgets.One, SampleDb.Widgets.Two)
 
         for (expected in widgets) {
-            val actual = database.get(Widget::id to expected.id)
+            val actual = database.entity<Widget>().getWidget(expected.id)
 
             assertk.assertThat(actual).isEqualTo(expected)
         }
@@ -44,7 +45,7 @@ class WidgetIntegrationTest {
     fun itShouldPutWidget() {
         val widget = Widget(name = "Put Widget")
 
-        database.put(widget)
+        database.entity<Widget>.put(widget)
 
         val expectedFile = SampleDb.Widgets.tempFile(root, widget)
         val expectedJson = SampleDb.Widgets.asJson(widget)

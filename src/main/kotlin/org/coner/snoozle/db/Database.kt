@@ -9,10 +9,16 @@ abstract class Database(
         protected val root: Path,
         protected val objectMapper: ObjectMapper = snoozleJacksonObjectMapper()
 ) {
-    protected abstract val entities: EntitiesManifest
+    abstract val entities: EntitiesManifest
 
-    protected fun entities(op: EntitiesManifest.(Map<KClass<*>, EntityResource<*>>) -> Unit): EntitiesManifest {
-        return EntitiesManifest(op)
+    protected fun registerEntity(op: EntitiesManifest.(Map<KClass<*>, EntityResource<*>>) -> Unit): EntitiesManifest {
+        return EntitiesManifest(root, op, objectMapper)
     }
+
+    inline fun <reified E : Entity> entity(): EntityResource<E> {
+        return entities.entityResources[E::class] as EntityResource<E>
+    }
+
+
 }
 
