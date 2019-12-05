@@ -16,13 +16,13 @@ class SampleDatabase(
 
     override val entities = registerEntity {
         entity<Widget> {
-            path = "widgets" / { it.id }
+            path = "widgets" / { it.id } / ".json"
         }
         entity<Subwidget> {
-            path = "widgets" / { it.widgetId } / "subwidgets" / { it.id }
+            path = "widgets" / { it.widgetId } / "subwidgets" / { it.id } / ".json"
         }
         entity<Gadget> {
-            path = "gadgets" / { it.id }
+            path = "gadgets" / { it.id } / ".json"
             versioning = EntityVersioningStrategy.AutomaticInternalVersioning
         }
     }
