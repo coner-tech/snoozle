@@ -4,8 +4,8 @@ import assertk.all
 import assertk.assertThat
 import assertk.assertions.hasSize
 import assertk.assertions.isNotNull
-import assertk.assertions.isSameAs
-import org.coner.snoozle.db.sample.*
+import org.coner.snoozle.db.sample.SampleDatabase
+import org.coner.snoozle.db.sample.SampleDb
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -26,13 +26,10 @@ class DatabaseTest {
 
     @Test
     fun itShouldInitResourcesWithItsFirstConstructor() {
-        assertThat(database.resources).all {
+        assertThat(database.entities.entityResources).all {
             isNotNull()
             hasSize(3)
         }
-        assertThat(database.findResource<Widget>().entityDefinition.kClass).isSameAs(Widget::class)
-        assertThat(database.findResource<Subwidget>().entityDefinition.kClass).isSameAs(Subwidget::class)
-        assertThat(database.findResource<Gadget>().entityDefinition.kClass).isSameAs(Gadget::class)
     }
 
 }

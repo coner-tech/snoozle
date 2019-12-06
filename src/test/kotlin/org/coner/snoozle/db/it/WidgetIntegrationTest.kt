@@ -43,39 +43,42 @@ class WidgetIntegrationTest {
 
     @Test
     fun itShouldPutWidget() {
-        val widget = Widget(name = "Put Widget")
-
-        database.entity<Widget>.put(widget)
-
-        val expectedFile = SampleDb.Widgets.tempFile(root, widget)
-        val expectedJson = SampleDb.Widgets.asJson(widget)
-        Assertions.assertThat(expectedFile).exists()
-        val actual = expectedFile.readText()
-        JSONAssert.assertEquals(expectedJson, actual, JSONCompareMode.LENIENT)
+        TODO()
+//        val widget = Widget(name = "Put Widget")
+//
+//        database.entity<Widget>.put(widget)
+//
+//        val expectedFile = SampleDb.Widgets.tempFile(root, widget)
+//        val expectedJson = SampleDb.Widgets.asJson(widget)
+//        Assertions.assertThat(expectedFile).exists()
+//        val actual = expectedFile.readText()
+//        JSONAssert.assertEquals(expectedJson, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
     fun itShouldRemoveWidget() {
-        val widgets = arrayOf(SampleDb.Widgets.One, SampleDb.Widgets.Two)
-
-        for (widget in widgets) {
-            val actualFile = SampleDb.Widgets.tempFile(root, widget)
-            Assumptions.assumeThat(actualFile).exists()
-
-            database.remove(widget)
-
-            Assertions.assertThat(actualFile).doesNotExist()
-        }
+        TODO()
+//        val widgets = arrayOf(SampleDb.Widgets.One, SampleDb.Widgets.Two)
+//
+//        for (widget in widgets) {
+//            val actualFile = SampleDb.Widgets.tempFile(root, widget)
+//            Assumptions.assumeThat(actualFile).exists()
+//
+//            database.remove(widget)
+//
+//            Assertions.assertThat(actualFile).doesNotExist()
+//        }
     }
 
     @Test
     fun itShouldListWidget() {
-        val widgets: List<Widget> = database.list()
-
-        assertk.assertThat(widgets).all {
-            hasSize(2)
-            index(0).isEqualTo(SampleDb.Widgets.One)
-            index(1).isEqualTo(SampleDb.Widgets.Two)
-        }
+        TODO()
+//        val widgets: List<Widget> = database.list()
+//
+//        assertk.assertThat(widgets).all {
+//            hasSize(2)
+//            index(0).isEqualTo(SampleDb.Widgets.One)
+//            index(1).isEqualTo(SampleDb.Widgets.Two)
+//        }
     }
 }

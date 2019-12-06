@@ -31,68 +31,72 @@ class SubwidgetIntegrationTest {
 
     @Test
     fun itShouldGetSubwidgets() {
-        val subwidgets = arrayOf(
-                SampleDb.Subwidgets.WidgetOneSubwidgetOne,
-                SampleDb.Subwidgets.WidgetTwoSubwidgetOne
-        )
-
-        for (expected in subwidgets) {
-            val actual = database.get(
-                    Subwidget::widgetId to expected.widgetId,
-                    Subwidget::id to expected.id
-            )
-
-            assertk.assertThat(actual).isEqualTo(expected)
-        }
+        TODO()
+//        val subwidgets = arrayOf(
+//                SampleDb.Subwidgets.WidgetOneSubwidgetOne,
+//                SampleDb.Subwidgets.WidgetTwoSubwidgetOne
+//        )
+//
+//        for (expected in subwidgets) {
+//            val actual = database.get(
+//                    Subwidget::widgetId to expected.widgetId,
+//                    Subwidget::id to expected.id
+//            )
+//
+//            assertk.assertThat(actual).isEqualTo(expected)
+//        }
     }
 
     @Test
     fun itShouldPutSubwidget() {
-        val subwidget = Subwidget(
-                widgetId = SampleDb.Widgets.Two.id,
-                name = "Widget Two Subwidget Two"
-        )
-
-        database.put(subwidget)
-
-        val expectedFile = SampleDb.Subwidgets.tempFile(root, subwidget)
-        val expectedJson = """
-            {
-                ${SampleDb.Subwidgets.asJson(subwidget)}
-            }
-        """.trimIndent()
-        Assertions.assertThat(expectedFile).exists()
-        val actual = expectedFile.readText()
-        JSONAssert.assertEquals(expectedJson, actual, JSONCompareMode.LENIENT)
+        TODO()
+//        val subwidget = Subwidget(
+//                widgetId = SampleDb.Widgets.Two.id,
+//                name = "Widget Two Subwidget Two"
+//        )
+//
+//        database.put(subwidget)
+//
+//        val expectedFile = SampleDb.Subwidgets.tempFile(root, subwidget)
+//        val expectedJson = """
+//            {
+//                ${SampleDb.Subwidgets.asJson(subwidget)}
+//            }
+//        """.trimIndent()
+//        Assertions.assertThat(expectedFile).exists()
+//        val actual = expectedFile.readText()
+//        JSONAssert.assertEquals(expectedJson, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
     fun itShouldRemoveSubwidget() {
-        val subwidgets = arrayOf(
-                SampleDb.Subwidgets.WidgetOneSubwidgetOne,
-                SampleDb.Subwidgets.WidgetTwoSubwidgetOne
-        )
-
-        for (subwidget in subwidgets) {
-            val actualFile = SampleDb.Subwidgets.tempFile(root, subwidget)
-            Assumptions.assumeThat(actualFile).exists()
-
-            database.remove(subwidget)
-
-            Assertions.assertThat(actualFile).doesNotExist()
-        }
+        TODO()
+//        val subwidgets = arrayOf(
+//                SampleDb.Subwidgets.WidgetOneSubwidgetOne,
+//                SampleDb.Subwidgets.WidgetTwoSubwidgetOne
+//        )
+//
+//        for (subwidget in subwidgets) {
+//            val actualFile = SampleDb.Subwidgets.tempFile(root, subwidget)
+//            Assumptions.assumeThat(actualFile).exists()
+//
+//            database.remove(subwidget)
+//
+//            Assertions.assertThat(actualFile).doesNotExist()
+//        }
     }
 
     @Test
     fun itShouldListSubwidget() {
-        val subwidgets: List<Subwidget> = database.list(
-                Subwidget::widgetId to SampleDb.Widgets.One.id
-        )
-
-        assertk.assertThat(subwidgets).all {
-            hasSize(1)
-            index(0).isEqualTo(SampleDb.Subwidgets.WidgetOneSubwidgetOne)
-        }
+        TODO()
+//        val subwidgets: List<Subwidget> = database.list(
+//                Subwidget::widgetId to SampleDb.Widgets.One.id
+//        )
+//
+//        assertk.assertThat(subwidgets).all {
+//            hasSize(1)
+//            index(0).isEqualTo(SampleDb.Subwidgets.WidgetOneSubwidgetOne)
+//        }
     }
 
 }

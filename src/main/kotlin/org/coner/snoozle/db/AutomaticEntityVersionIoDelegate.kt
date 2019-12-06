@@ -36,15 +36,16 @@ internal class AutomaticEntityVersionIoDelegate<E : Entity>(
     }
 
     override fun read(wholeRecord: WholeRecord.Builder<E>) {
-        wholeRecord.history = wholeRecord.history?.map { historicRecord ->
-            if (historicRecord._entityObjectNode == null) throw EntityIoException.ReadFailure(
-                    "Historic record missing entity, unable to read"
-            )
-            historicRecord.copy(entityValue = reader.treeToValue(
-                    historicRecord._entityObjectNode,
-                    entityDefinition.kClass.java
-            ))
-        }
+        TODO()
+//        wholeRecord.history = wholeRecord.history?.map { historicRecord ->
+//            if (historicRecord._entityObjectNode == null) throw EntityIoException.ReadFailure(
+//                    "Historic record missing entity, unable to read"
+//            )
+//            historicRecord.copy(entityValue = reader.treeToValue(
+//                    historicRecord._entityObjectNode,
+//                    entityDefinition.kClass.java
+//            ))
+//        }
     }
 
 }

@@ -1,6 +1,5 @@
 package org.coner.snoozle.db.path
 
-import java.io.File
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
@@ -15,16 +14,13 @@ class Pathfinder<R>(
         check(args.size == variablePathParts.size) {
             "args.size (${args.size}) doesn't match variablePathParts.size (${args.size})"
         }
-        val mappedRelativePath: String = variablePathParts
-                .zip(args)
-                .mapIndexed { index, (variablePathPart, arg) -> when (arg) {
-                    is String -> arg
-                    is UUID -> arg.toString()
-                    else -> throw UnsupportedOperationException(
-                            "No handling implemented for arg[$index] of type ${arg::class.qualifiedName}"
-                    )
-                } }
-                .joinToString(separator = File.separator)
+        val argsIterator = args.iterator()
+        val mappedRelativePath = pathParts.map { pathPart ->
+            pathPart to when (pathPart) {
+                is PathPart.VariablePathPart<*> -> argsIterator.next()
+                else -> null
+            }
+        }.joinToString(separator = "") { (pathPart, arg) -> pathPart.extractQueryArgument(arg) }
         return Paths.get(mappedRelativePath)
     }
 
@@ -32,7 +28,8 @@ class Pathfinder<R>(
         TODO()
     }
 
-    fun findListing(): Path {
+    fun findListing(vararg args: Any): Path {
         TODO()
     }
+
 }

@@ -3,6 +3,7 @@ package org.coner.snoozle.db.sample
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.coner.snoozle.db.Database
 import org.coner.snoozle.db.EntityResource
+import org.coner.snoozle.db.versioning.EntityVersioningStrategy
 import java.nio.file.Path
 import java.util.*
 
@@ -16,13 +17,13 @@ class SampleDatabase(
 
     override val entities = registerEntity {
         entity<Widget> {
-            path = "widgets" / { it.id } / ".json"
+            path = "widgets" / { it.id } + ".json"
         }
         entity<Subwidget> {
-            path = "widgets" / { it.widgetId } / "subwidgets" / { it.id } / ".json"
+            path = "widgets" / { it.widgetId } / "subwidgets" / { it.id } + ".json"
         }
         entity<Gadget> {
-            path = "gadgets" / { it.id } / ".json"
+            path = "gadgets" / { it.id } + ".json"
             versioning = EntityVersioningStrategy.AutomaticInternalVersioning
         }
     }

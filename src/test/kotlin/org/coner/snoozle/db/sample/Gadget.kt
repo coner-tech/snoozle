@@ -1,9 +1,6 @@
 package org.coner.snoozle.db.sample
 
 import org.coner.snoozle.db.Entity
-import org.coner.snoozle.db.EntityPath
-import org.coner.snoozle.db.AutomaticVersionedEntity
-import java.time.Instant
 import java.time.ZonedDateTime
 import java.util.*
 
