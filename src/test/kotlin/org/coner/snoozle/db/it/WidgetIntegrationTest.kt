@@ -70,7 +70,7 @@ class WidgetIntegrationTest {
 
     @Test
     fun itShouldListWidget() {
-        val widgets: List<Widget> = database.entity<Widget>().list()
+        val widgets = database.entity<Widget>().list()
 
         assertk.assertThat(widgets).all {
             hasSize(2)

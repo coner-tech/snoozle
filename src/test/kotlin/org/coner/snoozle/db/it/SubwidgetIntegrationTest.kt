@@ -86,15 +86,12 @@ class SubwidgetIntegrationTest {
 
     @Test
     fun itShouldListSubwidget() {
-        TODO()
-//        val subwidgets: List<Subwidget> = database.list(
-//                Subwidget::widgetId to SampleDb.Widgets.One.id
-//        )
-//
-//        assertk.assertThat(subwidgets).all {
-//            hasSize(1)
-//            index(0).isEqualTo(SampleDb.Subwidgets.WidgetOneSubwidgetOne)
-//        }
+        val subwidgets = database.entity<Subwidget>().list(SampleDb.Widgets.One.id)
+
+        assertk.assertThat(subwidgets).all {
+            hasSize(1)
+            index(0).isEqualTo(SampleDb.Subwidgets.WidgetOneSubwidgetOne)
+        }
     }
 
 }
