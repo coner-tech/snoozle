@@ -38,9 +38,9 @@ class Pathfinder<R>(
         listingPathParts.count { it is PathPart.VariablePathPart<*> }
     }
 
-    fun findListingByArgs(vararg args: Any): Path {
+    fun findListingByArgs(vararg args: Any?): Path {
         check(args.size == listingVariablePathPartsCount) {
-            "args.size (${args.size}) doesn't match listingVariablePathPartsCount ($listingVariablePathPartsCount)"
+            "args.size (${args.count()}) doesn't match listingVariablePathPartsCount ($listingVariablePathPartsCount)"
         }
         val argsIterator = args.iterator()
         val mappedRelativePath = listingPathParts.map { pathPart ->
@@ -57,6 +57,27 @@ class Pathfinder<R>(
             pathPart.forRecord(record)
         }
         return Paths.get(mappedRelativePath)
+    }
+
+    private val directorySeparatorPathPart by lazy { PathPart.DirectorySeparatorPathPart<R>() }
+
+    fun isRecord(candidate: Path): Boolean {
+        return try {
+            var remainingCandidateParts = candidate.toString()
+            for (pathPart in pathParts) {
+                val matcher = pathPart.regex.matcher(remainingCandidateParts)
+                if (!matcher.find()) {
+                    break
+                }
+                if (matcher.start() != 0) {
+                    break
+                }
+                remainingCandidateParts = remainingCandidateParts.substring(matcher.end())
+            }
+            return remainingCandidateParts.isEmpty()
+        } catch (t: Throwable) {
+            false
+        }
     }
 
 }

@@ -3,10 +3,12 @@ package org.coner.snoozle.db
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.reactivex.Observable
 import org.coner.snoozle.db.path.Pathfinder
+import org.coner.snoozle.util.extension
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.*
 import kotlin.reflect.KProperty1
+import kotlin.streams.toList
 
 class EntityResource<E : Entity> constructor(
         private val root: Path,
@@ -102,32 +104,30 @@ class EntityResource<E : Entity> constructor(
     }
 
     fun delete(entity: E) {
-        TODO()
-//        val file = root.resolve(pathfinder.findEntity(entity))
-//        Files.delete(file)
+        val file = root.resolve(path.findRecord(entity))
+        Files.delete(file)
     }
 
-    fun list(vararg ids: Pair<KProperty1<E, UUID>, UUID>): List<E> {
-        TODO()
-//        val listingPath = pathfinder.findListing(*ids)
-//        val listing = root.resolve(listingPath)
-//        if (!Files.exists(listing)) {
-//            try {
-//                Files.createDirectories(listing)
-//            } catch (t: Throwable) {
-//                val message = """
-//                    Failed to create listing:
-//                    $listingPath
-//                    Does its parent exist?
-//                """.trimIndent()
-//                throw EntityIoException.WriteFailure(message, t)
-//            }
-//        }
-//        return Files.list(listing)
-//                .filter { Files.isRegularFile(it) && it.extension == "json" }
-//                .sorted(compareBy(Path::toString))
-//                .map { file -> read(file).entityValue }
-//                .toList()
+    fun list(vararg args: Any): List<E> {
+        val listingPath = path.findListingByArgs(*args)
+        val listing = root.resolve(listingPath)
+        if (!Files.exists(listing)) {
+            try {
+                Files.createDirectories(listing)
+            } catch (t: Throwable) {
+                val message = """
+                    Failed to create listing:
+                    $listingPath
+                    Does its parent exist?
+                """.trimIndent()
+                throw EntityIoException.WriteFailure(message, t)
+            }
+        }
+        return Files.list(listing)
+                .filter { Files.isRegularFile(it) && path.isRecord(root.relativize(it)) }
+                .sorted(compareBy(Path::toString))
+                .map { file -> read(file).entityValue }
+                .toList()
     }
 
     fun watchListing(vararg ids: Pair<KProperty1<E, UUID>, UUID>): Observable<EntityEvent<E>> {

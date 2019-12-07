@@ -55,29 +55,27 @@ class WidgetIntegrationTest {
     }
 
     @Test
-    fun itShouldRemoveWidget() {
-        TODO()
-//        val widgets = arrayOf(SampleDb.Widgets.One, SampleDb.Widgets.Two)
-//
-//        for (widget in widgets) {
-//            val actualFile = SampleDb.Widgets.tempFile(root, widget)
-//            Assumptions.assumeThat(actualFile).exists()
-//
-//            database.remove(widget)
-//
-//            Assertions.assertThat(actualFile).doesNotExist()
-//        }
+    fun itShouldDeleteWidget() {
+        val widgets = arrayOf(SampleDb.Widgets.One, SampleDb.Widgets.Two)
+
+        for (widget in widgets) {
+            val actualFile = SampleDb.Widgets.tempFile(root, widget)
+            Assumptions.assumeThat(actualFile).exists()
+
+            database.entity<Widget>().delete(widget)
+
+            Assertions.assertThat(actualFile).doesNotExist()
+        }
     }
 
     @Test
     fun itShouldListWidget() {
-        TODO()
-//        val widgets: List<Widget> = database.list()
-//
-//        assertk.assertThat(widgets).all {
-//            hasSize(2)
-//            index(0).isEqualTo(SampleDb.Widgets.One)
-//            index(1).isEqualTo(SampleDb.Widgets.Two)
-//        }
+        val widgets: List<Widget> = database.entity<Widget>().list()
+
+        assertk.assertThat(widgets).all {
+            hasSize(2)
+            index(0).isEqualTo(SampleDb.Widgets.One)
+            index(1).isEqualTo(SampleDb.Widgets.Two)
+        }
     }
 }
