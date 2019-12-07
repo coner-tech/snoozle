@@ -27,22 +27,21 @@ class GadgetIntegrationTest {
 
     @Test
     fun itShouldWriteOriginalWithCurrentVersionZero() {
-        TODO()
-//        val original = Gadget(name = "Original")
-//
-//        database.put(original)
-//
-//        val path = SampleDb.Gadgets.tempFile(root, original)
-//        val expected = """
-//            {
-//                "currentVersion": {
-//                    "version": 0
-//                },
-//                "history": []
-//            }
-//        """.trimIndent()
-//        val actual = path.readText()
-//        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
+        val original = Gadget(name = "Original")
+
+        database.entity<Gadget>().put(original)
+
+        val path = SampleDb.Gadgets.tempFile(root, original)
+        val expected = """
+            {
+                "currentVersion": {
+                    "version": 0
+                },
+                "history": []
+            }
+        """.trimIndent()
+        val actual = path.readText()
+        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
