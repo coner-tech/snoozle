@@ -25,7 +25,10 @@ class Pathfinder<R>(
     }
 
     fun findRecord(record: R): Path {
-        TODO()
+        val mappedRelativePath = pathParts.joinToString(separator = "") { pathPart ->
+            pathPart.forRecord(record)
+        }
+        return Paths.get(mappedRelativePath)
     }
 
     private val listingPathParts by lazy {

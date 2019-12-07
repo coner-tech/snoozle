@@ -43,15 +43,15 @@ class WidgetIntegrationTest {
 
     @Test
     fun itShouldPutWidget() {
-//        val widget = Widget(name = "Put Widget")
-//
-//        database.entity<Widget>().put(widget)
-//
-//        val expectedFile = SampleDb.Widgets.tempFile(root, widget)
-//        val expectedJson = SampleDb.Widgets.asJson(widget)
-//        Assertions.assertThat(expectedFile).exists()
-//        val actual = expectedFile.readText()
-//        JSONAssert.assertEquals(expectedJson, actual, JSONCompareMode.LENIENT)
+        val widget = Widget(name = "Put Widget")
+
+        database.entity<Widget>().put(widget)
+
+        val expectedFile = SampleDb.Widgets.tempFile(root, widget)
+        val expectedJson = SampleDb.Widgets.asJson(widget)
+        Assertions.assertThat(expectedFile).exists()
+        val actual = expectedFile.readText()
+        JSONAssert.assertEquals(expectedJson, actual, JSONCompareMode.LENIENT)
     }
 
     @Test

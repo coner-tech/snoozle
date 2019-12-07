@@ -13,7 +13,7 @@ class EntityResource<E : Entity> constructor(
         internal val entityDefinition: EntityDefinition<E>,
         private val objectMapper: ObjectMapper,
         private val path: Pathfinder<E>,
-        private val entityIoDelegate: EntityIoDelegate<E>?,
+        private val entityIoDelegate: EntityIoDelegate<E>,
         private val automaticEntityVersionIoDelegate: AutomaticEntityVersionIoDelegate<E>?
 ) {
 
@@ -56,23 +56,18 @@ class EntityResource<E : Entity> constructor(
     }
 
     fun put(entity: E) {
-        TODO()
-//        val entityParentPath = pathfinder.findParentOfEntity(entity)
-//        val parent = root.resolve(entityParentPath)
-//        try {
-//            Files.createDirectory(parent)
-//        } catch (fileAlreadyExists: FileAlreadyExistsException) {
-//            // that's fine
-//        } catch (t: Throwable) {
-//            val message = """
-//                Failed to create parent folder:
-//                $entityParentPath
-//                Does its parent exist?
-//            """.trimIndent()
-//            throw EntityIoException.WriteFailure(message, t)
-//        }
-//        val file = root.resolve(pathfinder.findEntity(entity))
-//        write(file, entity)
+        val entityParentPath = path.findListingByRecord(entity)
+        val parent = root.resolve(entityParentPath)
+        try {
+            parent.toFile().mkdirs()
+        } catch (fileAlreadyExists: FileAlreadyExistsException) {
+            // that's fine
+        } catch (t: Throwable) {
+            val message = "Failed to create parent folder for ${entityDefinition::class.java.simpleName} $parent"
+            throw EntityIoException.WriteFailure(message, t)
+        }
+        val file = root.resolve(path.findRecord(entity))
+        write(file, entity)
     }
 
     private fun read(file: Path): WholeRecord<E> {
@@ -80,7 +75,7 @@ class EntityResource<E : Entity> constructor(
             Files.newInputStream(file).use { inputStream ->
                 try {
                     val builder = (objectMapper.readValue(inputStream, WholeRecord.Builder::class.java) as WholeRecord.Builder<E>)
-                    entityIoDelegate?.read(builder)
+                    entityIoDelegate.read(builder)
                     automaticEntityVersionIoDelegate?.read(builder)
                     builder.build()
                 } catch (t: Throwable) {
@@ -93,18 +88,17 @@ class EntityResource<E : Entity> constructor(
     }
 
     private fun write(file: Path, entity: E) {
-        TODO()
-//        val old = try {
-//            read(file)
-//        } catch (entityIoException: EntityIoException.NotFound) {
-//            null
-//        }
-//        val new = WholeRecord.Builder<E>()
-//        entityIoDelegate.write(old, new, entity)
-//        automaticEntityVersionIoDelegate?.write(old, new, entity)
-//        Files.newOutputStream(file).use { outputStream ->
-//            objectMapper.writeValue(outputStream, new)
-//        }
+        val old = try {
+            read(file)
+        } catch (entityIoException: EntityIoException.NotFound) {
+            null
+        }
+        val new = WholeRecord.Builder<E>()
+        entityIoDelegate.write(old, new, entity)
+        automaticEntityVersionIoDelegate?.write(old, new, entity)
+        Files.newOutputStream(file).use { outputStream ->
+            objectMapper.writeValue(outputStream, new)
+        }
     }
 
     fun delete(entity: E) {
