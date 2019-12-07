@@ -78,7 +78,7 @@ class PathfinderTest {
     fun itShouldFindListingForSubwidget() {
         val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
 
-        val actual = subwidgetPathfinder.findListing(Subwidget::widgetId to subwidget.widgetId)
+        val actual = subwidgetPathfinder.findListing(subwidget.widgetId)
 
         val expected = Paths.get("widgets/${subwidget.widgetId}/subwidgets/")
         Assertions.assertThat(actual)
