@@ -59,7 +59,7 @@ class EntityResource<E : Entity> constructor(
         val entityParentPath = path.findListingByRecord(entity)
         val parent = root.resolve(entityParentPath)
         try {
-            parent.toFile().mkdirs()
+            Files.createDirectories(parent)
         } catch (fileAlreadyExists: FileAlreadyExistsException) {
             // that's fine
         } catch (t: Throwable) {
