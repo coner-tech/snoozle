@@ -38,3 +38,5 @@ class SampleDatabase(
 
 fun EntityResource<Widget>.getWidget(id: UUID) = get(id)
 fun EntityResource<Subwidget>.getSubwidget(widgetId: UUID, id: UUID) = get(widgetId, id)
+fun EntityResource<Gadget>.getGadget(id: UUID) = get(id)
+fun EntityResource<Gadget>.getWholeGadgetRecord(id: UUID) = getWholeRecord(id)
