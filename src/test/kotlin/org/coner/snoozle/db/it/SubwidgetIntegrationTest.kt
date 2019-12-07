@@ -9,6 +9,7 @@ import org.assertj.core.api.Assumptions
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Subwidget
+import org.coner.snoozle.db.sample.getSubwidget
 import org.coner.snoozle.util.readText
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -31,20 +32,19 @@ class SubwidgetIntegrationTest {
 
     @Test
     fun itShouldGetSubwidgets() {
-        TODO()
-//        val subwidgets = arrayOf(
-//                SampleDb.Subwidgets.WidgetOneSubwidgetOne,
-//                SampleDb.Subwidgets.WidgetTwoSubwidgetOne
-//        )
-//
-//        for (expected in subwidgets) {
-//            val actual = database.get(
-//                    Subwidget::widgetId to expected.widgetId,
-//                    Subwidget::id to expected.id
-//            )
-//
-//            assertk.assertThat(actual).isEqualTo(expected)
-//        }
+        val subwidgets = arrayOf(
+                SampleDb.Subwidgets.WidgetOneSubwidgetOne,
+                SampleDb.Subwidgets.WidgetTwoSubwidgetOne
+        )
+
+        for (expected in subwidgets) {
+            val actual = database.entity<Subwidget>().getSubwidget(
+                    expected.widgetId,
+                    expected.id
+            )
+
+            assertk.assertThat(actual).isEqualTo(expected)
+        }
     }
 
     @Test

@@ -17,14 +17,14 @@ class EntityDefinition<E : Entity> {
     }
 
     operator fun MutableList<PathPart<E>>.div(part: String): MutableList<PathPart<E>> {
-        add(PathPart.StringPathPart(part))
         add(PathPart.DirectorySeparatorPathPart())
+        add(PathPart.StringPathPart(part))
         return this
     }
 
     operator fun MutableList<PathPart<E>>.div(extractor: (E) -> UUID): MutableList<PathPart<E>> {
-        add(PathPart.UuidPathPart(extractor))
         add(PathPart.DirectorySeparatorPathPart())
+        add(PathPart.UuidPathPart(extractor))
         return this
     }
 
