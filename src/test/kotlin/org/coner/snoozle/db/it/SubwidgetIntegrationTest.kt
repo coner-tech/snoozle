@@ -68,21 +68,20 @@ class SubwidgetIntegrationTest {
     }
 
     @Test
-    fun itShouldRemoveSubwidget() {
-        TODO()
-//        val subwidgets = arrayOf(
-//                SampleDb.Subwidgets.WidgetOneSubwidgetOne,
-//                SampleDb.Subwidgets.WidgetTwoSubwidgetOne
-//        )
-//
-//        for (subwidget in subwidgets) {
-//            val actualFile = SampleDb.Subwidgets.tempFile(root, subwidget)
-//            Assumptions.assumeThat(actualFile).exists()
-//
-//            database.remove(subwidget)
-//
-//            Assertions.assertThat(actualFile).doesNotExist()
-//        }
+    fun itShouldDeleteSubwidget() {
+        val subwidgets = arrayOf(
+                SampleDb.Subwidgets.WidgetOneSubwidgetOne,
+                SampleDb.Subwidgets.WidgetTwoSubwidgetOne
+        )
+
+        for (subwidget in subwidgets) {
+            val actualFile = SampleDb.Subwidgets.tempFile(root, subwidget)
+            Assumptions.assumeThat(actualFile).exists()
+
+            database.entity<Subwidget>().delete(subwidget)
+
+            Assertions.assertThat(actualFile).doesNotExist()
+        }
     }
 
     @Test
