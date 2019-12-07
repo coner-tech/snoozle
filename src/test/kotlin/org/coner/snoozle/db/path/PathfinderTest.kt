@@ -1,5 +1,6 @@
 package org.coner.snoozle.db.path
 
+import assertk.assertions.isEqualTo
 import org.assertj.core.api.Assertions
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Subwidget
@@ -38,7 +39,7 @@ class PathfinderTest {
     }
 
     @Test
-    fun itShouldFindEntityPathForWidgetIds() {
+    fun itShouldFindPathForWidgetByArgs() {
         val widget = SampleDb.Widgets.One
 
         val actual = widgetPathfinder.findRecord(widget.id)
@@ -50,7 +51,7 @@ class PathfinderTest {
     }
 
     @Test
-    fun itShouldFindEntityPathForSubwidgetIds() {
+    fun itShouldFindPathOfSubwidgetByArgs() {
         val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
 
         val actual = subwidgetPathfinder.findRecord(
@@ -65,7 +66,7 @@ class PathfinderTest {
     }
 
     @Test
-    fun itShouldFindListingForWidget() {
+    fun itShouldFindPathListingOfWidgetByArgs() {
         val actual = widgetPathfinder.findListing()
 
         val expected = Paths.get("widgets/")
@@ -75,7 +76,7 @@ class PathfinderTest {
     }
 
     @Test
-    fun itShouldFindListingForSubwidget() {
+    fun itShouldFindPathListingOfSubwidgetByArgs() {
         val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
 
         val actual = subwidgetPathfinder.findListing(subwidget.widgetId)
@@ -84,6 +85,26 @@ class PathfinderTest {
         Assertions.assertThat(actual)
                 .isRelative()
                 .isEqualTo(expected)
+    }
+
+    @Test
+    fun itShouldFindPathListingOfWidgetByRecordInstance() {
+        val widget = SampleDb.Widgets.One
+
+        val actual = widgetPathfinder.findListing(record = widget)
+
+        val expected = Paths.get("widgets/")
+        assertk.assertThat(actual).isEqualTo(expected)
+    }
+
+    @Test
+    fun itShouldFindPathListingOfSubwidgetByRecordInstance() {
+        val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
+
+        val actual = subwidgetPathfinder.findListing(record = subwidget)
+
+        val expected = Paths.get("widgets/${subwidget.widgetId}/subwidgets/")
+        assertk.assertThat(actual).isEqualTo(expected)
     }
 
 }

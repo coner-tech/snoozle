@@ -49,4 +49,11 @@ class Pathfinder<R>(
         return Paths.get(mappedRelativePath)
     }
 
+    fun findListing(record: R): Path {
+        val mappedRelativePath = listingPathParts.joinToString(separator = "") { pathPart ->
+            pathPart.forRecord(record)
+        }
+        return Paths.get(mappedRelativePath)
+    }
+
 }
