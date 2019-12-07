@@ -76,22 +76,21 @@ class GadgetIntegrationTest {
 
     @Test
     fun itShouldWriteTimestampAsIsoString() {
-        TODO()
-//        val timestampAsString = "2019-05-18T20:55:01-04:00"
-//        val gadget = Gadget(silly = ZonedDateTime.parse(timestampAsString))
-//
-//        database.put(gadget)
-//
-//        val file = SampleDb.Gadgets.tempFile(root, gadget)
-//        val expected = """
-//            {
-//                "entity": {
-//                    "silly": "$timestampAsString"
-//                }
-//            }
-//        """.trimIndent()
-//        val actual = file.readText()
-//        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
+        val timestampAsString = "2019-05-18T20:55:01-04:00"
+        val gadget = Gadget(silly = ZonedDateTime.parse(timestampAsString))
+
+        database.entity<Gadget>().put(gadget)
+
+        val file = SampleDb.Gadgets.tempFile(root, gadget)
+        val expected = """
+            {
+                "entity": {
+                    "silly": "$timestampAsString"
+                }
+            }
+        """.trimIndent()
+        val actual = file.readText()
+        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
