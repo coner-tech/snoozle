@@ -95,36 +95,35 @@ class GadgetIntegrationTest {
 
     @Test
     fun itShouldWriteSecondRevision() {
-        TODO()
-//        val original = Gadget(name = "Original")
-//        database.put(original)
-//        val firstRevision = original.copy(name = "First Revision")
-//        database.put(firstRevision)
-//
-//        val secondRevision = firstRevision.copy(name = "Second Revision")
-//        database.put(secondRevision)
-//
-//        val expected = """
-//            {
-//                ${SampleDb.Gadgets.asJson(secondRevision)},
-//                "currentVersion": {
-//                    "version": 2
-//                },
-//                "history": [
-//                    {
-//                        ${SampleDb.Gadgets.asJson(original)},
-//                        "version": 0
-//                    },
-//                    {
-//                        ${SampleDb.Gadgets.asJson(firstRevision)},
-//                        "version": 1
-//                    }
-//                ]
-//            }
-//        """.trimIndent()
-//        val path = SampleDb.Gadgets.tempFile(root, secondRevision)
-//        val actual = path.readText()
-//        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
+        val original = Gadget(name = "Original")
+        database.entity<Gadget>().put(original)
+        val firstRevision = original.copy(name = "First Revision")
+        database.entity<Gadget>().put(firstRevision)
+
+        val secondRevision = firstRevision.copy(name = "Second Revision")
+        database.entity<Gadget>().put(secondRevision)
+
+        val expected = """
+            {
+                ${SampleDb.Gadgets.asJson(secondRevision)},
+                "currentVersion": {
+                    "version": 2
+                },
+                "history": [
+                    {
+                        ${SampleDb.Gadgets.asJson(original)},
+                        "version": 0
+                    },
+                    {
+                        ${SampleDb.Gadgets.asJson(firstRevision)},
+                        "version": 1
+                    }
+                ]
+            }
+        """.trimIndent()
+        val path = SampleDb.Gadgets.tempFile(root, secondRevision)
+        val actual = path.readText()
+        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
