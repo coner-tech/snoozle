@@ -49,23 +49,22 @@ class SubwidgetIntegrationTest {
 
     @Test
     fun itShouldPutSubwidget() {
-        TODO()
-//        val subwidget = Subwidget(
-//                widgetId = SampleDb.Widgets.Two.id,
-//                name = "Widget Two Subwidget Two"
-//        )
-//
-//        database.put(subwidget)
-//
-//        val expectedFile = SampleDb.Subwidgets.tempFile(root, subwidget)
-//        val expectedJson = """
-//            {
-//                ${SampleDb.Subwidgets.asJson(subwidget)}
-//            }
-//        """.trimIndent()
-//        Assertions.assertThat(expectedFile).exists()
-//        val actual = expectedFile.readText()
-//        JSONAssert.assertEquals(expectedJson, actual, JSONCompareMode.LENIENT)
+        val subwidget = Subwidget(
+                widgetId = SampleDb.Widgets.Two.id,
+                name = "Widget Two Subwidget Two"
+        )
+
+        database.entity<Subwidget>().put(subwidget)
+
+        val expectedFile = SampleDb.Subwidgets.tempFile(root, subwidget)
+        val expectedJson = """
+            {
+                ${SampleDb.Subwidgets.asJson(subwidget)}
+            }
+        """.trimIndent()
+        Assertions.assertThat(expectedFile).exists()
+        val actual = expectedFile.readText()
+        JSONAssert.assertEquals(expectedJson, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
