@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectReader
 import java.time.Instant
 import java.time.ZonedDateTime
 
-internal class AutomaticEntityVersionIoDelegate<E : Entity>(
+class AutomaticEntityVersionIoDelegate<E : Entity>(
         private val reader: ObjectReader,
         private val entityDefinition: EntityDefinition<E>
 ) : IoDelegate<E> {

@@ -32,19 +32,17 @@ class WidgetIntegrationTest {
 
     @Test
     fun itShouldGetWidgets() {
-        TODO()
-//        val widgets = arrayOf(SampleDb.Widgets.One, SampleDb.Widgets.Two)
-//
-//        for (expected in widgets) {
-//            val actual = database.entity<Widget>().getWidget(expected.id)
-//
-//            assertk.assertThat(actual).isEqualTo(expected)
-//        }
+        val widgets = arrayOf(SampleDb.Widgets.One, SampleDb.Widgets.Two)
+
+        for (expected in widgets) {
+            val actual = database.entity<Widget>().getWidget(expected.id)
+
+            assertk.assertThat(actual).isEqualTo(expected)
+        }
     }
 
     @Test
     fun itShouldPutWidget() {
-        TODO()
 //        val widget = Widget(name = "Put Widget")
 //
 //        database.entity<Widget>().put(widget)

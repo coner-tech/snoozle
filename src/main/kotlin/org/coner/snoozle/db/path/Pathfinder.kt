@@ -10,7 +10,7 @@ class Pathfinder<R>(
     private val recordVariablePathParts by lazy {
         pathParts.filter { it is PathPart.VariablePathPart<*> }
     }
-    fun findRecord(vararg args: Any): Path {
+    fun findRecordByArgs(vararg args: Any): Path {
         check(args.size == recordVariablePathParts.size) {
             "args.size (${args.size}) doesn't match recordVariablePathParts.size (${recordVariablePathParts.size})"
         }
@@ -35,7 +35,7 @@ class Pathfinder<R>(
         listingPathParts.count { it is PathPart.VariablePathPart<*> }
     }
 
-    fun findListing(vararg args: Any): Path {
+    fun findListingByArgs(vararg args: Any): Path {
         check(args.size == listingVariablePathPartsCount) {
             "args.size (${args.size}) doesn't match listingVariablePathPartsCount ($listingVariablePathPartsCount)"
         }
@@ -49,7 +49,7 @@ class Pathfinder<R>(
         return Paths.get(mappedRelativePath)
     }
 
-    fun findListing(record: R): Path {
+    fun findListingByRecord(record: R): Path {
         val mappedRelativePath = listingPathParts.joinToString(separator = "") { pathPart ->
             pathPart.forRecord(record)
         }

@@ -42,7 +42,7 @@ class PathfinderTest {
     fun itShouldFindPathForWidgetByArgs() {
         val widget = SampleDb.Widgets.One
 
-        val actual = widgetPathfinder.findRecord(widget.id)
+        val actual = widgetPathfinder.findRecordByArgs(widget.id)
 
         val expected = Paths.get("widgets/${widget.id}.json")
         Assertions.assertThat(actual)
@@ -54,7 +54,7 @@ class PathfinderTest {
     fun itShouldFindPathOfSubwidgetByArgs() {
         val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
 
-        val actual = subwidgetPathfinder.findRecord(
+        val actual = subwidgetPathfinder.findRecordByArgs(
                 subwidget.widgetId,
                 subwidget.id
         )
@@ -67,7 +67,7 @@ class PathfinderTest {
 
     @Test
     fun itShouldFindPathListingOfWidgetByArgs() {
-        val actual = widgetPathfinder.findListing()
+        val actual = widgetPathfinder.findListingByArgs()
 
         val expected = Paths.get("widgets/")
         Assertions.assertThat(actual)
@@ -79,7 +79,7 @@ class PathfinderTest {
     fun itShouldFindPathListingOfSubwidgetByArgs() {
         val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
 
-        val actual = subwidgetPathfinder.findListing(subwidget.widgetId)
+        val actual = subwidgetPathfinder.findListingByArgs(subwidget.widgetId)
 
         val expected = Paths.get("widgets/${subwidget.widgetId}/subwidgets/")
         Assertions.assertThat(actual)
@@ -91,7 +91,7 @@ class PathfinderTest {
     fun itShouldFindPathListingOfWidgetByRecordInstance() {
         val widget = SampleDb.Widgets.One
 
-        val actual = widgetPathfinder.findListing(record = widget)
+        val actual = widgetPathfinder.findListingByRecord(record = widget)
 
         val expected = Paths.get("widgets/")
         assertk.assertThat(actual).isEqualTo(expected)
@@ -101,7 +101,7 @@ class PathfinderTest {
     fun itShouldFindPathListingOfSubwidgetByRecordInstance() {
         val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
 
-        val actual = subwidgetPathfinder.findListing(record = subwidget)
+        val actual = subwidgetPathfinder.findListingByRecord(record = subwidget)
 
         val expected = Paths.get("widgets/${subwidget.widgetId}/subwidgets/")
         assertk.assertThat(actual).isEqualTo(expected)

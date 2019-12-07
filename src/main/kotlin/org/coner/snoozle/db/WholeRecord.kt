@@ -10,7 +10,7 @@ data class WholeRecord<E : Entity>(
         val currentVersion: CurrentVersionRecord?,
         val history: List<HistoricVersionRecord<E>>?
 ) {
-    internal class Builder<E : Entity>(
+    class Builder<E : Entity>(
             @JsonProperty("entity") var _entityObjectNode: ObjectNode? = null,
             @JsonIgnore var entityValue: E? = null,
             var currentVersion: CurrentVersionRecord? = null,
@@ -24,7 +24,7 @@ data class WholeRecord<E : Entity>(
         )
     }
 
-    internal fun buildUpon() = Builder(
+    fun buildUpon() = Builder(
             _entityObjectNode = _entityObjectNode,
             entityValue = entityValue,
             currentVersion = currentVersion,

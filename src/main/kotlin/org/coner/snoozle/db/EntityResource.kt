@@ -1,37 +1,21 @@
 package org.coner.snoozle.db
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import de.helmbold.rxfilewatcher.PathObservables
 import io.reactivex.Observable
 import org.coner.snoozle.db.path.Pathfinder
-import org.coner.snoozle.util.extension
-import org.coner.snoozle.util.uuid
-import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.*
 import kotlin.reflect.KProperty1
-import kotlin.streams.toList
 
-class EntityResource<E : Entity> internal constructor(
+class EntityResource<E : Entity> constructor(
         private val root: Path,
         internal val entityDefinition: EntityDefinition<E>,
         private val objectMapper: ObjectMapper,
-        entityIoDelegate: EntityIoDelegate<E>? = null,
-        automaticEntityVersionIoDelegate: AutomaticEntityVersionIoDelegate<E>? = null
+        private val path: Pathfinder<E>,
+        private val entityIoDelegate: EntityIoDelegate<E>?,
+        private val automaticEntityVersionIoDelegate: AutomaticEntityVersionIoDelegate<E>?
 ) {
-
-    constructor(
-            root: Path,
-            entityDefinition: EntityDefinition<E>,
-            objectMapper: ObjectMapper
-    ) : this(
-        root = root,
-        entityDefinition = entityDefinition,
-        objectMapper = objectMapper,
-        entityIoDelegate = null,
-        automaticEntityVersionIoDelegate = null
-    )
 
 //    val pathfinder: Pathfinder<E>
 //    private val automaticEntityVersionIoDelegate: AutomaticEntityVersionIoDelegate<E>?
@@ -61,15 +45,14 @@ class EntityResource<E : Entity> internal constructor(
 //        }
     }
 
-    fun get(vararg variablePathParts: Any): E {
-        return getWholeRecord(*variablePathParts).entityValue
+    fun get(vararg args: Any): E {
+        return getWholeRecord(*args).entityValue
     }
 
-    fun getWholeRecord(vararg variablePathParts: Any): WholeRecord<E> {
-        TODO()
-//        val entityPath = pathfinder.findEntity(*variablePathParts)
-//        val file = root.resolve(entityPath)
-//        return read(file)
+    fun getWholeRecord(vararg args: Any): WholeRecord<E> {
+        val entityPath = path.findRecordByArgs(*args)
+        val file = root.resolve(entityPath)
+        return read(file)
     }
 
     fun put(entity: E) {
@@ -93,21 +76,20 @@ class EntityResource<E : Entity> internal constructor(
     }
 
     private fun read(file: Path): WholeRecord<E> {
-        TODO()
-//        return if (Files.exists(file)) {
-//            Files.newInputStream(file).use { inputStream ->
-//                try {
-//                    val builder = (objectMapper.readValue(inputStream, WholeRecord.Builder::class.java) as WholeRecord.Builder<E>)
-//                    entityIoDelegate.read(builder)
-//                    automaticEntityVersionIoDelegate?.read(builder)
-//                    builder.build()
-//                } catch (t: Throwable) {
-//                    throw EntityIoException.ReadFailure("Failed to read/build entity: ${file.relativize(root)}", t)
-//                }
-//            }
-//        } else {
-//            throw EntityIoException.NotFound("Entity not found: ${root.relativize(file)}")
-//        }
+        return if (Files.exists(file)) {
+            Files.newInputStream(file).use { inputStream ->
+                try {
+                    val builder = (objectMapper.readValue(inputStream, WholeRecord.Builder::class.java) as WholeRecord.Builder<E>)
+                    entityIoDelegate?.read(builder)
+                    automaticEntityVersionIoDelegate?.read(builder)
+                    builder.build()
+                } catch (t: Throwable) {
+                    throw EntityIoException.ReadFailure("Failed to read/build entity: ${file.relativize(root)}", t)
+                }
+            }
+        } else {
+            throw EntityIoException.NotFound("Entity not found: ${root.relativize(file)}")
+        }
     }
 
     private fun write(file: Path, entity: E) {
