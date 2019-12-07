@@ -46,33 +46,32 @@ class GadgetIntegrationTest {
 
     @Test
     fun itShouldWriteFirstRevision() {
-        TODO()
-//        val original = Gadget(name = "Original")
-//        database.put(original)
-//        val firstRevision = original.copy(name = "First Revision")
-//
-//        database.put(firstRevision)
-//
-//        val expected = """
-//            {
-//                "currentVersion": {
-//                    "version": 1
-//                },
-//                "history": [
-//                    {
-//                        "entity": {
-//                            "id": ${original.id},
-//                            "name": "Original",
-//                            "silly": null
-//                        },
-//                        "version": 0
-//                    }
-//                ]
-//            }
-//        """.trimIndent()
-//        val path = SampleDb.Gadgets.tempFile(root, firstRevision)
-//        val actual = path.readText()
-//        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
+        val original = Gadget(name = "Original")
+        database.entity<Gadget>().put(original)
+        val firstRevision = original.copy(name = "First Revision")
+
+        database.entity<Gadget>().put(firstRevision)
+
+        val expected = """
+            {
+                "currentVersion": {
+                    "version": 1
+                },
+                "history": [
+                    {
+                        "entity": {
+                            "id": ${original.id},
+                            "name": "Original",
+                            "silly": null
+                        },
+                        "version": 0
+                    }
+                ]
+            }
+        """.trimIndent()
+        val path = SampleDb.Gadgets.tempFile(root, firstRevision)
+        val actual = path.readText()
+        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
     }
 
     @Test
