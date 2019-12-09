@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0 (pending)
+
+- Replaced annotation/reflection-based entity definition with DSL
+
 ## 0.2.1 (2019-06-25)
 
 - [#16](https://github.com/caeos/snoozle/issues/16) Explicitly register Jackson Java Time module
