@@ -1,11 +1,15 @@
 package org.coner.snoozle.db.it
 
 import assertk.all
+import assertk.assertThat
 import assertk.assertions.hasSize
 import assertk.assertions.index
 import assertk.assertions.isEqualTo
+import io.reactivex.observers.TestObserver
+import io.reactivex.schedulers.Schedulers
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assumptions
+import org.coner.snoozle.db.EntityEvent
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Widget
@@ -17,6 +21,7 @@ import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 
 class WidgetIntegrationTest {
 
@@ -76,6 +81,42 @@ class WidgetIntegrationTest {
             hasSize(2)
             index(0).isEqualTo(SampleDb.Widgets.One)
             index(1).isEqualTo(SampleDb.Widgets.Two)
+        }
+    }
+
+    @Test
+    fun itShouldWatchListingForWidgets() {
+        val testObserver = TestObserver<EntityEvent<Widget>>()
+        val changed = SampleDb.Widgets.One.copy(name = "changed")
+
+        database.entity<Widget>().watchListing()
+                .subscribeOn(Schedulers.io())
+                .subscribe(testObserver)
+
+        testObserver.await(1, TimeUnit.SECONDS)
+
+        database.entity<Widget>().put(changed)
+        testObserver.await(1, TimeUnit.SECONDS)
+        dumpValues(testObserver)
+
+        database.entity<Widget>().delete(changed)
+        testObserver.await(1, TimeUnit.SECONDS)
+        dumpValues(testObserver)
+
+        database.entity<Widget>().put(changed)
+        testObserver.await(1, TimeUnit.SECONDS)
+        dumpValues(testObserver)
+
+        testObserver.dispose()
+        TODO("actually test this beyond some basic hacking around")
+    }
+
+    private fun dumpValues(testObserver: TestObserver<EntityEvent<Widget>>) {
+        testObserver.values().forEach {
+            println("watchEvent=(kind=${it.watchEvent.kind()}, count=${it.watchEvent.count()})")
+            println("entity=(${it.entity})")
+            println("id=${it.id}")
+            println()
         }
     }
 }

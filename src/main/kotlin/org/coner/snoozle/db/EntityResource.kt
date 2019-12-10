@@ -1,11 +1,15 @@
 package org.coner.snoozle.db
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import de.helmbold.rxfilewatcher.PathObservables
 import io.reactivex.Observable
 import org.coner.snoozle.db.path.Pathfinder
 import org.coner.snoozle.util.extension
+import org.coner.snoozle.util.nameWithoutExtension
+import org.coner.snoozle.util.uuid
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardWatchEventKinds
 import java.util.*
 import kotlin.reflect.KProperty1
 import kotlin.streams.toList
@@ -130,19 +134,25 @@ class EntityResource<E : Entity> constructor(
                 .toList()
     }
 
-    fun watchListing(vararg ids: Pair<KProperty1<E, UUID>, UUID>): Observable<EntityEvent<E>> {
-        TODO()
-//        val listing = root.resolve(pathfinder.findListing(*ids))
-//        return PathObservables.watchNonRecursive(listing)
-//                .filter { pathfinder.isValidEntity((it.context() as Path)) }
-//                .map {
-//                    val file = listing.resolve(it.context() as Path)
-//                    val entity = if (Files.exists(file) && Files.size(file) > 0) {
-//                        read(file).entityValue
-//                    } else {
-//                        null
-//                    }
-//                    EntityEvent(it, uuid(file.nameWithoutExtension), entity)
-//                }
+    fun watchListing(vararg args: Any): Observable<EntityEvent<E>> {
+        val relativeListing = path.findListingByArgs(*args)
+        val absoluteListing = root.resolve(relativeListing)
+        return PathObservables.watchNonRecursive(absoluteListing)
+                .filter { path.isRecord(relativeListing.resolve(it.context() as Path)) }
+                .map {
+                    val file = absoluteListing.resolve(it.context() as Path)
+                    val entity = if (Files.exists(file) && Files.size(file) > 0) {
+                        read(file).entityValue
+                    } else {
+                        null
+                    }
+                    EntityEvent(it, uuid(file.nameWithoutExtension), entity)
+                }
+                .filter {
+                    when (it.watchEvent.kind()) {
+                        StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE -> it.entity != null
+                        else -> true
+                    }
+                }
     }
 }
