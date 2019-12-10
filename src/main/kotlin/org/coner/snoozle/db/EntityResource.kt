@@ -4,14 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import de.helmbold.rxfilewatcher.PathObservables
 import io.reactivex.Observable
 import org.coner.snoozle.db.path.Pathfinder
-import org.coner.snoozle.util.extension
 import org.coner.snoozle.util.nameWithoutExtension
 import org.coner.snoozle.util.uuid
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.StandardWatchEventKinds
-import java.util.*
-import kotlin.reflect.KProperty1
+import java.nio.file.*
+import kotlin.io.FileAlreadyExistsException
 import kotlin.streams.toList
 
 class EntityResource<E : Entity> constructor(
@@ -93,18 +89,20 @@ class EntityResource<E : Entity> constructor(
         }
     }
 
-    private fun write(file: Path, entity: E) {
+    private fun write(destination: Path, entity: E) {
         val old = try {
-            read(file)
+            read(destination)
         } catch (entityIoException: EntityIoException.NotFound) {
             null
         }
         val new = WholeRecord.Builder<E>()
         entityIoDelegate.write(old, new, entity)
         automaticEntityVersionIoDelegate?.write(old, new, entity)
-        Files.newOutputStream(file).use { outputStream ->
+        val tempFile = createTempFile().toPath()
+        Files.newOutputStream(tempFile).use { outputStream ->
             objectMapper.writeValue(outputStream, new)
         }
+        Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }
 
     fun delete(entity: E) {
@@ -151,6 +149,7 @@ class EntityResource<E : Entity> constructor(
                 .filter {
                     when (it.watchEvent.kind()) {
                         StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE -> it.entity != null
+                        StandardWatchEventKinds.ENTRY_DELETE -> it.entity == null
                         else -> true
                     }
                 }

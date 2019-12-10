@@ -10,6 +10,7 @@ import io.reactivex.schedulers.Schedulers
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assumptions
 import org.coner.snoozle.db.EntityEvent
+import org.coner.snoozle.db.EntityResource
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Widget
@@ -21,6 +22,8 @@ import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
 import java.nio.file.Path
+import java.nio.file.StandardWatchEventKinds
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class WidgetIntegrationTest {
@@ -86,29 +89,50 @@ class WidgetIntegrationTest {
 
     @Test
     fun itShouldWatchListingForWidgets() {
-        val testObserver = TestObserver<EntityEvent<Widget>>()
-        val changed = SampleDb.Widgets.One.copy(name = "changed")
+        fun executeAndAssert(
+                execute: EntityResource<Widget>.() -> Unit,
+                awaitCount: Int = 1,
+                assert: TestObserver<EntityEvent<Widget>>.() -> Unit
+        ) {
+            val testObserver = TestObserver<EntityEvent<Widget>>()
+            database.entity<Widget>().watchListing()
+                    .subscribeOn(Schedulers.io())
+                    .subscribe(testObserver)
 
-        database.entity<Widget>().watchListing()
-                .subscribeOn(Schedulers.io())
-                .subscribe(testObserver)
+            // this is unfortunate, but i'm not seeing a more reliable way to wait just long enough for the
+            // file watch to activate
+            testObserver.await(50, TimeUnit.MILLISECONDS)
+            execute(database.entity())
 
-        testObserver.await(1, TimeUnit.SECONDS)
+            testObserver.awaitCount(awaitCount)
+            assert(testObserver)
 
-        database.entity<Widget>().put(changed)
-        testObserver.await(1, TimeUnit.SECONDS)
-        dumpValues(testObserver)
+            testObserver.dispose()
+        }
 
-        database.entity<Widget>().delete(changed)
-        testObserver.await(1, TimeUnit.SECONDS)
-        dumpValues(testObserver)
+        executeAndAssert(
+                execute = { put(SampleDb.Widgets.One.copy(name = "changed")) },
+                assert = {
+                    assertValueCount(1)
+                }
+        )
 
-        database.entity<Widget>().put(changed)
-        testObserver.await(1, TimeUnit.SECONDS)
-        dumpValues(testObserver)
+        executeAndAssert(
+                execute = { delete(SampleDb.Widgets.One) },
+                assert = {
+                    assertValueCount(1)
+                }
+        )
 
-        testObserver.dispose()
-        TODO("actually test this beyond some basic hacking around")
+        executeAndAssert(
+                execute = { put(SampleDb.Widgets.One) },
+                assert = {
+                    assertValueCount(1)
+                    assertValueAt(0) {
+                        it.watchEvent.kind() == StandardWatchEventKinds.ENTRY_CREATE
+                    }
+                }
+        )
     }
 
     private fun dumpValues(testObserver: TestObserver<EntityEvent<Widget>>) {
