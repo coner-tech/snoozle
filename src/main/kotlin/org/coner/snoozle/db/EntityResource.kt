@@ -4,10 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import de.helmbold.rxfilewatcher.PathObservables
 import io.reactivex.Observable
 import org.coner.snoozle.db.path.Pathfinder
+import org.coner.snoozle.util.hasUuidPattern
 import org.coner.snoozle.util.nameWithoutExtension
 import org.coner.snoozle.util.uuid
-import java.nio.file.*
-import kotlin.io.FileAlreadyExistsException
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import java.nio.file.StandardWatchEventKinds
 import kotlin.streams.toList
 
 class EntityResource<E : Entity> constructor(
@@ -139,19 +142,40 @@ class EntityResource<E : Entity> constructor(
                 .filter { path.isRecord(relativeListing.resolve(it.context() as Path)) }
                 .map {
                     val file = absoluteListing.resolve(it.context() as Path)
-                    val entity = if (Files.exists(file) && Files.size(file) > 0) {
-                        read(file).entityValue
-                    } else {
-                        null
-                    }
-                    EntityEvent(it, uuid(file.nameWithoutExtension), entity)
+                        val entity = if (it.kind() != StandardWatchEventKinds.ENTRY_DELETE
+                                && Files.exists(file)
+                                && Files.size(file) > 0
+                        ) {
+                            try {
+                                read(file).entityValue
+                            } catch (t: Throwable) {
+                                null
+                            }
+                        } else {
+                            null
+                        }
+                        it to entity
                 }
                 .filter {
-                    when (it.watchEvent.kind()) {
-                        StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE -> it.entity != null
-                        StandardWatchEventKinds.ENTRY_DELETE -> it.entity == null
-                        else -> true
+                    when (it.first.kind()) {
+                        StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE -> it.second != null
+                        StandardWatchEventKinds.ENTRY_DELETE -> it.second == null
+                        StandardWatchEventKinds.OVERFLOW -> true
+                        else -> false
                     }
+                }
+                .map {
+                    val state = when(it.first.kind()) {
+                        StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE -> EntityEvent.State.EXISTS
+                        StandardWatchEventKinds.ENTRY_DELETE -> EntityEvent.State.DELETED
+                        StandardWatchEventKinds.OVERFLOW -> EntityEvent.State.OVERFLOW
+                        else -> throw IllegalStateException("Other event types filtered already")
+                    }
+                    EntityEvent(
+                            state = state,
+                            id = uuid((it.first.context() as Path).nameWithoutExtension),
+                            entity = it.second
+                    )
                 }
     }
 }
