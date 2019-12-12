@@ -1,21 +1,14 @@
 package org.coner.snoozle.db.sample
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.coner.snoozle.db.Database
 import org.coner.snoozle.db.EntityResource
 import org.coner.snoozle.db.versioning.EntityVersioningStrategy
 import java.nio.file.Path
 import java.util.*
 
-class SampleDatabase(
-        root: Path,
-        objectMapper: ObjectMapper
-) : Database(
-        root = root,
-        objectMapper = objectMapper
-) {
+class SampleDatabase(root: Path) : Database(root) {
 
-    override val entities = registerEntity {
+    override val entities = registerEntities {
         entity<Widget> {
             path = "widgets" / { it.id } + ".json"
         }
@@ -27,13 +20,6 @@ class SampleDatabase(
             versioning = EntityVersioningStrategy.AutomaticInternalVersioning
         }
     }
-
-//    override val blobs = blobs {
-//        blob<Foo> {
-//            path = "foos" / { it.id },
-//            extension = ".foo"
-//        }
-//    }
 }
 
 fun EntityResource<Widget>.getWidget(id: UUID) = get(id)

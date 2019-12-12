@@ -7,18 +7,21 @@ import kotlin.reflect.KClass
 
 abstract class Database(
         protected val root: Path,
-        protected val objectMapper: ObjectMapper = snoozleJacksonObjectMapper()
+        private val objectMapper: ObjectMapper = snoozleJacksonObjectMapper()
 ) {
-    abstract val entities: EntitiesManifest
+    protected abstract val entities: EntitiesManifest
 
-    protected fun registerEntity(op: EntitiesManifest.(Map<KClass<*>, EntityResource<*>>) -> Unit): EntitiesManifest {
+    protected fun registerEntities(op: EntitiesManifest.(Map<KClass<*>, EntityResource<*>>) -> Unit): EntitiesManifest {
         return EntitiesManifest(root, op, objectMapper)
     }
 
     inline fun <reified E : Entity> entity(): EntityResource<E> {
-        return entities.entityResources[E::class] as EntityResource<E>
+        return entity(E::class)
     }
 
+    fun <E : Entity> entity(type: KClass<E>): EntityResource<E> {
+        return entities.entityResources[type] as EntityResource<E>
+    }
 
 }
 

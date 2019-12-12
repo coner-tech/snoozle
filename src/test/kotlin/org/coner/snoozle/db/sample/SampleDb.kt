@@ -18,8 +18,7 @@ object SampleDb {
     fun factory(root: Path): SampleDatabase {
         resourceUri.toFile().copyRecursively(root.toFile())
         return SampleDatabase(
-                root = root,
-                objectMapper = snoozleJacksonObjectMapper()
+                root = root
         )
     }
 

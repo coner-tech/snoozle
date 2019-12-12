@@ -2,10 +2,8 @@ package org.coner.snoozle.db
 
 import assertk.all
 import assertk.assertThat
-import assertk.assertions.hasSize
 import assertk.assertions.isNotNull
-import org.coner.snoozle.db.sample.SampleDatabase
-import org.coner.snoozle.db.sample.SampleDb
+import org.coner.snoozle.db.sample.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -25,10 +23,11 @@ class DatabaseTest {
     }
 
     @Test
-    fun itShouldInitResourcesWithItsFirstConstructor() {
-        assertThat(database.entities.entityResources).all {
-            isNotNull()
-            hasSize(3)
+    fun itShouldLookUpEntityResources() {
+        assertThat(database).all {
+            transform("widget resource") { it.entity<Widget>() }.isNotNull()
+            transform("subwidget resource") { it.entity<Subwidget>() }.isNotNull()
+            transform("gadget resource") { it.entity<Gadget>() }.isNotNull()
         }
     }
 
