@@ -32,13 +32,11 @@ Snoozle Database is a filesystem-based JSON object database with a structure ins
 Simply define classes for your entities with an annotation describing where to store them:
 
 ```kotlin
-@EntityPath("/widgets/{id}")
 data class Widget(
         val id: UUID = UUID.randomUUID(),
         val name: String
 ) : Entity
 
-@EntityPath("/widgets/{widgetId}/subwidgets/{id}")
 data class Subwidget(
         val id: UUID = UUID.randomUUID(),
         val widgetId: UUID,
@@ -59,45 +57,20 @@ val widget = Widget(
 database.put(widget)
 
 // read
-val widgetOne = db.get(Widget::id to widget.id)
-val subwidget = db.get(
-        Subwidget::widgetId to widgetOne.id,
-        Subwidget::id to uuid("220460be-27d4-4e6d-8ac3-34cf5139b229")
-)
+val widgetOne = db.entity<Widget>().get(uuid("1f30d7b6-0296-489a-9615-55868aeef78a"))
+val subwidget = db.entity<Subwidget>().get(widgetOne.id, uuid("220460be-27d4-4e6d-8ac3-34cf5139b229"))
 
 // list all widgets
-val widgets = db.list<Widget>()
+val widgets = db.entity<Widget>.list()
 
 // list all subwidgets under widgetOne
-val subwidgets = db.list(Subwidget::widgetId to widgetOne.id)
+val subwidgets = db.entity<Widget>.list(widgetOne.id)
 
 // delete
 db.delete(widget)
 ```
 
-Opt into automatic entity verisioning with `@AutomaticVersionedEntity`. Snoozle Database will automatically increment a version number, attach a timestamp, and retain prior versions of the entity.
-
-```kotlin
-@EntityPath("/gadgets/{id}")
-@AutomaticVersionedEntity
-data class Gadget(
-        val id: UUID = UUID.randomUUID(),
-        var name: String? = null,
-        var silly: ZonedDateTime? = null
-) : Entity
-
-val db = SampleDatabase(path, objectMapper)
-val gadget = Gadget(name = "Original")
-db.put(gadget)
-var record = db.getWholeRecord(Gadget::id to gadget.id)
-println(record.currentVersion.version) // 0
-gadget.name = "Revised"
-db.put(gadget)
-record = db.getWholeRecord(Gadget::id to gadget.id)
-println(record.currentVersion.version) // 1
-println(record.entity.name) // Revised
-println(record.history[0].version) // 0
-println(record.history[0].entity.name) // Original
+Refer to `org.coner.snoozle.db.sample.SampleDatabase` in the test source set for more detail.
 ```
 
 ### Snoozle Queue
