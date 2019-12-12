@@ -3,6 +3,7 @@
 ## 0.3.0 (pending)
 
 - Replaced annotation/reflection-based entity definition with DSL
+- EntityEvent emitted by watchListing() removes raw WatchEvent in favor of State (exists, deleted, or overflow)
 
 ## 0.2.1 (2019-06-25)
 
