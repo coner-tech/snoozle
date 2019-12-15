@@ -22,34 +22,6 @@ class EntityResource<E : Entity> constructor(
         private val automaticEntityVersionIoDelegate: AutomaticEntityVersionIoDelegate<E>?
 ) {
 
-//    val pathfinder: Pathfinder<E>
-//    private val automaticEntityVersionIoDelegate: AutomaticEntityVersionIoDelegate<E>?
-//    private val entityIoDelegate: EntityIoDelegate<E> = when {
-//        entityIoDelegate != null -> entityIoDelegate
-//        else -> EntityIoDelegate(
-//                objectMapper,
-//                objectMapper.readerFor(entityDefinition.kClass.java),
-//                objectMapper.writerFor(entityDefinition.kClass.java)
-//        )
-//    }
-
-    init {
-//        val useAutomaticEntityVersionIoDelegate = entityDefinition.kClass
-//                .findAnnotation<AutomaticVersionedEntity>() != null
-//        this.automaticEntityVersionIoDelegate = when {
-//            automaticEntityVersionIoDelegate != null -> automaticEntityVersionIoDelegate
-//            useAutomaticEntityVersionIoDelegate -> AutomaticEntityVersionIoDelegate(
-//                    reader = objectMapper.readerFor(entityDefinition.kClass.java),
-//                    entityDefinition = entityDefinition
-//            )
-//            else -> null
-//        }
-//        this.pathfinder = when {
-//            path != null -> path
-//            else -> Pathfinder(entityDefinition.kClass)
-//        }
-    }
-
     fun get(vararg args: Any): E {
         return getWholeRecord(*args).entityValue
     }
