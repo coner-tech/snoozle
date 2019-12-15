@@ -1,6 +1,9 @@
 package org.coner.snoozle.db
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.coner.snoozle.db.entity.EntitiesManifest
+import org.coner.snoozle.db.entity.Entity
+import org.coner.snoozle.db.entity.EntityResource
 import org.coner.snoozle.util.snoozleJacksonObjectMapper
 import java.nio.file.Path
 import kotlin.reflect.KClass

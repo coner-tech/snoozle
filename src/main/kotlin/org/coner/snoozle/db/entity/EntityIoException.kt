@@ -1,4 +1,4 @@
-package org.coner.snoozle.db
+package org.coner.snoozle.db.entity
 
 sealed class EntityIoException(message: String, cause: Throwable? = null) : Exception(message, cause) {
     class NotFound(message: String, cause: Throwable? = null) : EntityIoException(message, cause)

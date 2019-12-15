@@ -1,16 +1,11 @@
 package org.coner.snoozle.db.it
 
 import assertk.all
-import assertk.assertThat
 import assertk.assertions.hasSize
 import assertk.assertions.index
 import assertk.assertions.isEqualTo
-import io.reactivex.observers.TestObserver
-import io.reactivex.schedulers.Schedulers
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assumptions
-import org.coner.snoozle.db.EntityEvent
-import org.coner.snoozle.db.EntityResource
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Widget
@@ -22,9 +17,6 @@ import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
 import java.nio.file.Path
-import java.nio.file.StandardWatchEventKinds
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 
 class WidgetIntegrationTest {
 

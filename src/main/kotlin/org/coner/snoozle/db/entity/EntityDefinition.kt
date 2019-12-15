@@ -1,4 +1,4 @@
-package org.coner.snoozle.db
+package org.coner.snoozle.db.entity
 
 import org.coner.snoozle.db.path.PathPart
 import org.coner.snoozle.db.versioning.EntityVersioningStrategy

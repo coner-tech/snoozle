@@ -1,10 +1,9 @@
 package org.coner.snoozle.db.sample
 
-import org.coner.snoozle.db.CurrentVersionRecord
-import org.coner.snoozle.db.Entity
-import org.coner.snoozle.db.HistoricVersionRecord
-import org.coner.snoozle.db.WholeRecord
-import org.coner.snoozle.util.snoozleJacksonObjectMapper
+import org.coner.snoozle.db.entity.CurrentVersionRecord
+import org.coner.snoozle.db.entity.Entity
+import org.coner.snoozle.db.entity.HistoricVersionRecord
+import org.coner.snoozle.db.entity.WholeRecord
 import org.coner.snoozle.util.uuid
 import java.nio.file.Path
 import java.nio.file.Paths

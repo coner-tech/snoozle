@@ -1,4 +1,4 @@
-package org.coner.snoozle.db
+package org.coner.snoozle.db.entity
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.ObjectReader

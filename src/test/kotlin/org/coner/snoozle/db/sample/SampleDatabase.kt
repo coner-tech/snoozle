@@ -1,7 +1,7 @@
 package org.coner.snoozle.db.sample
 
 import org.coner.snoozle.db.Database
-import org.coner.snoozle.db.EntityResource
+import org.coner.snoozle.db.entity.EntityResource
 import org.coner.snoozle.db.versioning.EntityVersioningStrategy
 import java.nio.file.Path
 import java.util.*

@@ -2,8 +2,8 @@ package org.coner.snoozle.db.it
 
 import io.reactivex.observers.TestObserver
 import io.reactivex.schedulers.Schedulers
-import org.coner.snoozle.db.Entity
-import org.coner.snoozle.db.EntityEvent
+import org.coner.snoozle.db.entity.Entity
+import org.coner.snoozle.db.entity.EntityEvent
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Widget

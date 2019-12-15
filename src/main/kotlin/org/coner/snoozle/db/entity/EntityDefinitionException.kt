@@ -1,4 +1,4 @@
-package org.coner.snoozle.db
+package org.coner.snoozle.db.entity
 
 /**
  * This exception indicates a snoozle database entity is defined incorrectly.
