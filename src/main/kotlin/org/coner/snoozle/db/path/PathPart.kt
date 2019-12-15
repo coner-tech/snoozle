@@ -1,7 +1,6 @@
 package org.coner.snoozle.db.path
 
 import org.coner.snoozle.util.hasUuidPattern
-import org.coner.snoozle.util.isUuidPattern
 import java.io.File
 import java.util.*
 import java.util.regex.Pattern
@@ -27,13 +26,27 @@ sealed class PathPart<R> {
         override val regex = regexPattern
     }
 
-    interface VariablePathPart<E>
+    interface VariablePathPart<R>
 
-    class UuidPathPart<R>(
+    class UuidVariablePathPart<R>(
             private val recordExtractor: (R) -> UUID
     ) : PathPart<R>(), VariablePathPart<R> {
         override fun extractQueryArgument(arg: Any?) = (arg as UUID).toString()
         override fun forRecord(record: R) = recordExtractor(record).toString()
         override val regex = hasUuidPattern
+    }
+
+    class StringVariablePathPart<R>(
+            private val recordExtractor: (R) -> String
+    ) : PathPart<R>(), VariablePathPart<R> {
+        override fun extractQueryArgument(arg: Any?) = arg as String
+        override fun forRecord(record: R) = recordExtractor(record)
+        override val regex = alphanumericWithHyphensAndUnderscores
+
+        companion object {
+            val alphanumericWithHyphensAndUnderscores: Pattern by lazy {
+                Pattern.compile("[\\w-]*")
+            }
+        }
     }
 }
