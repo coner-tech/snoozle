@@ -19,6 +19,9 @@ class SampleDatabase(root: Path) : Database(root) {
             path = "gadgets" / { it.id } + ".json"
             versioning = EntityVersioningStrategy.AutomaticInternalVersioning
         }
+        blob<GadgetPhoto> {
+            path = "gadgets" / { it.id } / { it.filename }
+        }
     }
 }
 
