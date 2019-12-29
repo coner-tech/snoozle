@@ -1,21 +1,8 @@
 # Snoozle
 
-Snoozle is a toolkit for building curiously simple distributed software applications.
+Snoozle is a toolkit for building curiously simple distributed software applications at personal and small scale.
 
-Snoozle aims to meet the data storage needs of the autocross event operations software [Coner](https://github.com/caeos).
-
-- Single primary nodes
-    - Core business logic must continue working uninterrupted in the face of low and/or no connectivity to other participating nodes
-    - Role ownership (as the primary node) must not be tied to any physical device
-    - Expected to be powered off for weeks or months at a time when not in use
-- Unlimited secondary nodes
-    - Needs to access data owned by primaries 24/7 on a read-only basis, regardless of primary node availability
-    - Participate in business logic functions in the face of low and/or no connectivity for other participant nodes
-- Relatively low storage and performance needs
-- Sheer simplicity
-    - Simple to understand
-    - Simple to develop applications
-    - Simple to own and operate
+Where others go to lengths to support operation at internet scale, Snoozle keeps it simple so individuals and small organization can keep control of their systems and data.
 
 ## Components
 
@@ -27,50 +14,46 @@ There are a few common themes throughout Snoozle's components:
 
 ### Snoozle Database
 
-Snoozle Database is a filesystem-based JSON object database with a structure inspired by REST URLs. Status: In Development
+__Status: In Development__
 
-Simply define classes for your entities with an annotation describing where to store them:
+Snoozle Database is a filesystem-based object database.
 
-```kotlin
-data class Widget(
-        val id: UUID = UUID.randomUUID(),
-        val name: String
-) : Entity
-
-data class Subwidget(
-        val id: UUID = UUID.randomUUID(),
-        val widgetId: UUID,
-        val name: String
-) : Entity
-```
-
-Safely, compactly, but expressively create, read, update, and delete entities:
-
-```kotlin
-val db = SampleDatabase(path, objectMapper)
-
-// create/update
-val widget = Widget(
-    id = uuid("1f30d7b6-0296-489a-9615-55868aeef78a"),
-    name = "Widget One"
-)
-database.put(widget)
-
-// read
-val widgetOne = db.entity<Widget>().get(uuid("1f30d7b6-0296-489a-9615-55868aeef78a"))
-val subwidget = db.entity<Subwidget>().get(widgetOne.id, uuid("220460be-27d4-4e6d-8ac3-34cf5139b229"))
-
-// list all widgets
-val widgets = db.entity<Widget>.list()
-
-// list all subwidgets under widgetOne
-val subwidgets = db.entity<Widget>.list(widgetOne.id)
-
-// delete
-db.delete(widget)
-```
+Features:
+- Simplistic data structure: one file per record 
+- Path-based storage: simple alternative to traditional indices
+- Entity storage
+    - Automatic serialization/deserialization of entity objects to/from JSON
+    - Optional: automatic versioning
+- Blob storage
+    - Store files containing arbitrary data
+- Convenient DSL
 
 Refer to `org.coner.snoozle.db.sample.SampleDatabase` in the test source set for more detail.
+
+```kotlin
+class SampleDatabase(root: Path) : Database(root) {
+
+    override val types = registerTypes {
+        entity<Widget> {
+            path = "widgets" / { it.id } + ".json"
+        }
+        entity<Subwidget> {
+            path = "widgets" / { it.widgetId } / "subwidgets" / { it.id } + ".json"
+        }
+        entity<Gadget> {
+            path = "gadgets" / { it.id } + ".json"
+            versioning = EntityVersioningStrategy.AutomaticInternalVersioning
+        }
+        blob<GadgetPhoto> {
+            path = "gadgets" / { it.gadgetId } / "photos" / string { it.id } + "." + string { it.extension }
+            factory = GadgetPhoto.Factory()
+        }
+        blob<GadgetPhotoCitation> {
+            path = "gadgets" / { it.gadgetId } / "photos" / "citations" / string { it.id } + ".citation"
+            factory = GadgetPhotoCitation.Factory()
+        }
+    }
+}
 ```
 
 ### Snoozle Queue

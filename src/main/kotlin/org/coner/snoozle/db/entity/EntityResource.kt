@@ -39,7 +39,7 @@ class EntityResource<E : Entity> constructor(
         } catch (fileAlreadyExists: FileAlreadyExistsException) {
             // that's fine
         } catch (t: Throwable) {
-            val message = "Failed to create parent folder for ${entityDefinition::class.java.simpleName} $parent"
+            val message = "Failed to create parent folder for ${entityDefinition::class.java.simpleName} $entityParentPath"
             throw EntityIoException.WriteFailure(message, t)
         }
         val file = root.resolve(path.findRecord(entity))

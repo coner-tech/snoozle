@@ -20,7 +20,7 @@ class PathfinderTest {
                 pathParts = listOf(
                         PathPart.StringPathPart("widgets"),
                         PathPart.DirectorySeparatorPathPart(),
-                        PathPart.UuidPathPart { it.id},
+                        PathPart.UuidVariablePathPart { it.id},
                         PathPart.StringPathPart(".json")
                 )
         )
@@ -28,11 +28,11 @@ class PathfinderTest {
                 pathParts = listOf(
                         PathPart.StringPathPart("widgets"),
                         PathPart.DirectorySeparatorPathPart(),
-                        PathPart.UuidPathPart { it.widgetId },
+                        PathPart.UuidVariablePathPart { it.widgetId },
                         PathPart.DirectorySeparatorPathPart(),
                         PathPart.StringPathPart("subwidgets"),
                         PathPart.DirectorySeparatorPathPart(),
-                        PathPart.UuidPathPart { it.id },
+                        PathPart.UuidVariablePathPart { it.id },
                         PathPart.StringPathPart(".json")
                 )
         )

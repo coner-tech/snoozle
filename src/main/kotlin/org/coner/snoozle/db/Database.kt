@@ -1,7 +1,8 @@
 package org.coner.snoozle.db
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.coner.snoozle.db.entity.EntitiesManifest
+import org.coner.snoozle.db.blob.Blob
+import org.coner.snoozle.db.blob.BlobResource
 import org.coner.snoozle.db.entity.Entity
 import org.coner.snoozle.db.entity.EntityResource
 import org.coner.snoozle.util.snoozleJacksonObjectMapper
@@ -12,10 +13,10 @@ abstract class Database(
         protected val root: Path,
         private val objectMapper: ObjectMapper = snoozleJacksonObjectMapper()
 ) {
-    protected abstract val entities: EntitiesManifest
+    protected abstract val types: TypesManifest
 
-    protected fun registerEntities(op: EntitiesManifest.(Map<KClass<*>, EntityResource<*>>) -> Unit): EntitiesManifest {
-        return EntitiesManifest(root, op, objectMapper)
+    protected fun registerTypes(op: TypesManifest.() -> Unit): TypesManifest {
+        return TypesManifest(root, op, objectMapper)
     }
 
     inline fun <reified E : Entity> entity(): EntityResource<E> {
@@ -23,7 +24,15 @@ abstract class Database(
     }
 
     fun <E : Entity> entity(type: KClass<E>): EntityResource<E> {
-        return entities.entityResources[type] as EntityResource<E>
+        return types.entityResources[type] as EntityResource<E>
+    }
+
+    inline fun <reified B : Blob> blob(): BlobResource<B> {
+        return blob(B::class)
+    }
+
+    fun <B : Blob> blob(type: KClass<B>): BlobResource<B> {
+        return types.blobResources[type] as BlobResource<B>
     }
 
 }
