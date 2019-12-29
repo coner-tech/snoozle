@@ -5,6 +5,7 @@
 - Replaced annotation/reflection-based entity definition with DSL
 - EntityEvent emitted by watchListing() removes raw WatchEvent in favor of State (exists, deleted, or overflow)
 - [#18](https://github.com/caeos/snoozle/issues/18) Blob types
+- Upgrade dependencies
 
 ## 0.2.1 (2019-06-25)
 
