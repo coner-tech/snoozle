@@ -1,10 +1,10 @@
-package org.coner.snoozle.db
+package org.coner.snoozle.db.entity
 
 import com.fasterxml.jackson.databind.ObjectReader
 import java.time.Instant
 import java.time.ZonedDateTime
 
-internal class AutomaticEntityVersionIoDelegate<E : Entity>(
+class AutomaticEntityVersionIoDelegate<E : Entity>(
         private val reader: ObjectReader,
         private val entityDefinition: EntityDefinition<E>
 ) : IoDelegate<E> {
@@ -40,10 +40,7 @@ internal class AutomaticEntityVersionIoDelegate<E : Entity>(
             if (historicRecord._entityObjectNode == null) throw EntityIoException.ReadFailure(
                     "Historic record missing entity, unable to read"
             )
-            historicRecord.copy(entityValue = reader.treeToValue(
-                    historicRecord._entityObjectNode,
-                    entityDefinition.kClass.java
-            ))
+            historicRecord.copy(entityValue = reader.readValue(historicRecord._entityObjectNode))
         }
     }
 

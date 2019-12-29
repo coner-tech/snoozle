@@ -1,10 +1,10 @@
-package org.coner.snoozle.db
+package org.coner.snoozle.db.entity
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.ObjectReader
 import com.fasterxml.jackson.databind.ObjectWriter
 
-internal class EntityIoDelegate<E : Entity>(
+class EntityIoDelegate<E : Entity>(
         private val objectMapper: ObjectMapper,
         private val reader: ObjectReader,
         private val writer: ObjectWriter

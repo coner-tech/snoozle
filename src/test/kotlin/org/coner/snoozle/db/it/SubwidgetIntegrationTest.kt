@@ -9,6 +9,7 @@ import org.assertj.core.api.Assumptions
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Subwidget
+import org.coner.snoozle.db.sample.getSubwidget
 import org.coner.snoozle.util.readText
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -37,9 +38,9 @@ class SubwidgetIntegrationTest {
         )
 
         for (expected in subwidgets) {
-            val actual = database.get(
-                    Subwidget::widgetId to expected.widgetId,
-                    Subwidget::id to expected.id
+            val actual = database.entity<Subwidget>().getSubwidget(
+                    expected.widgetId,
+                    expected.id
             )
 
             assertk.assertThat(actual).isEqualTo(expected)
@@ -53,7 +54,7 @@ class SubwidgetIntegrationTest {
                 name = "Widget Two Subwidget Two"
         )
 
-        database.put(subwidget)
+        database.entity<Subwidget>().put(subwidget)
 
         val expectedFile = SampleDb.Subwidgets.tempFile(root, subwidget)
         val expectedJson = """
@@ -67,7 +68,7 @@ class SubwidgetIntegrationTest {
     }
 
     @Test
-    fun itShouldRemoveSubwidget() {
+    fun itShouldDeleteSubwidget() {
         val subwidgets = arrayOf(
                 SampleDb.Subwidgets.WidgetOneSubwidgetOne,
                 SampleDb.Subwidgets.WidgetTwoSubwidgetOne
@@ -77,7 +78,7 @@ class SubwidgetIntegrationTest {
             val actualFile = SampleDb.Subwidgets.tempFile(root, subwidget)
             Assumptions.assumeThat(actualFile).exists()
 
-            database.remove(subwidget)
+            database.entity<Subwidget>().delete(subwidget)
 
             Assertions.assertThat(actualFile).doesNotExist()
         }
@@ -85,9 +86,7 @@ class SubwidgetIntegrationTest {
 
     @Test
     fun itShouldListSubwidget() {
-        val subwidgets: List<Subwidget> = database.list(
-                Subwidget::widgetId to SampleDb.Widgets.One.id
-        )
+        val subwidgets = database.entity<Subwidget>().list(SampleDb.Widgets.One.id)
 
         assertk.assertThat(subwidgets).all {
             hasSize(1)

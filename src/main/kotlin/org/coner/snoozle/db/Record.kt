@@ -1,3 +1,3 @@
 package org.coner.snoozle.db
 
-interface Entity
+interface Record

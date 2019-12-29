@@ -5,6 +5,7 @@ import org.assertj.core.api.Assumptions
 import org.coner.snoozle.db.sample.Gadget
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
+import org.coner.snoozle.db.sample.getWholeGadgetRecord
 import org.coner.snoozle.util.readText
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -29,7 +30,7 @@ class GadgetIntegrationTest {
     fun itShouldWriteOriginalWithCurrentVersionZero() {
         val original = Gadget(name = "Original")
 
-        database.put(original)
+        database.entity<Gadget>().put(original)
 
         val path = SampleDb.Gadgets.tempFile(root, original)
         val expected = """
@@ -47,10 +48,10 @@ class GadgetIntegrationTest {
     @Test
     fun itShouldWriteFirstRevision() {
         val original = Gadget(name = "Original")
-        database.put(original)
+        database.entity<Gadget>().put(original)
         val firstRevision = original.copy(name = "First Revision")
 
-        database.put(firstRevision)
+        database.entity<Gadget>().put(firstRevision)
 
         val expected = """
             {
@@ -79,7 +80,7 @@ class GadgetIntegrationTest {
         val timestampAsString = "2019-05-18T20:55:01-04:00"
         val gadget = Gadget(silly = ZonedDateTime.parse(timestampAsString))
 
-        database.put(gadget)
+        database.entity<Gadget>().put(gadget)
 
         val file = SampleDb.Gadgets.tempFile(root, gadget)
         val expected = """
@@ -96,12 +97,12 @@ class GadgetIntegrationTest {
     @Test
     fun itShouldWriteSecondRevision() {
         val original = Gadget(name = "Original")
-        database.put(original)
+        database.entity<Gadget>().put(original)
         val firstRevision = original.copy(name = "First Revision")
-        database.put(firstRevision)
+        database.entity<Gadget>().put(firstRevision)
 
         val secondRevision = firstRevision.copy(name = "Second Revision")
-        database.put(secondRevision)
+        database.entity<Gadget>().put(secondRevision)
 
         val expected = """
             {
@@ -131,7 +132,7 @@ class GadgetIntegrationTest {
         val expected = SampleDb.Gadgets.GadgetOneWholeRecord
         Assumptions.assumeThat(expected.entityValue).isEqualTo(SampleDb.Gadgets.GadgetOne)
 
-        val actual = database.getWholeRecord(Gadget::id to expected.entityValue.id)
+        val actual = database.entity<Gadget>().getWholeGadgetRecord(expected.entityValue.id)
 
         Assertions.assertThat(actual)
                 .isEqualToIgnoringGivenFields(

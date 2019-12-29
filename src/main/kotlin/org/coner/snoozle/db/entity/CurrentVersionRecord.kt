@@ -1,4 +1,4 @@
-package org.coner.snoozle.db
+package org.coner.snoozle.db.entity
 
 import java.time.ZonedDateTime
 
