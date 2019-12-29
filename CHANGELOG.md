@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 (pending)
+## 0.3.0 (2019-12-29)
 
 - Replaced annotation/reflection-based entity definition with DSL
 - EntityEvent emitted by watchListing() removes raw WatchEvent in favor of State (exists, deleted, or overflow)
