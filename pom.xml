@@ -12,8 +12,8 @@
         <jackson.version>2.9.9</jackson.version>
         <rxjava2.version>2.2.10</rxjava2.version>
         <rxfilewatcher.version>1.0.0</rxfilewatcher.version>
-        <junit5.platform.version>1.4.2</junit5.platform.version>
-        <junit5.jupiter.version>5.4.2</junit5.jupiter.version>
+        <junit5.platform.version>1.5.2</junit5.platform.version>
+        <junit5.jupiter.version>5.5.2</junit5.jupiter.version>
         <assertj.version>3.12.2</assertj.version>
         <assertk.version>0.20</assertk.version>
         <jsonassert.version>1.5.0</jsonassert.version>
