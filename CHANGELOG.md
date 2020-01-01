@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 (2020-01-01)
+
+- Fix writing blobs into new databases
+
 ## 0.3.0 (2019-12-29)
 
 - Replaced annotation/reflection-based entity definition with DSL

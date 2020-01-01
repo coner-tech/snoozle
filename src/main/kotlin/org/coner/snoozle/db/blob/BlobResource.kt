@@ -45,12 +45,14 @@ class BlobResource<B : Blob> constructor(
     fun put(blob: B, text: String) {
         val blobPath = path.findRecord(blob)
         val file = root.resolve(blobPath)
+        Files.createDirectories(file.parent)
         file.toFile().writeText(text)
     }
 
     fun put(blob: B, bytes: ByteArray) {
         val blobPath = path.findRecord(blob)
         val file = root.resolve(blobPath)
+        Files.createDirectories(file.parent)
         file.toFile().outputStream().buffered().use {
             it.write(bytes)
         }

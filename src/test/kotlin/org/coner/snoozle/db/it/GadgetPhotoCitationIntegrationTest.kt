@@ -6,6 +6,7 @@ import assertk.assertions.hasLineCount
 import assertk.assertions.hasSize
 import assertk.assertions.index
 import assertk.assertions.isEqualTo
+import org.coner.snoozle.db.sample.Gadget
 import org.coner.snoozle.db.sample.GadgetPhotoCitation
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
+import java.time.ZonedDateTime
 
 class GadgetPhotoCitationIntegrationTest {
 
@@ -42,7 +44,7 @@ class GadgetPhotoCitationIntegrationTest {
     }
 
     @Test
-    fun itShouldPutGadgetPhotoCitation() {
+    fun itShouldPutGadgetPhotoCitationForGadgetWithExistingPhotoCitations() {
         val blob = GadgetPhotoCitation(
                 gadgetId = SampleDb.Gadgets.GadgetOne.id,
                 id = "close-up-photography-of-smartphone-beside-binder-clip-1841841"
@@ -51,5 +53,22 @@ class GadgetPhotoCitationIntegrationTest {
         database.blob<GadgetPhotoCitation>().put(blob, "foo")
 
         assertThat(database.blob<GadgetPhotoCitation>().getAsText(blob)).isEqualTo("foo")
+    }
+
+    @Test
+    fun itShouldPutGadgetPhotoCitationForGadgetWithoutPhotoCitations() {
+        val gadgetTwo = Gadget(
+                name = "Gadget Without Photo Citations",
+                silly = ZonedDateTime.parse("2020-01-01T12:09:00-05:00")
+        )
+        database.entity<Gadget>().put(gadgetTwo)
+        val firstCitation = GadgetPhotoCitation(
+                gadgetId = gadgetTwo.id,
+                id = "first citation"
+        )
+
+        database.blob<GadgetPhotoCitation>().put(firstCitation, "foo")
+
+        assertThat(database.blob<GadgetPhotoCitation>().getAsText(firstCitation)).isEqualTo("foo")
     }
 }
