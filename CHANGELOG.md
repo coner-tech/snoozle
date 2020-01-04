@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2 (2020-01-04)
+
+- Expose absolute path to blobs
+
 ## 0.3.1 (2020-01-01)
 
 - Fix writing blobs into new databases

@@ -13,8 +13,7 @@ class BlobResource<B : Blob> constructor(
         private val path: Pathfinder<B>
 ) {
     fun getAsText(blob: B): String {
-        val blobPath = path.findRecord(blob)
-        val file = root.resolve(blobPath)
+        val file = getAbsolutePathTo(blob)
         return if (Files.exists(file)) {
             file.readText()
         } else {
@@ -23,8 +22,7 @@ class BlobResource<B : Blob> constructor(
     }
 
     fun getAsInputStream(blob: B): InputStream {
-        val blobPath = path.findRecord(blob)
-        val file = root.resolve(blobPath)
+        val file = getAbsolutePathTo(blob)
         return if (Files.exists(file)) {
             file.toFile().inputStream().buffered()
         } else {
@@ -33,13 +31,22 @@ class BlobResource<B : Blob> constructor(
     }
 
     fun getAsInputStream(vararg args: Any): InputStream {
-        val blobPath = path.findRecordByArgs(*args)
-        val file = root.resolve(blobPath)
+        val file = getAbsolutePathTo(*args)
         return if (Files.exists(file)) {
             file.toFile().inputStream().buffered()
         } else {
             throw BlobIoException(BlobIoException.Reason.NotFound)
         }
+    }
+
+    fun getAbsolutePathTo(vararg args: Any): Path {
+        val blobPath = path.findRecordByArgs(*args)
+        return root.resolve(blobPath)
+    }
+
+    fun getAbsolutePathTo(blob: B): Path {
+        val blobPath = path.findRecord(blob)
+        return root.resolve(blobPath)
     }
 
     fun put(blob: B, text: String) {

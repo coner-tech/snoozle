@@ -2,10 +2,7 @@ package org.coner.snoozle.db.it
 
 import assertk.all
 import assertk.assertThat
-import assertk.assertions.hasSize
-import assertk.assertions.index
-import assertk.assertions.isEqualTo
-import assertk.assertions.prop
+import assertk.assertions.*
 import org.coner.snoozle.db.sample.GadgetPhoto
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
@@ -29,9 +26,9 @@ class GadgetPhotoIntegrationTest {
 
     @Test
     fun itShouldGetGadgetPhotos() {
-        val actual = database.blob<GadgetPhoto>().list(SampleDb.Gadgets.GadgetOne.id)
+        val actualGadgetPhotos = database.blob<GadgetPhoto>().list(SampleDb.Gadgets.GadgetOne.id)
 
-        assertThat(actual).all {
+        assertThat(actualGadgetPhotos).all {
             index(0).all {
                 prop(GadgetPhoto::id).isEqualTo("close-up-photography-of-smartphone-beside-binder-clip-1841841")
                 prop(GadgetPhoto::extension).isEqualTo("jpg")
@@ -43,7 +40,7 @@ class GadgetPhotoIntegrationTest {
             hasSize(2)
         }
 
-        val images = actual
+        val images = actualGadgetPhotos
                 .map { database.blob<GadgetPhoto>().getAsInputStream(it) }
                 .map { ImageIO.read(it) }
         assertThat(images).all {
@@ -56,6 +53,31 @@ class GadgetPhotoIntegrationTest {
                 transform { it.height }.isEqualTo(345)
             }
         }
+
+        val actualGadgetPhotoZeroPath = database.blob<GadgetPhoto>().getAbsolutePathTo(actualGadgetPhotos[0])
+        assertThat(actualGadgetPhotoZeroPath).all {
+            toStringFun().all {
+                startsWith(root.toString())
+                endsWith("/gadgets/${actualGadgetPhotos[0].gadgetId}/photos/${actualGadgetPhotos[0].id}.${actualGadgetPhotos[0].extension}")
+            }
+            isRegularFile()
+            isReadable()
+        }
+
+        val actualGadgetPhotoOnePath = database.blob<GadgetPhoto>().getAbsolutePathTo(
+                actualGadgetPhotos[1].gadgetId,
+                actualGadgetPhotos[1].id,
+                actualGadgetPhotos[1].extension
+        )
+        assertThat(actualGadgetPhotoOnePath).all {
+            toStringFun().all {
+                startsWith(root.toString())
+                endsWith("/gadgets/${actualGadgetPhotos[1].gadgetId}/photos/${actualGadgetPhotos[1].id}.${actualGadgetPhotos[1].extension}")
+            }
+            isRegularFile()
+            isReadable()
+        }
+
     }
 
 }
