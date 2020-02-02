@@ -1,9 +1,9 @@
 package org.coner.snoozle.db.entity
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import de.helmbold.rxfilewatcher.PathObservables
 import io.reactivex.Observable
 import org.coner.snoozle.db.path.Pathfinder
+import org.coner.snoozle.util.PathObservables
 import org.coner.snoozle.util.nameWithoutExtension
 import org.coner.snoozle.util.uuid
 import java.nio.file.Files

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3 (?)
+
+- [#19](https://github.com/caeos/snoozle/issues/19) Remove rxfilewatcher dependency
+
 ## 0.3.2 (2020-01-04)
 
 - Expose absolute path to blobs
