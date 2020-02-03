@@ -4,7 +4,7 @@ import assertk.all
 import assertk.assertions.*
 import io.reactivex.observers.TestObserver
 import io.reactivex.schedulers.Schedulers
-import org.coner.snoozle.util.PathObservables
+import org.coner.snoozle.util.watch
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -33,7 +33,7 @@ class PathObservablesTest {
 
     @Test
     fun shouldWatchDirectoryRecursively() {
-        val observable = PathObservables.watchRecursive(directory)
+        val observable = directory.watch(recursive = true)
         observable
                 .subscribeOn(Schedulers.io())
                 .subscribe(observer)
@@ -60,7 +60,7 @@ class PathObservablesTest {
 
     @Test
     fun shouldWatchDirectoryNonRecursively() {
-        val observable = PathObservables.watchNonRecursive(directory)
+        val observable = directory.watch(recursive = false)
         observable
                 .subscribeOn(Schedulers.io())
                 .subscribe(observer)
@@ -99,7 +99,7 @@ class PathObservablesTest {
         for (i in 0 until cycles) {
             print(">>> $i ")
             val observer = TestObserver<WatchEvent<*>>()
-            val watch = PathObservables.watchNonRecursive(directory)
+            val watch = directory.watch(recursive = false)
             watch
                     .observeOn(Schedulers.io())
                     .subscribeOn(Schedulers.io())

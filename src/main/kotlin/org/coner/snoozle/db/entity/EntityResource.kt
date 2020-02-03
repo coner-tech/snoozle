@@ -6,6 +6,7 @@ import org.coner.snoozle.db.path.Pathfinder
 import org.coner.snoozle.util.PathObservables
 import org.coner.snoozle.util.nameWithoutExtension
 import org.coner.snoozle.util.uuid
+import org.coner.snoozle.util.watch
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -109,7 +110,7 @@ class EntityResource<E : Entity> constructor(
     fun watchListing(vararg args: Any): Observable<EntityEvent<E>> {
         val relativeListing = path.findListingByArgs(*args)
         val absoluteListing = root.resolve(relativeListing)
-        return PathObservables.watchNonRecursive(absoluteListing)
+        return absoluteListing.watch(recursive = false)
                 .filter { path.isRecord(relativeListing.resolve(it.context() as Path)) }
                 .map {
                     val file = absoluteListing.resolve(it.context() as Path)
