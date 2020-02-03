@@ -69,9 +69,9 @@ class PathObservablesTest {
         val a = directory.resolve("a").toFile().apply {
             mkdirs()
         }
+        observer.awaitCount(1)
         a.resolve("b").writeText("b")
 
-        observer.awaitCount(1)
         Thread.sleep(20) // some extra to make sure "a/b" never emits
 
         assertk.assertThat(observer.values()).all {
