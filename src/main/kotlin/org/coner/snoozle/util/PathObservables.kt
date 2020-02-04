@@ -1,3 +1,7 @@
+/*
+Based on rxfilewatcher by Christian Helmbold
+https://github.com/helmbold/rxfilewatcher
+ */
 package org.coner.snoozle.util
 
 import io.reactivex.Observable
