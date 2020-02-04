@@ -4,14 +4,17 @@ import assertk.all
 import assertk.assertions.*
 import io.reactivex.observers.TestObserver
 import io.reactivex.schedulers.Schedulers
+import org.apache.commons.lang3.SystemUtils
 import org.coner.snoozle.util.watch
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.io.TempDir
+import java.io.File
 import java.nio.file.*
 import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
 
 class PathObservablesTest {
 
@@ -94,7 +97,7 @@ class PathObservablesTest {
     @Timeout(value = 5, unit = TimeUnit.MINUTES)
     fun shouldCloseWatchService() {
         val empty = ByteArray(0)
-        val cycles = 768 // 768 = largest known default watch limit (windows) * 1.5
+        val cycles = (findOsWatchLimit() * 1.5).roundToInt()
 
         for (i in 0 until cycles) {
             print(">>> $i ")
@@ -117,5 +120,12 @@ class PathObservablesTest {
             observer.dispose()
             println("<<<")
         }
+    }
+
+}
+private fun findOsWatchLimit(): Int {
+    return when {
+        SystemUtils.IS_OS_LINUX -> File("/proc/sys/fs/inotify/max_user_instances").readText().trim().toInt()
+        else -> 512 // windows default limit is 512
     }
 }
