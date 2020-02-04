@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.3 (?)
+## 0.3.3 (2020-02-03)
 
 - [#19](https://github.com/caeos/snoozle/issues/19) Remove rxfilewatcher dependency
 
