@@ -1,5 +1,9 @@
 # Changelog
 
+# 0.3.4 (2020-08-04)
+
+- [#24](https://github.com/caeos/snoozle/issues/24) Fix atomic entity write strategy with single-filesystem approach
+
 ## 0.3.3 (2020-02-03)
 
 - [#19](https://github.com/caeos/snoozle/issues/19) Remove rxfilewatcher dependency

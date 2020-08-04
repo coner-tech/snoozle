@@ -73,7 +73,7 @@ class EntityResource<E : Entity> constructor(
         val new = WholeRecord.Builder<E>()
         entityIoDelegate.write(old, new, entity)
         automaticEntityVersionIoDelegate?.write(old, new, entity)
-        val tempFile = createTempFile().toPath()
+        val tempFile = destination.resolveSibling(destination.fileName.toString() + ".tmp")
         Files.newOutputStream(tempFile).use { outputStream ->
             objectMapper.writeValue(outputStream, new)
         }

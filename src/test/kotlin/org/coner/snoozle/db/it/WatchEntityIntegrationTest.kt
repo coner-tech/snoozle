@@ -1,5 +1,9 @@
 package org.coner.snoozle.db.it
 
+import assertk.all
+import assertk.assertAll
+import assertk.assertThat
+import assertk.assertions.*
 import io.reactivex.observers.TestObserver
 import io.reactivex.schedulers.Schedulers
 import org.coner.snoozle.db.entity.Entity
@@ -39,13 +43,14 @@ class WatchEntityIntegrationTest {
         val changed = SampleDb.Widgets.One.copy(name = "changed")
 
         database.entity<Widget>().put(changed)
+        widgetObserver.awaitCount(1)
+        val actual: List<EntityEvent<Widget>> = widgetObserver.values()
 
-        widgetObserver.run {
-            awaitCount(1)
-            assertValueCount(1)
-            assertValueAt(0) {
-                it.state == EntityEvent.State.EXISTS
-                        && it.entity == changed
+        assertThat(actual).all {
+            hasSize(1)
+            index(0).all {
+                prop("state") { it.state }.isEqualTo(EntityEvent.State.EXISTS)
+                prop("entity") { it.entity }.isEqualTo(changed)
             }
         }
     }
