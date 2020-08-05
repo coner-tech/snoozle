@@ -1,13 +1,12 @@
 package org.coner.snoozle.db
 
-import org.coner.snoozle.db.blob.Blob
 import org.coner.snoozle.db.path.PathPart
 import java.util.*
 
 abstract class RecordDefinition<R : Record> {
     var path: List<PathPart<R>> = mutableListOf()
 
-    operator fun String.div(uuidExtractor: (R) -> UUID): MutableList<PathPart<R>> {
+    operator fun String.div(uuidExtractor: R.() -> UUID): MutableList<PathPart<R>> {
         return mutableListOf(
                 PathPart.StringPathPart(this),
                 PathPart.DirectorySeparatorPathPart(),
@@ -21,7 +20,7 @@ abstract class RecordDefinition<R : Record> {
         return this
     }
 
-    operator fun MutableList<PathPart<R>>.div(uuidExtractor: (R) -> UUID): MutableList<PathPart<R>> {
+    operator fun MutableList<PathPart<R>>.div(uuidExtractor: R.() -> UUID): MutableList<PathPart<R>> {
         add(PathPart.DirectorySeparatorPathPart())
         add(PathPart.UuidVariablePathPart(uuidExtractor))
         return this
@@ -43,13 +42,13 @@ abstract class RecordDefinition<R : Record> {
         return this
     }
 
-    class StringExtractor<R : Record>(private val fn: (R) -> String) {
+    class StringExtractor<R : Record>(private val fn: R.() -> String) {
         fun extract(record: R): String {
             return fn(record)
         }
     }
 
-    fun string(stringExtractor: (R) -> String): StringExtractor<R> {
+    fun string(stringExtractor: R.() -> String): StringExtractor<R> {
         return StringExtractor(stringExtractor)
     }
 

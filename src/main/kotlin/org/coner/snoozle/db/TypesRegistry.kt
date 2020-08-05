@@ -10,10 +10,10 @@ import org.coner.snoozle.db.versioning.EntityVersioningStrategy
 import java.nio.file.Path
 import kotlin.reflect.KClass
 
-class TypesManifest(
+class TypesRegistry(
         val root: Path,
-        op: TypesManifest.() -> Unit,
-        val objectMapper: ObjectMapper
+        val objectMapper: ObjectMapper,
+        op: TypesRegistry.() -> Unit
 ) {
     val entityResources = mutableMapOf<KClass<*>, EntityResource<*>>()
     val blobResources = mutableMapOf<KClass<*>, BlobResource<*>>()
