@@ -6,16 +6,15 @@ import io.reactivex.observers.TestObserver
 import io.reactivex.schedulers.Schedulers
 import org.apache.commons.lang3.SystemUtils
 import org.coner.snoozle.util.watch
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Timeout
+import org.junit.jupiter.api.*
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.nio.file.*
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
+@EnabledIfSystemProperty(named = "CI", matches = "true")
 class PathObservablesTest {
 
     @TempDir

@@ -13,10 +13,10 @@ abstract class Database(
         protected val root: Path,
         private val objectMapper: ObjectMapper = snoozleJacksonObjectMapper()
 ) {
-    protected abstract val types: TypesManifest
+    protected abstract val types: TypesRegistry
 
-    protected fun registerTypes(op: TypesManifest.() -> Unit): TypesManifest {
-        return TypesManifest(root, op, objectMapper)
+    protected fun registerTypes(op: TypesRegistry.() -> Unit): TypesRegistry {
+        return TypesRegistry(root, objectMapper, op)
     }
 
     inline fun <reified E : Entity> entity(): EntityResource<E> {

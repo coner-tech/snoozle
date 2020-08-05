@@ -37,7 +37,7 @@ sealed class PathPart<R> {
     }
 
     class StringVariablePathPart<R>(
-            private val recordExtractor: (R) -> String
+            private val recordExtractor: R.() -> String
     ) : PathPart<R>(), VariablePathPart<R> {
         override fun extractQueryArgument(arg: Any?) = arg as String
         override fun forRecord(record: R) = recordExtractor(record)

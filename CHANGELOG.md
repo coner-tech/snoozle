@@ -1,5 +1,9 @@
 # Changelog
 
+# 0.4.0 (pending)
+
+- [#25](https://github.com/caeos/snoozle/issues/25) Revise the database path definition to use receiver functions
+
 # 0.3.4 (2020-08-04)
 
 - [#24](https://github.com/caeos/snoozle/issues/24) Fix atomic entity write strategy with single-filesystem approach
