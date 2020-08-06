@@ -16,6 +16,7 @@ class TypesRegistry(
         op: TypesRegistry.() -> Unit
 ) {
     val entityResources = mutableMapOf<KClass<*>, EntityResource<*>>()
+    // TODO: discreteVersionedEntityResources
     val blobResources = mutableMapOf<KClass<*>, BlobResource<*>>()
 
     init {
@@ -43,6 +44,8 @@ class TypesRegistry(
                 }
         )
     }
+
+    // TODO: DiscreteVersionedEntityDefinition DSL
 
     inline fun <reified B : Blob> blob(op: BlobDefinition<B>.() -> Unit) {
         val blobDefinition = BlobDefinition<B>().apply(op)

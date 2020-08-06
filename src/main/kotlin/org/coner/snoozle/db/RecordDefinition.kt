@@ -61,6 +61,8 @@ abstract class RecordDefinition<R : Record> {
         return StringArgumentExtractor(extractor)
     }
     fun int(extractor: R.() -> Int) = IntArgumentExtractor(extractor)
+
+    // TODO: move into DiscreteVersionedEntityContainerRecordDefinition
     fun discreteVersion() = PathPart.DiscreteVersionArgumentPathPart<R>()
 
 }
