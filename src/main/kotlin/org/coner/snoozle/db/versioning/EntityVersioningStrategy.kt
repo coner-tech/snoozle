@@ -1,5 +1,7 @@
 package org.coner.snoozle.db.versioning
 
 enum class EntityVersioningStrategy {
-    AutomaticInternalVersioning
+    @Deprecated(message = "Migrate to Discrete")
+    AutomaticInternalVersioning,
+    Discrete
 }

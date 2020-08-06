@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.node.ObjectNode
 
+@Deprecated("Use discrete version")
 data class WholeRecord<E : Entity>(
         @JsonProperty("entity") val _entityObjectNode: ObjectNode? = null,
         @JsonIgnore val entityValue: E,

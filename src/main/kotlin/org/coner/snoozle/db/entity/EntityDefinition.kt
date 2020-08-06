@@ -7,5 +7,4 @@ import java.util.*
 
 class EntityDefinition<E : Entity> : RecordDefinition<E>() {
     var versioning: EntityVersioningStrategy? = null
-
 }

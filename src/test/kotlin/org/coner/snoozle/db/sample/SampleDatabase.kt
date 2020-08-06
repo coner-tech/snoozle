@@ -1,7 +1,9 @@
 package org.coner.snoozle.db.sample
 
 import org.coner.snoozle.db.Database
+import org.coner.snoozle.db.RecordDefinition
 import org.coner.snoozle.db.blob.BlobResource
+import org.coner.snoozle.db.entity.DiscreteVersionedEntityContainer
 import org.coner.snoozle.db.entity.EntityResource
 import org.coner.snoozle.db.versioning.EntityVersioningStrategy
 import org.coner.snoozle.util.nameWithoutExtension
@@ -18,9 +20,9 @@ class SampleDatabase(root: Path) : Database(root) {
         entity<Subwidget> {
             path = "widgets" / { widgetId } / "subwidgets" / { id } + ".json"
         }
-        entity<Gadget> {
-            path = "gadgets" / { id } + ".json"
-            versioning = EntityVersioningStrategy.AutomaticInternalVersioning
+        entity<DiscreteVersionedEntityContainer<Gadget>> {
+            path = "gadgets" / { entity.id } / discreteVersion() + ".json"
+            versioning = EntityVersioningStrategy.Discrete
         }
         blob<GadgetPhoto> {
             path = "gadgets" / { gadgetId } / "photos" / string { id } + "." + string { extension }

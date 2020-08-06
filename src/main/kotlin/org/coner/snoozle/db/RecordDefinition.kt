@@ -31,25 +31,36 @@ abstract class RecordDefinition<R : Record> {
         return this
     }
 
-    operator fun MutableList<PathPart<R>>.div(stringExtractor: StringExtractor<R>): MutableList<PathPart<R>> {
+    operator fun MutableList<PathPart<R>>.div(stringExtractor: StringArgumentExtractor<R>): MutableList<PathPart<R>> {
         add(PathPart.DirectorySeparatorPathPart())
         add(PathPart.StringVariablePathPart(stringExtractor::extract))
         return this
     }
 
-    operator fun MutableList<PathPart<R>>.plus(stringExtractor: StringExtractor<R>): MutableList<PathPart<R>> {
+    operator fun MutableList<PathPart<R>>.plus(stringExtractor: StringArgumentExtractor<R>): MutableList<PathPart<R>> {
         add(PathPart.StringVariablePathPart(stringExtractor::extract))
         return this
     }
 
-    class StringExtractor<R : Record>(private val fn: R.() -> String) {
-        fun extract(record: R): String {
+    operator fun MutableList<PathPart<R>>.div(discreteVersionArgument: PathPart.DiscreteVersionArgumentPathPart<R>): MutableList<PathPart<R>> {
+        add(PathPart.DirectorySeparatorPathPart())
+        add(discreteVersionArgument)
+        return this
+    }
+
+    abstract class PathArgumentExtractor<R : Record, P>(private val fn: R.() -> P) {
+        fun extract(record: R): P {
             return fn(record)
         }
     }
 
-    fun string(stringExtractor: R.() -> String): StringExtractor<R> {
-        return StringExtractor(stringExtractor)
+    class StringArgumentExtractor<R : Record>(fn: R.() -> String) : PathArgumentExtractor<R, String>(fn)
+    class IntArgumentExtractor<R : Record>(fn: R.() -> Int) : PathArgumentExtractor<R, Int>(fn)
+
+    fun string(extractor: R.() -> String): StringArgumentExtractor<R> {
+        return StringArgumentExtractor(extractor)
     }
+    fun int(extractor: R.() -> Int) = IntArgumentExtractor(extractor)
+    fun discreteVersion() = PathPart.DiscreteVersionArgumentPathPart<R>()
 
 }

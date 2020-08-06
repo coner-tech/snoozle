@@ -1,5 +1,7 @@
 package org.coner.snoozle.db.path
 
+import org.coner.snoozle.db.entity.DiscreteVersionArgument
+import org.coner.snoozle.db.entity.DiscreteVersionedEntityContainer
 import org.coner.snoozle.util.hasUuidPattern
 import java.io.File
 import java.util.*
@@ -46,6 +48,23 @@ sealed class PathPart<R> {
         companion object {
             val alphanumericWithHyphensAndUnderscores: Pattern by lazy {
                 Pattern.compile("[\\w-]*")
+            }
+        }
+    }
+
+    class DiscreteVersionArgumentPathPart<R>(
+    ) : PathPart<R>(), VariablePathPart<R> {
+        override fun extractQueryArgument(arg: Any?): String {
+            return (arg as DiscreteVersionArgument).value
+        }
+
+        override fun forRecord(record: R) = (record as DiscreteVersionedEntityContainer<*>).version.toString()
+
+        override val regex = positiveInteger
+
+        companion object {
+            val positiveInteger: Pattern by lazy {
+                Pattern.compile("[\\d]{1,10}")
             }
         }
     }

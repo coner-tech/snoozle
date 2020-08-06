@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectReader
 import java.time.Instant
 import java.time.ZonedDateTime
 
+@Deprecated("Use discrete version")
 class AutomaticEntityVersionIoDelegate<E : Entity>(
         private val reader: ObjectReader,
         private val entityDefinition: EntityDefinition<E>
