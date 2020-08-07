@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.ObjectReader
 import com.fasterxml.jackson.databind.ObjectWriter
 import org.coner.snoozle.db.path.Pathfinder
+import org.coner.snoozle.util.nameWithoutExtension
 import java.nio.file.Files
 import java.nio.file.OpenOption
 import java.nio.file.Path
@@ -15,10 +16,10 @@ class VersionedEntityResource<VE : VersionedEntity>(
         private val objectMapper: ObjectMapper,
         private val reader: ObjectReader,
         private val writer: ObjectWriter,
-        private val path: Pathfinder<VE>
+        private val path: Pathfinder<VersionedEntityContainer<VE>>
 ) {
 
-    fun get(vararg args: Any, versionArgument: VersionArgument.Readable): VersionedEntityContainer<VE> {
+    fun getSingleVersionOfEntity(vararg args: Any, versionArgument: VersionArgument.Readable): VersionedEntityContainer<VE> {
         val version: VersionArgument.Specific = when (versionArgument) {
             is VersionArgument.Specific -> versionArgument
             is VersionArgument.Highest -> resolveHighestVersion(*args)
@@ -30,6 +31,10 @@ class VersionedEntityResource<VE : VersionedEntity>(
         val entityPath = path.findRecordByArgs(useArgs)
         val file = root.resolve(entityPath)
         return read(file)
+    }
+
+    fun getAllVersionsOfEntity(vararg args: Any): List<VersionedEntityContainer<VE>> {
+        TODO()
     }
 
     private fun read(file: Path): VersionedEntityContainer<VE> {
@@ -47,7 +52,18 @@ class VersionedEntityResource<VE : VersionedEntity>(
     }
 
     private fun resolveHighestVersion(vararg args: Any): VersionArgument.Specific {
-        path.findRecordByArgs(args)
+        val relativeVersionsPath = path.findPartialBySubsetArgs(args)
+        val versionsPath = root.resolve(relativeVersionsPath)
+        if (!Files.exists(versionsPath)) {
+            throw EntityIoException.NotFound("No versions found for entity: $relativeVersionsPath")
+        }
+        val version = Files.list(versionsPath)
+                .filter { Files.isRegularFile(it) && path.isRecord(root.relativize(it)) }
+                .map { it.nameWithoutExtension.toInt() }
+                .sorted()
+                .max(compareBy { it })
+                .orElseThrow { throw EntityIoException.NotFound("No versions found for entity: $relativeVersionsPath") }
+        return VersionArgument.Specific(version)
     }
 
     fun put(entity: VE, versionArgument: VersionArgument.Writable): VersionedEntityContainer<VE> {

@@ -13,14 +13,14 @@ sealed class PathPart<R> {
     abstract fun forRecord(record: R): String
     abstract val regex: Pattern
 
-    class StringPathPart<R>(val part: String) : PathPart<R>() {
+    class StringValue<R>(val value: String) : PathPart<R>() {
 
-        override fun extractQueryArgument(arg: Any?) = part
-        override fun forRecord(record: R) = part
-        override val regex = Pattern.compile(part)
+        override fun extractQueryArgument(arg: Any?) = value
+        override fun forRecord(record: R) = value
+        override val regex = Pattern.compile(value)
     }
 
-    class DirectorySeparatorPathPart<R> : PathPart<R>() {
+    class DirectorySeparator<R> : PathPart<R>() {
         private val regexPattern by lazy { Pattern.compile(File.separator) }
 
         override fun extractQueryArgument(arg: Any?) = File.separator
@@ -28,19 +28,19 @@ sealed class PathPart<R> {
         override val regex = regexPattern
     }
 
-    interface VariablePathPart<R>
+    interface VariableExtractor<R>
 
-    class UuidVariablePathPart<R>(
-            private val recordExtractor: (R) -> UUID
-    ) : PathPart<R>(), VariablePathPart<R> {
+    class UuidVariable<R>(
+            private val recordExtractor: R.() -> UUID
+    ) : PathPart<R>(), VariableExtractor<R> {
         override fun extractQueryArgument(arg: Any?) = (arg as UUID).toString()
         override fun forRecord(record: R) = recordExtractor(record).toString()
         override val regex = hasUuidPattern
     }
 
-    class StringVariablePathPart<R>(
+    class StringVariable<R>(
             private val recordExtractor: R.() -> String
-    ) : PathPart<R>(), VariablePathPart<R> {
+    ) : PathPart<R>(), VariableExtractor<R> {
         override fun extractQueryArgument(arg: Any?) = arg as String
         override fun forRecord(record: R) = recordExtractor(record)
         override val regex = alphanumericWithHyphensAndUnderscores
@@ -52,8 +52,8 @@ sealed class PathPart<R> {
         }
     }
 
-    class VersionArgumentPathPart<R>(
-    ) : PathPart<R>(), VariablePathPart<R> {
+    class VersionArgumentVariable<R>(
+    ) : PathPart<R>(), VariableExtractor<R> {
         override fun extractQueryArgument(arg: Any?): String {
             return (arg as VersionArgument).value
         }

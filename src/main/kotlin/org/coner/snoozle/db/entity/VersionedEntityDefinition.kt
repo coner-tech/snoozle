@@ -1,6 +1,37 @@
 package org.coner.snoozle.db.entity
 
 import org.coner.snoozle.db.RecordDefinition
+import org.coner.snoozle.db.path.PathPart
+import java.util.*
 
-class VersionedEntityDefinition<VE : VersionedEntity> : RecordDefinition<VE>() {
+class VersionedEntityDefinition<VE : VersionedEntity> : RecordDefinition<VersionedEntityContainer<VE>>() {
+
+    operator fun String.div(uuidExtractor: VE.() -> UUID): MutableList<PathPart<VersionedEntityContainer<VE>>> {
+        return mutableListOf(
+                PathPart.StringValue(this),
+                PathPart.DirectorySeparator(),
+                PathPart.UuidVariable { entity.uuidExtractor() }
+        )
+    }
+
+    operator fun MutableList<PathPart<VersionedEntityContainer<VE>>>.div(
+            versionArgumentExtractor: VersionArgumentExtractor<VE>
+    ): MutableList<PathPart<VersionedEntityContainer<VE>>> {
+        add(PathPart.DirectorySeparator())
+        add(PathPart.VersionArgumentVariable())
+        return this
+    }
+
+    operator fun MutableList<PathPart<VersionedEntityContainer<VE>>>.plus(
+            extension: String
+    ): MutableList<PathPart<VersionedEntityContainer<VE>>> {
+        add(PathPart.StringValue(extension))
+        return this
+    }
+
+    class VersionArgumentExtractor<VE : VersionedEntity>
+        : PathArgumentExtractor<VersionedEntityContainer<VE>, Int>({ version })
+
+    val version: VersionArgumentExtractor<VE>
+        get() = VersionArgumentExtractor()
 }

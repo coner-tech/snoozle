@@ -5,7 +5,6 @@ import org.assertj.core.api.Assumptions
 import org.coner.snoozle.db.sample.Gadget
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
-import org.coner.snoozle.db.sample.getWholeGadgetRecord
 import org.coner.snoozle.util.readText
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -128,22 +127,13 @@ class GadgetIntegrationTest {
     }
 
     @Test
-    fun itShouldGetWholeRecord() {
-        val expected = SampleDb.Gadgets.GadgetOneWholeRecord
-        Assumptions.assumeThat(expected.entityValue).isEqualTo(SampleDb.Gadgets.GadgetOne)
+    fun itShouldGetVersions() {
+        val gadgetOne = SampleDb.Gadgets.GadgetOne
+        val expected = SampleDb.Gadgets.GadgetOneVersions
+        Assumptions.assumeThat(expected.last()).isEqualTo(SampleDb.Gadgets.GadgetOne)
 
-        val actual = database.entity<Gadget>().getWholeGadgetRecord(expected.entityValue.id)
+        val actual = database.versionedEntity<Gadget>().getAllVersionsOfEntity(gadgetOne.id)
 
-        Assertions.assertThat(actual)
-                .isEqualToIgnoringGivenFields(
-                        expected,
-                        "_entityObjectNode",
-                        "history"
-                )
-        Assertions.assertThat(actual.history)
-                .isNotNull
-                .hasSameSizeAs(expected.history)
-        Assertions.assertThat(actual.history!![0]).isEqualToIgnoringGivenFields(expected.history!![0], "_entityObjectNode")
-        Assertions.assertThat(actual.history!![1]).isEqualToIgnoringGivenFields(expected.history!![1], "_entityObjectNode")
+        Assertions.assertThat(actual).hasSize(3)
     }
 }

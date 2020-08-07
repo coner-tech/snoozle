@@ -1,9 +1,7 @@
 package org.coner.snoozle.db.sample
 
-import org.coner.snoozle.db.entity.CurrentVersionRecord
 import org.coner.snoozle.db.entity.Entity
-import org.coner.snoozle.db.entity.HistoricVersionRecord
-import org.coner.snoozle.db.entity.WholeRecord
+import org.coner.snoozle.db.entity.VersionedEntityContainer
 import org.coner.snoozle.util.uuid
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -86,32 +84,30 @@ object SampleDb {
                     silly = null
             )
 
-        val GadgetOneWholeRecord
-            get() = WholeRecord<Gadget>(
-                    entityValue = GadgetOne,
-                    currentVersion = CurrentVersionRecord(
+        val GadgetOneVersions
+            get() = listOf(
+                    VersionedEntityContainer(
+                            entity = Gadget(
+                                    id = GadgetOne.id,
+                                    name = null,
+                                    silly = null
+                            ),
+                            version = 0,
+                            ts = ZonedDateTime.parse("2019-05-16T21:40:00-05:00")
+                    ),
+                    VersionedEntityContainer(
+                            entity = Gadget(
+                                    id = GadgetOne.id,
+                                    name = "Gadget Won",
+                                    silly = ZonedDateTime.parse("2019-05-16T21:41:59-05:00")
+                            ),
+                            version = 1,
+                            ts = ZonedDateTime.parse("2019-05-16T21:42:00-05:00")
+                    ),
+                    VersionedEntityContainer(
+                            entity = GadgetOne,
                             version = 2,
                             ts = ZonedDateTime.parse("2019-05-16T21:43:00-05:00")
-                    ),
-                    history = listOf(
-                            HistoricVersionRecord(
-                                    version = 0,
-                                    ts = ZonedDateTime.parse("2019-05-16T21:40:00-05:00"),
-                                    entityValue = Gadget(
-                                            id = GadgetOne.id,
-                                            name = null,
-                                            silly = null
-                                    )
-                            ),
-                            HistoricVersionRecord(
-                                    version = 1,
-                                    ts = ZonedDateTime.parse("2019-05-16T21:42:00-05:00"),
-                                    entityValue = Gadget(
-                                            id = GadgetOne.id,
-                                            name = "Gadget Won",
-                                            silly = ZonedDateTime.parse("2019-05-16T21:41:59-05:00")
-                                    )
-                            )
                     )
             )
 

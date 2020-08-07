@@ -18,22 +18,22 @@ class PathfinderTest {
     fun before() {
         widgetPathfinder = Pathfinder(
                 pathParts = listOf(
-                        PathPart.StringPathPart("widgets"),
-                        PathPart.DirectorySeparatorPathPart(),
-                        PathPart.UuidVariablePathPart { it.id},
-                        PathPart.StringPathPart(".json")
+                        PathPart.StringValue("widgets"),
+                        PathPart.DirectorySeparator(),
+                        PathPart.UuidVariable { id},
+                        PathPart.StringValue(".json")
                 )
         )
         subwidgetPathfinder = Pathfinder(
                 pathParts = listOf(
-                        PathPart.StringPathPart("widgets"),
-                        PathPart.DirectorySeparatorPathPart(),
-                        PathPart.UuidVariablePathPart { it.widgetId },
-                        PathPart.DirectorySeparatorPathPart(),
-                        PathPart.StringPathPart("subwidgets"),
-                        PathPart.DirectorySeparatorPathPart(),
-                        PathPart.UuidVariablePathPart { it.id },
-                        PathPart.StringPathPart(".json")
+                        PathPart.StringValue("widgets"),
+                        PathPart.DirectorySeparator(),
+                        PathPart.UuidVariable { widgetId },
+                        PathPart.DirectorySeparator(),
+                        PathPart.StringValue("subwidgets"),
+                        PathPart.DirectorySeparator(),
+                        PathPart.UuidVariable { id },
+                        PathPart.StringValue(".json")
                 )
         )
     }

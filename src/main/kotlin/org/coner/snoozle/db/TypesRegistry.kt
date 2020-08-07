@@ -6,7 +6,6 @@ import org.coner.snoozle.db.blob.BlobDefinition
 import org.coner.snoozle.db.blob.BlobResource
 import org.coner.snoozle.db.entity.*
 import org.coner.snoozle.db.path.Pathfinder
-import org.coner.snoozle.db.versioning.EntityVersioningStrategy
 import java.nio.file.Path
 import kotlin.reflect.KClass
 
@@ -36,14 +35,14 @@ class TypesRegistry(
     }
 
     inline fun <reified E : VersionedEntity> versionedEntity(op: VersionedEntityDefinition<E>.() -> Unit) {
-        val entityDefinition = VersionedEntityDefinition<E>().apply(op)
-        versionedEntityResources[E::class] = VersionedEntityResource(
+        val versionedEntityDefinition = VersionedEntityDefinition<E>().apply(op)
+        versionedEntityResources[E::class] = VersionedEntityResource<E>(
                 root = root,
-                entityDefinition = entityDefinition,
+                versionedEntityDefinition = versionedEntityDefinition,
                 objectMapper = objectMapper,
                 reader = objectMapper.readerFor(E::class.java),
                 writer = objectMapper.writerFor(E::class.java),
-                path = Pathfinder(entityDefinition.path),
+                path = Pathfinder(versionedEntityDefinition.path)
         )
     }
 
