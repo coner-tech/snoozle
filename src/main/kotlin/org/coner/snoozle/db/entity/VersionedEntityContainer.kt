@@ -2,8 +2,8 @@ package org.coner.snoozle.db.entity
 
 import java.time.ZonedDateTime
 
-data class DiscreteVersionedEntityContainer<E : DiscreteVersionedEntity>(
+data class VersionedEntityContainer<E : VersionedEntity>(
         val entity: E,
-        val version: DiscreteVersionArgument,
+        val version: VersionArgument,
         val ts: ZonedDateTime
 ) : Entity

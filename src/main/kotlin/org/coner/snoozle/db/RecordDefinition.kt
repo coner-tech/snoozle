@@ -42,9 +42,9 @@ abstract class RecordDefinition<R : Record> {
         return this
     }
 
-    operator fun MutableList<PathPart<R>>.div(discreteVersionArgument: PathPart.DiscreteVersionArgumentPathPart<R>): MutableList<PathPart<R>> {
+    operator fun MutableList<PathPart<R>>.div(versionArgument: PathPart.VersionArgumentPathPart<R>): MutableList<PathPart<R>> {
         add(PathPart.DirectorySeparatorPathPart())
-        add(discreteVersionArgument)
+        add(versionArgument)
         return this
     }
 
@@ -62,7 +62,7 @@ abstract class RecordDefinition<R : Record> {
     }
     fun int(extractor: R.() -> Int) = IntArgumentExtractor(extractor)
 
-    // TODO: move into DiscreteVersionedEntityContainerRecordDefinition
-    fun discreteVersion() = PathPart.DiscreteVersionArgumentPathPart<R>()
+    // TODO: move into VersionedEntityDefinition
+    fun discreteVersion() = PathPart.VersionArgumentPathPart<R>()
 
 }

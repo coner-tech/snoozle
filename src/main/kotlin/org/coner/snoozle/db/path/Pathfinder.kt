@@ -24,6 +24,11 @@ class Pathfinder<R>(
         return Paths.get(mappedRelativePath)
     }
 
+    fun findPartialBySubsetArgs(vararg args: Any): Path {
+        val argsIterator = args.iterator()
+        TODO()
+    }
+
     fun findRecord(record: R): Path {
         val mappedRelativePath = pathParts.joinToString(separator = "") { pathPart ->
             pathPart.forRecord(record)

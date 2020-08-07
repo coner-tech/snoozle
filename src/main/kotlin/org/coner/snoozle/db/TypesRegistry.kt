@@ -16,7 +16,7 @@ class TypesRegistry(
         op: TypesRegistry.() -> Unit
 ) {
     val entityResources = mutableMapOf<KClass<*>, EntityResource<*>>()
-    // TODO: discreteVersionedEntityResources
+    val versionedEntityResources = mutableMapOf<KClass<*>, VersionedEntityResource<*>>()
     val blobResources = mutableMapOf<KClass<*>, BlobResource<*>>()
 
     init {
@@ -29,23 +29,23 @@ class TypesRegistry(
                 root = root,
                 entityDefinition = entityDefinition,
                 objectMapper = objectMapper,
-                path = Pathfinder(entityDefinition.path),
-                entityIoDelegate = EntityIoDelegate(
-                        objectMapper = objectMapper,
-                        reader = objectMapper.readerFor(E::class.java),
-                        writer = objectMapper.writerFor(E::class.java)
-                ),
-                automaticEntityVersionIoDelegate = when (entityDefinition.versioning) {
-                    EntityVersioningStrategy.AutomaticInternalVersioning -> AutomaticEntityVersionIoDelegate(
-                            reader = objectMapper.readerFor(E::class.java),
-                            entityDefinition = entityDefinition
-                    )
-                    else -> null
-                }
+                reader = objectMapper.readerFor(E::class.java),
+                writer = objectMapper.writerFor(E::class.java),
+                path = Pathfinder(entityDefinition.path)
         )
     }
 
-    // TODO: DiscreteVersionedEntityDefinition DSL
+    inline fun <reified E : VersionedEntity> versionedEntity(op: VersionedEntityDefinition<E>.() -> Unit) {
+        val entityDefinition = VersionedEntityDefinition<E>().apply(op)
+        versionedEntityResources[E::class] = VersionedEntityResource(
+                root = root,
+                entityDefinition = entityDefinition,
+                objectMapper = objectMapper,
+                reader = objectMapper.readerFor(E::class.java),
+                writer = objectMapper.writerFor(E::class.java),
+                path = Pathfinder(entityDefinition.path),
+        )
+    }
 
     inline fun <reified B : Blob> blob(op: BlobDefinition<B>.() -> Unit) {
         val blobDefinition = BlobDefinition<B>().apply(op)
