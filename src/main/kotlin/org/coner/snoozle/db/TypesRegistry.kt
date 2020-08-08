@@ -15,7 +15,7 @@ class TypesRegistry(
         op: TypesRegistry.() -> Unit
 ) {
     val entityResources = mutableMapOf<KClass<*>, EntityResource<*>>()
-    val versionedEntityResources = mutableMapOf<KClass<*>, VersionedEntityResource<*>>()
+    val versionedEntityResources = mutableMapOf<KClass<*>, VersionedEntityResource<*, *>>()
     val blobResources = mutableMapOf<KClass<*>, BlobResource<*>>()
 
     init {
@@ -34,14 +34,14 @@ class TypesRegistry(
         )
     }
 
-    inline fun <reified E : VersionedEntity> versionedEntity(op: VersionedEntityDefinition<E>.() -> Unit) {
-        val versionedEntityDefinition = VersionedEntityDefinition<E>().apply(op)
-        versionedEntityResources[E::class] = VersionedEntityResource<E>(
+    inline fun <reified VE : VersionedEntity, reified VC : VersionedEntityContainer<VE>> versionedEntity(op: VersionedEntityDefinition<VE, VC>.() -> Unit) {
+        val versionedEntityDefinition = VersionedEntityDefinition<VE, VC>().apply(op)
+        versionedEntityResources[VE::class] = VersionedEntityResource(
                 root = root,
                 versionedEntityDefinition = versionedEntityDefinition,
                 objectMapper = objectMapper,
-                reader = objectMapper.readerFor(E::class.java),
-                writer = objectMapper.writerFor(E::class.java),
+                reader = objectMapper.readerFor(VC::class.java),
+                writer = objectMapper.writerFor(VC::class.java),
                 path = Pathfinder(versionedEntityDefinition.path)
         )
     }

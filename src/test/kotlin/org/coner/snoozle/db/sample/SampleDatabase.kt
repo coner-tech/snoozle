@@ -15,7 +15,7 @@ class SampleDatabase(root: Path) : Database(root) {
         entity<Subwidget> {
             path = "widgets" / { widgetId } / "subwidgets" / { id } + ".json"
         }
-        versionedEntity<Gadget> {
+        versionedEntity<Gadget, Gadget.VersionContainer> {
             path = "gadgets" / { id } / version + ".json"
         }
         blob<GadgetPhoto> {

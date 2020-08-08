@@ -1,7 +1,14 @@
 package org.coner.snoozle.db.it
 
+import assertk.all
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isNotNull
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assumptions
+import org.coner.snoozle.db.entity.VersionArgument
+import org.coner.snoozle.db.entity.entity
+import org.coner.snoozle.db.entity.version
 import org.coner.snoozle.db.sample.Gadget
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
@@ -9,6 +16,9 @@ import org.coner.snoozle.util.readText
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
+import org.junit.jupiter.params.provider.ValueSource
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
 import java.nio.file.Path
@@ -29,28 +39,20 @@ class GadgetIntegrationTest {
     fun itShouldWriteOriginalWithCurrentVersionZero() {
         val original = Gadget(name = "Original")
 
-        database.entity<Gadget>().put(original)
+        database.versionedEntity<Gadget>().put(original, VersionArgument.New)
 
         val path = SampleDb.Gadgets.tempFile(root, original)
-        val expected = """
-            {
-                "currentVersion": {
-                    "version": 0
-                },
-                "history": []
-            }
-        """.trimIndent()
-        val actual = path.readText()
-        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
+        TODO("read output json and assert")
     }
 
     @Test
     fun itShouldWriteFirstRevision() {
+        val resource = database.versionedEntity<Gadget>()
         val original = Gadget(name = "Original")
-        database.entity<Gadget>().put(original)
+        resource.put(original, VersionArgument.New)
         val firstRevision = original.copy(name = "First Revision")
 
-        database.entity<Gadget>().put(firstRevision)
+        resource.put(firstRevision, VersionArgument.Specific(2))
 
         val expected = """
             {
@@ -135,5 +137,26 @@ class GadgetIntegrationTest {
         val actual = database.versionedEntity<Gadget>().getAllVersionsOfEntity(gadgetOne.id)
 
         Assertions.assertThat(actual).hasSize(3)
+    }
+
+    @Test
+    fun `It should get the highest version`() {
+        val gadgetOne = SampleDb.Gadgets.GadgetOne
+        val resource = database.versionedEntity<Gadget>()
+
+        val actual = resource.getEntity(gadgetOne.id)
+
+        assertThat(actual).version().isEqualTo(2)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [0, 1, 2])
+    fun `It should get specific versions`(version: Int) {
+        val gadgetVersionContainer = SampleDb.Gadgets.GadgetOneVersions[version]
+        val resource = database.versionedEntity<Gadget>()
+
+        val actual = resource.getEntity(SampleDb.Gadgets.GadgetOne.id, VersionArgument.Specific(version))
+
+        assertThat(actual).isEqualTo(gadgetVersionContainer)
     }
 }

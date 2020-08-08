@@ -1,7 +1,6 @@
 package org.coner.snoozle.db.sample
 
 import org.coner.snoozle.db.entity.Entity
-import org.coner.snoozle.db.entity.VersionedEntityContainer
 import org.coner.snoozle.util.uuid
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -86,7 +85,7 @@ object SampleDb {
 
         val GadgetOneVersions
             get() = listOf(
-                    VersionedEntityContainer(
+                    Gadget.VersionContainer(
                             entity = Gadget(
                                     id = GadgetOne.id,
                                     name = null,
@@ -95,7 +94,7 @@ object SampleDb {
                             version = 0,
                             ts = ZonedDateTime.parse("2019-05-16T21:40:00-05:00")
                     ),
-                    VersionedEntityContainer(
+                    Gadget.VersionContainer(
                             entity = Gadget(
                                     id = GadgetOne.id,
                                     name = "Gadget Won",
@@ -104,7 +103,7 @@ object SampleDb {
                             version = 1,
                             ts = ZonedDateTime.parse("2019-05-16T21:42:00-05:00")
                     ),
-                    VersionedEntityContainer(
+                    Gadget.VersionContainer(
                             entity = GadgetOne,
                             version = 2,
                             ts = ZonedDateTime.parse("2019-05-16T21:43:00-05:00")

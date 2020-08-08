@@ -1,5 +1,6 @@
 package org.coner.snoozle.db.path
 
+import org.coner.snoozle.db.entity.VersionArgument
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -24,18 +25,19 @@ class Pathfinder<R>(
         return Paths.get(mappedRelativePath)
     }
 
-    fun findPartialBySubsetArgs(vararg args: Any): Path {
-        check(args.size < recordVariablePathParts.size) {
-            "args.size (${args.size}) must be less than recordVariablePathParts.size (${recordVariablePathParts.size})"
-        }
+    fun findVersions(vararg args: Any): Path {
         val argsIterator = args.iterator()
         val pathPartsIterator = pathParts.listIterator()
+        var foundVersionArgument = false
         val mappedRelativePath = buildString {
-            while (argsIterator.hasNext()) {
+            while (!foundVersionArgument && argsIterator.hasNext()) {
                 var foundVariablePathPart = false
-                while (!foundVariablePathPart) {
+                 while (!foundVariablePathPart && !foundVersionArgument) {
                     val pathPart = pathPartsIterator.next()
                     when (pathPart) {
+                        is PathPart.VersionArgumentVariable -> {
+                            foundVersionArgument = true
+                        }
                         is PathPart.VariableExtractor<*> -> {
                             append(pathPart.extractQueryArgument(argsIterator.next()))
                             foundVariablePathPart = true
