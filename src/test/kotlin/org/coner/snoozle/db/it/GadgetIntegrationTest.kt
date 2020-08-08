@@ -132,7 +132,7 @@ class GadgetIntegrationTest {
     fun itShouldGetVersions() {
         val gadgetOne = SampleDb.Gadgets.GadgetOne
         val expected = SampleDb.Gadgets.GadgetOneVersions
-        Assumptions.assumeThat(expected.last()).isEqualTo(SampleDb.Gadgets.GadgetOne)
+        Assumptions.assumeThat(expected.last().entity).isEqualTo(SampleDb.Gadgets.GadgetOne)
 
         val actual = database.versionedEntity<Gadget>().getAllVersionsOfEntity(gadgetOne.id)
 
