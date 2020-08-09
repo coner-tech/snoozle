@@ -2,6 +2,8 @@ package org.coner.snoozle.db.it
 
 import assertk.all
 import assertk.assertThat
+import assertk.assertions.hasSize
+import assertk.assertions.index
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import org.assertj.core.api.Assertions
@@ -46,7 +48,12 @@ class GadgetIntegrationTest {
     }
 
     @Test
-    fun itShouldWriteFirstRevision() {
+    fun `It should write first revision with highest version argument`() {
+        TODO()
+    }
+
+    @Test
+    fun `It should write first revision with specific version argument`() {
         val resource = database.versionedEntity<Gadget>()
         val original = Gadget(name = "Original")
         resource.put(original, VersionArgument.New)
@@ -74,6 +81,11 @@ class GadgetIntegrationTest {
         val path = SampleDb.Gadgets.tempFile(root, firstRevision)
         val actual = path.readText()
         JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
+    }
+
+    @Test
+    fun `It should fail to write revisions with invalid specific version arguments`() {
+        TODO()
     }
 
     @Test
@@ -136,7 +148,7 @@ class GadgetIntegrationTest {
 
         val actual = database.versionedEntity<Gadget>().getAllVersionsOfEntity(gadgetOne.id)
 
-        Assertions.assertThat(actual).hasSize(3)
+        assertThat(actual).isEqualTo(expected)
     }
 
     @Test
@@ -158,5 +170,10 @@ class GadgetIntegrationTest {
         val actual = resource.getEntity(SampleDb.Gadgets.GadgetOne.id, VersionArgument.Specific(version))
 
         assertThat(actual).isEqualTo(gadgetVersionContainer)
+    }
+
+    @Test
+    fun `it should list all by highest version`() {
+        TODO()
     }
 }

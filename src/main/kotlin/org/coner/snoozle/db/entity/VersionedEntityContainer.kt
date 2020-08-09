@@ -8,7 +8,7 @@ abstract class VersionedEntityContainer<E : VersionedEntity>(
         val entity: E,
         val version: Int,
         val ts: ZonedDateTime
-) : Record {
+) : Record, Comparable<VersionedEntityContainer<E>> {
 
         override fun equals(other: Any?): Boolean {
                 if (this === other) return true
@@ -26,5 +26,9 @@ abstract class VersionedEntityContainer<E : VersionedEntity>(
                 result = 31 * result + version
                 result = 31 * result + ts.hashCode()
                 return result
+        }
+
+        override fun compareTo(other: VersionedEntityContainer<E>): Int {
+                return version.compareTo(other.version)
         }
 }

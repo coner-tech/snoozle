@@ -7,6 +7,7 @@ import org.coner.snoozle.db.path.Pathfinder
 import org.coner.snoozle.util.nameWithoutExtension
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.streams.toList
 
 class VersionedEntityResource<VE : VersionedEntity, VC : VersionedEntityContainer<VE>>(
         private val root: Path,
@@ -31,7 +32,17 @@ class VersionedEntityResource<VE : VersionedEntity, VC : VersionedEntityContaine
     }
 
     fun getAllVersionsOfEntity(vararg args: Any): List<VC> {
-        TODO()
+        require(args.isNotEmpty()) { "Minimum one argument" }
+        val relativeVersionsPath = path.findVersions(*args)
+        val versionsPath = root.resolve(relativeVersionsPath)
+        if (!Files.exists(versionsPath)) {
+            throw EntityIoException.NotFound("No versions found for entity: $relativeVersionsPath")
+        }
+        return Files.list(versionsPath)
+                .filter { Files.isRegularFile(it) && path.isRecord(root.relativize(it)) }
+                .map { read(it) }
+                .toList()
+                .sorted()
     }
 
     private fun read(file: Path): VC {
