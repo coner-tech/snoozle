@@ -26,12 +26,12 @@ abstract class Database(
         return types.entityResources[type] as EntityResource<E>
     }
 
-    inline fun <reified VE : VersionedEntity> versionedEntity(): VersionedEntityResource<VE, VersionedEntityContainer<VE>> {
+    inline fun <reified VE : VersionedEntity> versionedEntity(): VersionedEntityResource<VE> {
         return versionedEntity(VE::class)
     }
 
-    fun <VE : VersionedEntity> versionedEntity(entity: KClass<VE>): VersionedEntityResource<VE, VersionedEntityContainer<VE>> {
-        return types.versionedEntityResources[entity] as VersionedEntityResource<VE, VersionedEntityContainer<VE>>
+    fun <VE : VersionedEntity> versionedEntity(entity: KClass<VE>): VersionedEntityResource<VE> {
+        return types.versionedEntityResources[entity] as VersionedEntityResource<VE>
     }
 
     inline fun <reified B : Blob> blob(): BlobResource<B> {

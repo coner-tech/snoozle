@@ -12,16 +12,16 @@ import java.util.function.BiPredicate
 import java.util.stream.Collectors
 import kotlin.streams.toList
 
-class VersionedEntityResource<VE : VersionedEntity, VC : VersionedEntityContainer<VE>>(
+class VersionedEntityResource<VE : VersionedEntity>(
         private val root: Path,
-        internal val versionedEntityDefinition: VersionedEntityDefinition<VE, VC>,
+        internal val versionedEntityDefinition: VersionedEntityDefinition<VE>,
         private val objectMapper: ObjectMapper,
         private val reader: ObjectReader,
         private val writer: ObjectWriter,
-        private val path: Pathfinder<VC>
+        private val path: Pathfinder<VersionedEntityContainer<VE>>
 ) {
 
-    fun getEntity(vararg args: Any): VC {
+    fun getEntity(vararg args: Any): VersionedEntityContainer<VE> {
         require(args.isNotEmpty()) { "Minimum one argument" }
         val versionArgument = args.singleOrNull { it is VersionArgument.Readable }
         val useArgs = args.toMutableList()
@@ -34,7 +34,7 @@ class VersionedEntityResource<VE : VersionedEntity, VC : VersionedEntityContaine
         return read(file)
     }
 
-    fun getAllVersionsOfEntity(vararg args: Any): List<VC> {
+    fun getAllVersionsOfEntity(vararg args: Any): List<VersionedEntityContainer<VE>> {
         require(args.isNotEmpty()) { "Minimum one argument" }
         val relativeVersionsPath = path.findVersions(*args)
         val versionsPath = root.resolve(relativeVersionsPath)
@@ -48,11 +48,11 @@ class VersionedEntityResource<VE : VersionedEntity, VC : VersionedEntityContaine
                 .sorted()
     }
 
-    private fun read(file: Path): VC {
+    private fun read(file: Path): VersionedEntityContainer<VE> {
         return if (Files.exists(file)) {
             Files.newInputStream(file).use { inputStream ->
                 try {
-                    reader.readValue<VC>(inputStream)
+                    reader.readValue<VersionedEntityContainer<VE>>(inputStream)
                 } catch (t: Throwable) {
                     throw EntityIoException.ReadFailure("Failed to read versioned entity: ${file.relativize(root)}", t)
                 }
@@ -77,7 +77,7 @@ class VersionedEntityResource<VE : VersionedEntity, VC : VersionedEntityContaine
         return VersionArgument.Specific(version)
     }
 
-    fun listAll(): List<VC> {
+    fun listAll(): List<VersionedEntityContainer<VE>> {
         return Files.find(
                 root,
                 Int.MAX_VALUE,
@@ -94,7 +94,7 @@ class VersionedEntityResource<VE : VersionedEntity, VC : VersionedEntityContaine
                 .map { it() }
     }
 
-    fun put(entity: VE, versionArgument: VersionArgument.Writable): VC {
+    fun put(entity: VE, versionArgument: VersionArgument.Writable): VersionedEntityContainer<VE> {
         TODO()
     }
 

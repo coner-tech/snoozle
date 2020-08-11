@@ -1,6 +1,7 @@
 package org.coner.snoozle.db.sample
 
 import org.coner.snoozle.db.entity.Entity
+import org.coner.snoozle.db.entity.VersionedEntityContainer
 import org.coner.snoozle.util.uuid
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -87,7 +88,7 @@ object SampleDb {
 
         val GadgetOneVersions
             get() = listOf(
-                    Gadget.VersionContainer(
+                    VersionedEntityContainer(
                             entity = Gadget(
                                     id = GadgetOne.id,
                                     name = null,
@@ -96,7 +97,7 @@ object SampleDb {
                             version = 0,
                             ts = ZonedDateTime.parse("2019-05-16T21:40:00-05:00")
                     ),
-                    Gadget.VersionContainer(
+                    VersionedEntityContainer(
                             entity = Gadget(
                                     id = GadgetOne.id,
                                     name = "Gadget Won",
@@ -105,7 +106,7 @@ object SampleDb {
                             version = 1,
                             ts = ZonedDateTime.parse("2019-05-16T21:42:00-05:00")
                     ),
-                    Gadget.VersionContainer(
+                    VersionedEntityContainer(
                             entity = GadgetOne,
                             version = 2,
                             ts = ZonedDateTime.parse("2019-05-16T21:43:00-05:00")
@@ -113,7 +114,7 @@ object SampleDb {
             )
         val GadgetTwoVersions
             get() = listOf(
-                    Gadget.VersionContainer(
+                    VersionedEntityContainer(
                             entity = Gadget(
                                     id = GadgetTwo.id,
                                     name = "Gadget Too",
@@ -122,7 +123,7 @@ object SampleDb {
                             version = 0,
                             ts = ZonedDateTime.parse("2020-08-09T17:47:00-05:00")
                     ),
-                    Gadget.VersionContainer(
+                    VersionedEntityContainer(
                             entity = Gadget(
                                     id = GadgetTwo.id,
                                     name = "Gadget Two",

@@ -5,9 +5,9 @@ import org.coner.snoozle.db.path.PathPart
 import java.util.*
 import kotlin.reflect.KClass
 
-class VersionedEntityDefinition<VE : VersionedEntity, VC : VersionedEntityContainer<VE>> : RecordDefinition<VC>() {
+class VersionedEntityDefinition<VE : VersionedEntity> : RecordDefinition<VersionedEntityContainer<VE>>() {
 
-    operator fun String.div(uuidExtractor: VE.() -> UUID): MutableList<PathPart<VC>> {
+    operator fun String.div(uuidExtractor: VE.() -> UUID): MutableList<PathPart<VersionedEntityContainer<VE>>> {
         return mutableListOf(
                 PathPart.StringValue(this),
                 PathPart.DirectorySeparator(),
@@ -15,17 +15,17 @@ class VersionedEntityDefinition<VE : VersionedEntity, VC : VersionedEntityContai
         )
     }
 
-    operator fun MutableList<PathPart<VC>>.div(
-            versionArgumentExtractor: VersionArgumentExtractor<VC>
-    ): MutableList<PathPart<VC>> {
+    operator fun MutableList<PathPart<VersionedEntityContainer<VE>>>.div(
+            versionArgumentExtractor: VersionArgumentExtractor<VersionedEntityContainer<VE>>
+    ): MutableList<PathPart<VersionedEntityContainer<VE>>> {
         add(PathPart.DirectorySeparator())
         add(PathPart.VersionArgumentVariable())
         return this
     }
 
-    operator fun MutableList<PathPart<VC>>.plus(
+    operator fun MutableList<PathPart<VersionedEntityContainer<VE>>>.plus(
             extension: String
-    ): MutableList<PathPart<VC>> {
+    ): MutableList<PathPart<VersionedEntityContainer<VE>>> {
         add(PathPart.StringValue(extension))
         return this
     }
@@ -33,6 +33,6 @@ class VersionedEntityDefinition<VE : VersionedEntity, VC : VersionedEntityContai
     class VersionArgumentExtractor<VC : VersionedEntityContainer<*>>
         : PathArgumentExtractor<VC, Int>({ version })
 
-    val version: VersionArgumentExtractor<VC>
+    val version: VersionArgumentExtractor<VersionedEntityContainer<VE>>
         get() = VersionArgumentExtractor()
 }

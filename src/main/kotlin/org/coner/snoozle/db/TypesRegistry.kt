@@ -1,5 +1,7 @@
 package org.coner.snoozle.db
 
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.JavaType
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.coner.snoozle.db.blob.Blob
 import org.coner.snoozle.db.blob.BlobDefinition
@@ -15,7 +17,7 @@ class TypesRegistry(
         op: TypesRegistry.() -> Unit
 ) {
     val entityResources = mutableMapOf<KClass<*>, EntityResource<*>>()
-    val versionedEntityResources = mutableMapOf<KClass<*>, VersionedEntityResource<*, *>>()
+    val versionedEntityResources = mutableMapOf<KClass<*>, VersionedEntityResource<*>>()
     val blobResources = mutableMapOf<KClass<*>, BlobResource<*>>()
 
     init {
@@ -34,14 +36,15 @@ class TypesRegistry(
         )
     }
 
-    inline fun <reified VE : VersionedEntity, reified VC : VersionedEntityContainer<VE>> versionedEntity(op: VersionedEntityDefinition<VE, VC>.() -> Unit) {
-        val versionedEntityDefinition = VersionedEntityDefinition<VE, VC>().apply(op)
+    inline fun <reified VE : VersionedEntity> versionedEntity(op: VersionedEntityDefinition<VE>.() -> Unit) {
+        val versionedEntityDefinition = VersionedEntityDefinition<VE>().apply(op)
+        val jacksonTypeReference = object : TypeReference<VersionedEntityContainer<VE>>() { }
         versionedEntityResources[VE::class] = VersionedEntityResource(
                 root = root,
                 versionedEntityDefinition = versionedEntityDefinition,
                 objectMapper = objectMapper,
-                reader = objectMapper.readerFor(VC::class.java),
-                writer = objectMapper.writerFor(VC::class.java),
+                reader = objectMapper.readerFor(jacksonTypeReference),
+                writer = objectMapper.writerFor(jacksonTypeReference),
                 path = Pathfinder(versionedEntityDefinition.path)
         )
     }
