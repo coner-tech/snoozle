@@ -7,6 +7,9 @@ import org.coner.snoozle.db.path.Pathfinder
 import org.coner.snoozle.util.nameWithoutExtension
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.BasicFileAttributes
+import java.util.function.BiPredicate
+import java.util.stream.Collectors
 import kotlin.streams.toList
 
 class VersionedEntityResource<VE : VersionedEntity, VC : VersionedEntityContainer<VE>>(
@@ -18,7 +21,7 @@ class VersionedEntityResource<VE : VersionedEntity, VC : VersionedEntityContaine
         private val path: Pathfinder<VC>
 ) {
 
-    fun getEntity(vararg args: Any): VersionedEntityContainer<VE> {
+    fun getEntity(vararg args: Any): VC {
         require(args.isNotEmpty()) { "Minimum one argument" }
         val versionArgument = args.singleOrNull { it is VersionArgument.Readable }
         val useArgs = args.toMutableList()
@@ -74,7 +77,24 @@ class VersionedEntityResource<VE : VersionedEntity, VC : VersionedEntityContaine
         return VersionArgument.Specific(version)
     }
 
-    fun put(entity: VE, versionArgument: VersionArgument.Writable): VersionedEntityContainer<VE> {
+    fun listAll(): List<VC> {
+        return Files.find(
+                root,
+                Int.MAX_VALUE,
+                BiPredicate { candidate: Path, attrs: BasicFileAttributes ->
+                    attrs.isDirectory && path.isVersionedEntityContainerListing(root.relativize(candidate))
+                }
+        )
+                .sorted()
+                .map { versionListing: Path -> {
+                    val args = path.extractArgsWithoutVersion(versionListing)
+                    getEntity(*args)
+                } }
+                .collect(Collectors.toList())
+                .map { it() }
+    }
+
+    fun put(entity: VE, versionArgument: VersionArgument.Writable): VC {
         TODO()
     }
 

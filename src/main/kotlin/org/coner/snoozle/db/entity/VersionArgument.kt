@@ -11,9 +11,9 @@ sealed class VersionArgument {
         override val value = version.toString()
     }
     object Highest : VersionArgument(), Readable {
-        override val value = "DiscreteVersionArgument.Highest"
+        override val value = "VersionArgument.Highest"
     }
     object New : VersionArgument(), Writable {
-        override val value = "DiscreteVersionArgument.New"
+        override val value = "VersionArgument.New"
     }
 }

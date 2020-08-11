@@ -78,6 +78,12 @@ object SampleDb {
                     name = "Gadget One",
                     silly = null
             )
+        val GadgetTwo
+            get() = Gadget(
+                    id = uuid("ed98db81-0b00-4184-8bf4-37d129bdafb9"),
+                    name = "Gadget Two",
+                    silly = null
+            )
 
         val GadgetOneVersions
             get() = listOf(
@@ -104,6 +110,33 @@ object SampleDb {
                             version = 2,
                             ts = ZonedDateTime.parse("2019-05-16T21:43:00-05:00")
                     )
+            )
+        val GadgetTwoVersions
+            get() = listOf(
+                    Gadget.VersionContainer(
+                            entity = Gadget(
+                                    id = GadgetTwo.id,
+                                    name = "Gadget Too",
+                                    silly = ZonedDateTime.parse("2020-08-09T17:49:38-05:00")
+                            ),
+                            version = 0,
+                            ts = ZonedDateTime.parse("2020-08-09T17:47:00-05:00")
+                    ),
+                    Gadget.VersionContainer(
+                            entity = Gadget(
+                                    id = GadgetTwo.id,
+                                    name = "Gadget Two",
+                                    silly = null
+                            ),
+                            version = 1,
+                            ts = ZonedDateTime.parse("2020-08-09T17:51:00-05:00")
+                    )
+            )
+
+        val allByHighestVersion
+            get() = listOf(
+                    GadgetOneVersions.last(),
+                    GadgetTwoVersions.last()
             )
 
         override fun tempFile(root: Path, entity: Gadget): Path {

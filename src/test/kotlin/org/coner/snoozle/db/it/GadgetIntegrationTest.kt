@@ -174,6 +174,11 @@ class GadgetIntegrationTest {
 
     @Test
     fun `it should list all by highest version`() {
-        TODO()
+        val allHighestVersions = SampleDb.Gadgets.allByHighestVersion
+        val resource = database.versionedEntity<Gadget>()
+
+        val actual = resource.listAll()
+
+        assertThat(actual).isEqualTo(allHighestVersions)
     }
 }

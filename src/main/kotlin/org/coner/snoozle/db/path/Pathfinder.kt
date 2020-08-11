@@ -1,6 +1,5 @@
 package org.coner.snoozle.db.path
 
-import org.coner.snoozle.db.entity.VersionArgument
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -85,8 +84,6 @@ class Pathfinder<R>(
         return Paths.get(mappedRelativePath)
     }
 
-    private val directorySeparatorPathPart by lazy { PathPart.DirectorySeparator<R>() }
-
     fun isRecord(candidate: Path): Boolean {
         return try {
             var remainingCandidateParts = candidate.toString()
@@ -100,10 +97,43 @@ class Pathfinder<R>(
                 }
                 remainingCandidateParts = remainingCandidateParts.substring(matcher.end())
             }
-            return remainingCandidateParts.isEmpty()
+            remainingCandidateParts.isEmpty()
         } catch (t: Throwable) {
             false
         }
+    }
+
+    private val versionedEntityContainerListingPathParts by lazy {
+        pathParts.takeWhile { it !is PathPart.VersionArgumentVariable }
+    }
+
+    fun isVersionedEntityContainerListing(candidate: Path): Boolean {
+        return try {
+            var remainingCandidateParts = candidate.toString()
+            versionedEntityContainerListingPathParts.forEachIndexed { index, pathPart ->
+                val matcher = pathPart.regex.matcher(remainingCandidateParts)
+                if (!matcher.find() || matcher.start() != 0) {
+                    return index == versionedEntityContainerListingPathParts.lastIndex && pathPart is PathPart.DirectorySeparator
+                }
+                remainingCandidateParts = remainingCandidateParts.substring(matcher.end())
+            }
+            remainingCandidateParts.isEmpty()
+        } catch (t: Throwable) {
+            false
+        }
+    }
+
+    fun extractArgsWithoutVersion(versionListing: Path): Array<Any> {
+        var remainingPathParts = versionListing.toString()
+        val args = mutableListOf<Any>()
+        versionedEntityContainerListingPathParts.forEachIndexed { index, pathPart ->
+            if (index == versionedEntityContainerListingPathParts.lastIndex && pathPart is PathPart.DirectorySeparator) return@forEachIndexed
+            val matcher = pathPart.regex.matcher(remainingPathParts)
+            require(matcher.find()) { "Only use with paths that have already validated with isVersionedEntityContainerListing(Path)" }
+            args += pathPart.produceQueryArgument(matcher.group()) ?: return@forEachIndexed
+            remainingPathParts = remainingPathParts.substring(matcher.end())
+        }
+        return args.toTypedArray()
     }
 
 }
