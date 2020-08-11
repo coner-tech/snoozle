@@ -99,16 +99,14 @@ class Pathfinder<R>(
         pathParts.takeWhile { it !is PathPart.VersionArgumentVariable }
     }
 
-    private val verisonedEntityContainerListingCandidatePath: Pattern by lazy {
+    private val versionedEntityContainerListingCandidatePath: Pattern by lazy {
         val indexOfLastDirectorySeparator = pathParts.indexOfLast { it is PathPart.DirectorySeparator }
-        val joined = pathParts.take(indexOfLastDirectorySeparator)
-                .map { it.regex.pattern() }
-                .joinToString("")
+        val joined = pathParts.take(indexOfLastDirectorySeparator).joinToString("") { it.regex.pattern() }
         Pattern.compile("^$joined$")
     }
 
     fun isVersionedEntityContainerListing(candidate: Path): Boolean {
-        return verisonedEntityContainerListingCandidatePath.matcher(candidate.toString()).matches()
+        return versionedEntityContainerListingCandidatePath.matcher(candidate.toString()).matches()
     }
 
     fun extractArgsWithoutVersion(versionListing: Path): Array<Any> {
