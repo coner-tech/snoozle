@@ -86,8 +86,9 @@ class Pathfinder<R>(
     }
 
     private val recordCandidatePath: Pattern by lazy {
-        val sum = pathParts.map { it.regex.pattern() }.joinToString("")
-        Pattern.compile("^$sum$")
+        val joined = pathParts.map { it.regex.pattern() }
+                .joinToString("")
+        Pattern.compile("^$joined$")
     }
 
     fun isRecord(candidate: Path): Boolean {
@@ -98,20 +99,16 @@ class Pathfinder<R>(
         pathParts.takeWhile { it !is PathPart.VersionArgumentVariable }
     }
 
+    private val verisonedEntityContainerListingCandidatePath: Pattern by lazy {
+        val indexOfLastDirectorySeparator = pathParts.indexOfLast { it is PathPart.DirectorySeparator }
+        val joined = pathParts.take(indexOfLastDirectorySeparator)
+                .map { it.regex.pattern() }
+                .joinToString("")
+        Pattern.compile("^$joined$")
+    }
+
     fun isVersionedEntityContainerListing(candidate: Path): Boolean {
-        return try {
-            var remainingCandidateParts = candidate.toString()
-            versionedEntityContainerListingPathParts.forEachIndexed { index, pathPart ->
-                val matcher = pathPart.regex.matcher(remainingCandidateParts)
-                if (!matcher.find() || matcher.start() != 0) {
-                    return index == versionedEntityContainerListingPathParts.lastIndex && pathPart is PathPart.DirectorySeparator
-                }
-                remainingCandidateParts = remainingCandidateParts.substring(matcher.end())
-            }
-            remainingCandidateParts.isEmpty()
-        } catch (t: Throwable) {
-            false
-        }
+        return verisonedEntityContainerListingCandidatePath.matcher(candidate.toString()).matches()
     }
 
     fun extractArgsWithoutVersion(versionListing: Path): Array<Any> {
