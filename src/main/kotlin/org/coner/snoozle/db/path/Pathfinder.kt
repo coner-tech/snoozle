@@ -2,6 +2,7 @@ package org.coner.snoozle.db.path
 
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.regex.Pattern
 
 class Pathfinder<R>(
         private val pathParts: List<PathPart<R>>
@@ -84,23 +85,13 @@ class Pathfinder<R>(
         return Paths.get(mappedRelativePath)
     }
 
+    private val recordCandidatePath: Pattern by lazy {
+        val sum = pathParts.map { it.regex.pattern() }.joinToString("")
+        Pattern.compile("^$sum$")
+    }
+
     fun isRecord(candidate: Path): Boolean {
-        return try {
-            var remainingCandidateParts = candidate.toString()
-            for (pathPart in pathParts) {
-                val matcher = pathPart.regex.matcher(remainingCandidateParts)
-                if (!matcher.find()) {
-                    break
-                }
-                if (matcher.start() != 0) {
-                    break
-                }
-                remainingCandidateParts = remainingCandidateParts.substring(matcher.end())
-            }
-            remainingCandidateParts.isEmpty()
-        } catch (t: Throwable) {
-            false
-        }
+        return recordCandidatePath.matcher(candidate.toString()).matches()
     }
 
     private val versionedEntityContainerListingPathParts by lazy {
