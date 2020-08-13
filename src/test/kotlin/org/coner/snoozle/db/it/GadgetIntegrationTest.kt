@@ -65,6 +65,7 @@ class GadgetIntegrationTest {
 
     @Test
     fun `It should write first revision with specific version argument`() {
+        TODO()
 //        val original = Gadget(name = "Original")
 //        resource.put(original, VersionArgument.Auto)
 //        val firstRevision = original.copy(name = "First Revision")
@@ -100,6 +101,7 @@ class GadgetIntegrationTest {
 
     @Test
     fun itShouldWriteTimestampAsIsoString() {
+        TODO()
 //        val timestampAsString = "2019-05-18T20:55:01-04:00"
 //        val gadget = Gadget(silly = ZonedDateTime.parse(timestampAsString))
 //
@@ -119,6 +121,7 @@ class GadgetIntegrationTest {
 
     @Test
     fun itShouldWriteSecondRevision() {
+        TODO()
 //        val original = Gadget(name = "Original")
 //        resource.put(original, VersionArgument.Manual(0))
 //        val firstRevision = original.copy(name = "First Revision")
