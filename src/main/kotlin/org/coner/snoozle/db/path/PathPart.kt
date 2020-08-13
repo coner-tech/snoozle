@@ -14,7 +14,7 @@ sealed class PathPart<R> {
     abstract fun forRecord(record: R): String
     abstract val regex: Pattern
 
-    class StringValue<R>(val value: String) : PathPart<R>() {
+    class StringValue<R>(val value: String) : PathPart<R>(), StaticExtractor<R> {
 
         override fun extractQueryArgument(arg: Any?) = value
         override fun produceQueryArgument(pathPart: String) = null
@@ -22,7 +22,7 @@ sealed class PathPart<R> {
         override val regex = Pattern.compile(value)
     }
 
-    class DirectorySeparator<R> : PathPart<R>() {
+    class DirectorySeparator<R> : PathPart<R>(), StaticExtractor<R> {
         private val regexPattern by lazy { Pattern.compile(File.separator) }
 
         override fun extractQueryArgument(arg: Any?) = File.separator
@@ -31,6 +31,7 @@ sealed class PathPart<R> {
         override val regex = regexPattern
     }
 
+    interface StaticExtractor<R>
     interface VariableExtractor<R>
 
     class UuidVariable<R>(
@@ -63,9 +64,8 @@ sealed class PathPart<R> {
             return (arg as VersionArgument).value
         }
         override fun produceQueryArgument(pathPart: String) = when {
-            pathPart == VersionArgument.New.value -> VersionArgument.New
-            pathPart == VersionArgument.Highest.value -> VersionArgument.Highest
-            positiveInteger.matcher(pathPart).matches() -> VersionArgument.Specific(pathPart.toInt())
+            pathPart == VersionArgument.Auto.value -> VersionArgument.Auto
+            positiveInteger.matcher(pathPart).matches() -> VersionArgument.Manual(pathPart.toInt())
             else -> throw IllegalArgumentException("Invalid pathPart segment: $pathPart")
         }
         override fun forRecord(record: R) = (record as VersionedEntityContainer<*>).version.toString()

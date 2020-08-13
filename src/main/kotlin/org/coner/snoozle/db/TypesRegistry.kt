@@ -32,7 +32,10 @@ class TypesRegistry(
                 objectMapper = objectMapper,
                 reader = objectMapper.readerFor(E::class.java),
                 writer = objectMapper.writerFor(E::class.java),
-                path = Pathfinder(entityDefinition.path)
+                path = Pathfinder(
+                        root = root,
+                        pathParts = entityDefinition.path
+                )
         )
     }
 
@@ -45,7 +48,10 @@ class TypesRegistry(
                 objectMapper = objectMapper,
                 reader = objectMapper.readerFor(jacksonTypeReference),
                 writer = objectMapper.writerFor(jacksonTypeReference),
-                path = Pathfinder(versionedEntityDefinition.path)
+                path = VersionedEntityPathfinder(
+                        root = root,
+                        pathParts = versionedEntityDefinition.path
+                )
         )
     }
 
@@ -54,7 +60,10 @@ class TypesRegistry(
         blobResources[B::class] = BlobResource(
                 root = root,
                 definition =  blobDefinition,
-                path = Pathfinder(blobDefinition.path)
+                path = Pathfinder(
+                        root = root,
+                        pathParts = blobDefinition.path
+                )
         )
     }
 }

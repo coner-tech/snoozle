@@ -1,11 +1,15 @@
 package org.coner.snoozle.db.path
 
-import java.nio.file.Path
-import java.nio.file.Paths
+import java.io.IOException
+import java.nio.file.*
+import java.nio.file.attribute.BasicFileAttributes
+import java.util.function.BiPredicate
 import java.util.regex.Pattern
+import java.util.stream.Stream
 
-class Pathfinder<R>(
-        private val pathParts: List<PathPart<R>>
+open class Pathfinder<R>(
+        protected val root: Path,
+        protected val pathParts: List<PathPart<R>>
 ) {
 
     private val recordVariablePathParts by lazy {
@@ -22,31 +26,6 @@ class Pathfinder<R>(
                 else -> null
             }
         }.joinToString(separator = "") { (pathPart, arg) -> pathPart.extractQueryArgument(arg) }
-        return Paths.get(mappedRelativePath)
-    }
-
-    fun findVersions(vararg args: Any): Path {
-        val argsIterator = args.iterator()
-        val pathPartsIterator = pathParts.listIterator()
-        var foundVersionArgument = false
-        val mappedRelativePath = buildString {
-            while (!foundVersionArgument && argsIterator.hasNext()) {
-                var foundVariablePathPart = false
-                 while (!foundVariablePathPart && !foundVersionArgument) {
-                    val pathPart = pathPartsIterator.next()
-                    when (pathPart) {
-                        is PathPart.VersionArgumentVariable -> {
-                            foundVersionArgument = true
-                        }
-                        is PathPart.VariableExtractor<*> -> {
-                            append(pathPart.extractQueryArgument(argsIterator.next()))
-                            foundVariablePathPart = true
-                        }
-                        else -> append(pathPart.extractQueryArgument(null))
-                    }
-                }
-            }
-        }
         return Paths.get(mappedRelativePath)
     }
 
@@ -86,8 +65,7 @@ class Pathfinder<R>(
     }
 
     private val recordCandidatePath: Pattern by lazy {
-        val joined = pathParts.map { it.regex.pattern() }
-                .joinToString("")
+        val joined = pathParts.map { it.regex.pattern() }.joinToString("")
         Pattern.compile("^$joined$")
     }
 
@@ -95,31 +73,27 @@ class Pathfinder<R>(
         return recordCandidatePath.matcher(candidate.toString()).matches()
     }
 
-    private val versionedEntityContainerListingPathParts by lazy {
-        pathParts.takeWhile { it !is PathPart.VersionArgumentVariable }
-    }
-
-    private val versionedEntityContainerListingCandidatePath: Pattern by lazy {
-        val indexOfLastDirectorySeparator = pathParts.indexOfLast { it is PathPart.DirectorySeparator }
-        val joined = pathParts.take(indexOfLastDirectorySeparator).joinToString("") { it.regex.pattern() }
-        Pattern.compile("^$joined$")
-    }
-
-    fun isVersionedEntityContainerListing(candidate: Path): Boolean {
-        return versionedEntityContainerListingCandidatePath.matcher(candidate.toString()).matches()
-    }
-
-    fun extractArgsWithoutVersion(versionListing: Path): Array<Any> {
-        var remainingPathParts = versionListing.toString()
-        val args = mutableListOf<Any>()
-        versionedEntityContainerListingPathParts.forEachIndexed { index, pathPart ->
-            if (index == versionedEntityContainerListingPathParts.lastIndex && pathPart is PathPart.DirectorySeparator) return@forEachIndexed
-            val matcher = pathPart.regex.matcher(remainingPathParts)
-            require(matcher.find()) { "Only use with paths that have already validated with isVersionedEntityContainerListing(Path)" }
-            args += pathPart.produceQueryArgument(matcher.group()) ?: return@forEachIndexed
-            remainingPathParts = remainingPathParts.substring(matcher.end())
+    protected val listingStart: Path by lazy {
+        val firstIndexOfVariablePathPart = pathParts.indexOfFirst { it is PathPart.VariableExtractor<*> }
+        val staticPathParts = pathParts.take(firstIndexOfVariablePathPart)
+        staticPathParts.fold(root) { accumulator, pathPart ->
+            when (pathPart) {
+                is PathPart.DirectorySeparator -> accumulator
+                else -> accumulator.resolve(pathPart.extractQueryArgument(null))
+            }
         }
-        return args.toTypedArray()
+    }
+
+    protected val listingMaxDepth: Int by lazy {
+        val firstIndexOfVariablePathPart = pathParts.indexOfFirst { it is PathPart.VariableExtractor<*> }
+        pathParts.subList(firstIndexOfVariablePathPart, pathParts.lastIndex)
+                .count { it is PathPart.DirectorySeparator }
+    }
+
+    open fun listAll(): Stream<Path> {
+        return Files.find(listingStart, listingMaxDepth, BiPredicate { candidate: Path, attrs: BasicFileAttributes ->
+                    attrs.isDirectory && isRecord(root.relativize(candidate))
+        } ).sorted()
     }
 
 }

@@ -62,7 +62,7 @@ class GadgetPhotoCitationIntegrationTest {
                 name = "Gadget Without Photo Citations",
                 silly = ZonedDateTime.parse("2020-01-01T12:09:00-05:00")
         )
-        database.versionedEntity<Gadget>().put(gadgetTwo, VersionArgument.New)
+        database.versionedEntity<Gadget>().put(gadgetTwo, VersionArgument.Auto)
         val firstCitation = GadgetPhotoCitation(
                 gadgetId = gadgetTwo.id,
                 id = "first citation"
