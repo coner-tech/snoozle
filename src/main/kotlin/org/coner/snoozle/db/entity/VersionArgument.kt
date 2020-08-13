@@ -4,7 +4,7 @@ sealed class VersionArgument {
 
     abstract val value: String
 
-    class Manual(version: Int) : VersionArgument() {
+    class Manual(val version: Int) : VersionArgument() {
         override val value = version.toString()
     }
     object Auto : VersionArgument() {

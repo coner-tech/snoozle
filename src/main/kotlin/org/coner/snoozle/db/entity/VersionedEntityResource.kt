@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.ObjectReader
 import com.fasterxml.jackson.databind.ObjectWriter
 import org.coner.snoozle.util.readText
-import java.nio.file.Files
-import java.nio.file.Path
+import java.nio.file.*
+import java.time.ZonedDateTime
 import java.util.stream.Stream
 import kotlin.streams.toList
 
@@ -97,7 +97,95 @@ class VersionedEntityResource<VE : VersionedEntity>(
     }
 
     fun put(entity: VE, versionArgument: VersionArgument): VersionedEntityContainer<VE> {
-        TODO()
+        val highestVersion = resolveHighestVersion(entity)
+        val useVersionArgument = when(versionArgument) {
+            is VersionArgument.Manual -> {
+                if (highestVersion != null) {
+                    require(versionArgument.version == highestVersion + 1) {
+                        "Version argument does not correctly increment version"
+                    }
+                } else {
+                    require(versionArgument.version == 0) {
+                        "Version argument should be zero"
+                    }
+                }
+                VersionArgument.Manual(versionArgument.version)
+            }
+            VersionArgument.Auto -> when (highestVersion) {
+                null -> VersionArgument.Manual(0)
+                else -> VersionArgument.Manual(highestVersion + 1)
+            }
+        }
+        val container = VersionedEntityContainer(
+                entity = entity,
+                version = useVersionArgument.version,
+                ts = ZonedDateTime.now()
+        )
+        val relativeRecordPath = path.findRecord(container)
+        val recordPath = root.resolve(relativeRecordPath)
+        val temporaryRecordPath = recordPath.resolveSibling("${container.version}.tmp")
+        if (!Files.exists(recordPath.parent)) {
+            try {
+                Files.createDirectories(recordPath.parent)
+            } catch (t: Throwable) {
+                throw EntityIoException.WriteFailure("Failed to create version listing for record: $relativeRecordPath", t)
+            }
+        }
+        try {
+            Files.newOutputStream(temporaryRecordPath, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW).use { temporaryRecordOutputStream ->
+                writer.writeValue(temporaryRecordOutputStream, container)
+            }
+        } catch (t: Throwable) {
+            throw EntityIoException.WriteFailure("Failed to write record to temporary file")
+        }
+        fun attemptToDeleteTemporaryRecord() {
+            try {
+                Files.deleteIfExists(temporaryRecordPath)
+            } catch (t: Throwable) {
+                // best-effort mess clean-up, don't actually care
+            }
+        }
+        val temporaryHighestVersionMetadata = recordPath.resolveSibling("highest.version.tmp")
+        val temporaryHighestVersionMetadataOpenOptions = mutableListOf<OpenOption>(StandardOpenOption.WRITE)
+        if (container.version == 0) {
+            temporaryHighestVersionMetadataOpenOptions += StandardOpenOption.CREATE_NEW
+        }
+        try {
+            Files.writeString(temporaryHighestVersionMetadata, useVersionArgument.value, *temporaryHighestVersionMetadataOpenOptions.toTypedArray())
+        } catch (t: Throwable) {
+            attemptToDeleteTemporaryRecord()
+            throw EntityIoException.WriteFailure("Failed to write highest version metadata to temporary file", t)
+        }
+        fun attemptToDeleteTemporaryHighestVersionMetadata() {
+            try {
+                Files.deleteIfExists(temporaryHighestVersionMetadata)
+            } catch (t: Throwable) {
+                // best-effort mess clean-up, don't actually care
+            }
+        }
+        try {
+            Files.move(temporaryRecordPath, recordPath, StandardCopyOption.ATOMIC_MOVE)
+        } catch (t: Throwable) {
+            attemptToDeleteTemporaryRecord()
+            attemptToDeleteTemporaryHighestVersionMetadata()
+            throw EntityIoException.WriteFailure("Failed to move temporary record into permanent place", t)
+        }
+        try {
+            val highestVersionMetadataMoveOptions = mutableListOf<CopyOption>(StandardCopyOption.ATOMIC_MOVE)
+            if (container.version > 0) {
+                highestVersionMetadataMoveOptions += StandardCopyOption.REPLACE_EXISTING
+            }
+            Files.move(
+                    temporaryHighestVersionMetadata,
+                    recordPath.resolveSibling("highest.version"),
+                    *highestVersionMetadataMoveOptions.toTypedArray()
+            )
+        } catch (t: Throwable) {
+            attemptToDeleteTemporaryRecord()
+            attemptToDeleteTemporaryHighestVersionMetadata()
+            throw EntityIoException.WriteFailure("Failed to move highest version metadata file into permanent place", t)
+        }
+        return container
     }
 
     fun delete(entity: VE, versionArgument: VersionArgument.Manual) {

@@ -1,6 +1,7 @@
 package org.coner.snoozle.db.sample
 
 import org.coner.snoozle.db.entity.Entity
+import org.coner.snoozle.db.entity.VersionedEntity
 import org.coner.snoozle.db.entity.VersionedEntityContainer
 import org.coner.snoozle.util.uuid
 import java.nio.file.Path
@@ -72,7 +73,7 @@ object SampleDb {
         }
     }
 
-    object Gadgets : SampleEntity<Gadget> {
+    object Gadgets : SampleVersionedEntity<Gadget> {
         val GadgetOne
             get() = Gadget(
                     id = uuid("3d34e72e-14a5-4ab6-9bda-3d9262799274"),
@@ -140,11 +141,11 @@ object SampleDb {
                     GadgetTwoVersions.last()
             )
 
-        override fun tempFile(root: Path, entity: Gadget): Path {
-            return root.resolve("gadgets/${entity.id}.json")
+        override fun tempFile(root: Path, entity: Gadget, version: Int): Path {
+            return root.resolve("gadgets/${entity.id}/$version.json")
         }
 
-        override fun asJson(entity: Gadget): String {
+        override fun asJson(entity: Gadget, version: Int, ts: String): String {
             val silly = if (entity.silly != null) {
                 DateTimeFormatter.ISO_INSTANT.format(entity.silly)
                         .padStart(1, '"')
@@ -157,7 +158,9 @@ object SampleDb {
                     "id": "${entity.id}",
                     "name": "${entity.name}",
                     "silly": $silly
-                }
+                },
+                "version": $version,
+                "ts", $ts
             """.trimIndent()
         }
     }
@@ -165,5 +168,10 @@ object SampleDb {
     private interface SampleEntity<E : Entity> {
         fun tempFile(root: Path, entity: E): Path
         fun asJson(entity: E): String
+    }
+
+    private interface SampleVersionedEntity<VE : VersionedEntity> {
+        fun tempFile(root: Path, entity: VE, version: Int): Path
+        fun asJson(entity: VE, version: Int, ts: String): String
     }
 }
