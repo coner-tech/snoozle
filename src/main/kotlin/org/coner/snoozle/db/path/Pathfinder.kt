@@ -90,7 +90,7 @@ open class Pathfinder<R>(
                 .count { it is PathPart.DirectorySeparator }
     }
 
-    open fun listAll(): Stream<Path> {
+    open fun streamAll(): Stream<Path> {
         return Files.find(listingStart, listingMaxDepth, BiPredicate { candidate: Path, attrs: BasicFileAttributes ->
                     attrs.isDirectory && isRecord(root.relativize(candidate))
         } ).sorted()

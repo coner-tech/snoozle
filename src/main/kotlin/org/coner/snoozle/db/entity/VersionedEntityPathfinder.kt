@@ -82,7 +82,7 @@ class VersionedEntityPathfinder<VE : VersionedEntity>(
         return args.toTypedArray()
     }
 
-    override fun listAll(): Stream<Path> {
+    override fun streamAll(): Stream<Path> {
         return Files.find(listingStart, listingMaxDepth, BiPredicate { candidate: Path, attrs: BasicFileAttributes ->
             attrs.isDirectory && isVersionedEntityContainerListing(root.relativize(candidate))
         } ).sorted()

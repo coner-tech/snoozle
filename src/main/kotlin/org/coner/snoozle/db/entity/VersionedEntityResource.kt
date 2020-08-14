@@ -87,13 +87,9 @@ class VersionedEntityResource<VE : VersionedEntity>(
         }
     }
 
-    fun listAll(): Stream<VersionedEntityContainer<VE>> {
-        return path.listAll()
-                .map { versionListing: Path -> {
-                    val args = path.extractArgsWithoutVersion(versionListing)
-                    getEntity(*args)
-                } }
-                .map { it() }
+    fun streamAll(): Stream<VersionedEntityContainer<VE>> {
+        return path.streamAll()
+                .map { versionListing: Path -> getEntity(*path.extractArgsWithoutVersion(versionListing)) }
     }
 
     fun put(entity: VE, versionArgument: VersionArgument): VersionedEntityContainer<VE> {

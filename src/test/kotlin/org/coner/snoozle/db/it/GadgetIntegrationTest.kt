@@ -1,6 +1,5 @@
 package org.coner.snoozle.db.it
 
-import assertk.all
 import assertk.assertAll
 import assertk.assertThat
 import assertk.assertions.*
@@ -20,8 +19,6 @@ import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
 import java.nio.file.Files
 import java.nio.file.Path
-import java.time.ZonedDateTime
-import java.util.stream.Collectors
 import kotlin.streams.toList
 
 class GadgetIntegrationTest {
@@ -180,7 +177,7 @@ class GadgetIntegrationTest {
     fun `it should list all by highest version`() {
         val allHighestVersions = SampleDb.Gadgets.allByHighestVersion
 
-        val actual = resource.listAll().toList()
+        val actual = resource.streamAll().toList()
 
         assertThat(actual).isEqualTo(allHighestVersions)
     }
