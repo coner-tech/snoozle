@@ -40,9 +40,8 @@ class SampleDatabase(root: Path) : Database(root) {
         entity<Subwidget> {
             path = "widgets" / { widgetId } / "subwidgets" / { id } + ".json"
         }
-        entity<Gadget> {
-            path = "gadgets" / { id } + ".json"
-            versioning = EntityVersioningStrategy.AutomaticInternalVersioning
+        versionedEntity<Gadget> {
+            path = "gadgets" / { id } / version + ".json"
         }
         blob<GadgetPhoto> {
             path = "gadgets" / { gadgetId } / "photos" / string { id } + "." + string { extension }
