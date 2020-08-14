@@ -1,6 +1,7 @@
 package org.coner.snoozle.db.it
 
 import assertk.all
+import assertk.assertAll
 import assertk.assertThat
 import assertk.assertions.*
 import org.assertj.core.api.Assumptions
@@ -17,6 +18,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
+import java.nio.file.Files
 import java.nio.file.Path
 import java.time.ZonedDateTime
 import java.util.stream.Collectors
@@ -145,7 +147,7 @@ class GadgetIntegrationTest {
     }
 
     @Test
-    fun itShouldGetVersions() {
+    fun `It should get versions`() {
         val gadgetOne = SampleDb.Gadgets.GadgetOne
         val expected = SampleDb.Gadgets.GadgetOneVersions
         Assumptions.assumeThat(expected.last().entity).isEqualTo(SampleDb.Gadgets.GadgetOne)
@@ -181,5 +183,25 @@ class GadgetIntegrationTest {
         val actual = resource.listAll().toList()
 
         assertThat(actual).isEqualTo(allHighestVersions)
+    }
+
+    @Test
+    fun `It should delete when given correct version`() {
+        val gadgetOne = SampleDb.Gadgets.GadgetOneVersions.last()
+        val gadgetOneTempFiles = SampleDb.Gadgets.GadgetOneVersions.map {
+            SampleDb.Gadgets.tempFile(root, it.entity, it.version)
+        }
+        val gadgetOneVersionListing = gadgetOneTempFiles.first().parent
+        Assumptions.assumeThat(gadgetOneTempFiles).allMatch { Files.exists(it) }
+        Assumptions.assumeThat(gadgetOneVersionListing).exists()
+
+        resource.delete(gadgetOne.entity, VersionArgument.Manual(gadgetOne.version))
+
+        assertAll {
+            assertThat(gadgetOneTempFiles).each {
+                it.matchesPredicate { path -> Files.notExists(path) }
+            }
+            assertThat(gadgetOneVersionListing).matchesPredicate { path -> Files.notExists(path) }
+        }
     }
 }

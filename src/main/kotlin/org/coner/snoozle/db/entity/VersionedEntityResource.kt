@@ -185,6 +185,15 @@ class VersionedEntityResource<VE : VersionedEntity>(
     }
 
     fun delete(entity: VE, versionArgument: VersionArgument.Manual) {
-        TODO()
+        val highestVersion = resolveHighestVersion(entity)
+                ?: throw EntityIoException.NotFound("Highest version not found. Record doesn't exist")
+        require(highestVersion == versionArgument.version) {
+            "Version argument given doesn't match highest version"
+        }
+        val relativeVersionsListing = path.findVersionsListingForInstance(entity)
+        val versionsListingAsFile = root.resolve(relativeVersionsListing).toFile()
+        if (!versionsListingAsFile.deleteRecursively()) {
+            throw EntityIoException.WriteFailure("Failed to delete record")
+        }
     }
 }
