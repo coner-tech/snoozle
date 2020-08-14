@@ -25,7 +25,7 @@ class VersionedEntityPathfinder<VE : VersionedEntity>(
                 version = Int.MIN_VALUE,
                 ts = ZonedDateTime.now()
         )
-        val mappedRelativePath = versionedEntityContainerListingPathParts.joinToString { it.forRecord(container) }
+        val mappedRelativePath = versionedEntityContainerListingPathParts.joinToString(separator = "") { it.forRecord(container) }
         return Paths.get(mappedRelativePath)
     }
 

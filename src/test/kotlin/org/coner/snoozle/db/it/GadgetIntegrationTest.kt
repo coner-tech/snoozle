@@ -11,6 +11,7 @@ import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.util.readText
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -37,14 +38,7 @@ class GadgetIntegrationTest {
     @Test
     fun `It should write original with current version zero`() {
         val original = Gadget(name = "Original")
-
-        val actualReturnValue = resource.put(original, VersionArgument.Auto)
-
-        assertThat(actualReturnValue, "actual return value").all {
-            version().isEqualTo(0)
-        }
         val path = SampleDb.Gadgets.tempFile(root, original, 0)
-        assertThat(path).transform { it.toFile() }.exists()
         val expectedFileContents = """
             {
                 "entity": {
@@ -55,102 +49,99 @@ class GadgetIntegrationTest {
                 "version": 0
             }
         """.trimIndent()
+
+        val actualReturnValue = resource.put(original, VersionArgument.Auto)
+
+        assertThat(actualReturnValue, "actual returned container").version().isEqualTo(0)
+        assertThat(path).transform { it.toFile() }.exists()
         JSONAssert.assertEquals(expectedFileContents, path.readText(), JSONCompareMode.LENIENT)
     }
 
     @Test
     fun `It should write first revision with highest version argument`() {
-        TODO()
+        val original = Gadget(name = "Original")
+        resource.put(original, VersionArgument.Manual(0))
+        val firstRevision = original.copy(name = "First Revision")
+        val path = SampleDb.Gadgets.tempFile(root, firstRevision, 1)
+        val expectedFileContents = """
+            {
+                "entity": {
+                    "id": "${firstRevision.id}",
+                    "name": "First Revision",
+                    "silly": null
+                },
+                "version": 1
+            }
+        """.trimIndent()
+
+        val actual = resource.put(firstRevision, VersionArgument.Manual(1))
+
+        assertThat(actual, "actual returned container").version().isEqualTo(1)
+        assertThat(path).transform { it.toFile() }.exists()
+        JSONAssert.assertEquals(expectedFileContents, path.readText(), JSONCompareMode.LENIENT)
     }
 
     @Test
-    fun `It should write first revision with specific version argument`() {
-        TODO()
-//        val original = Gadget(name = "Original")
-//        resource.put(original, VersionArgument.Auto)
-//        val firstRevision = original.copy(name = "First Revision")
-//
-//        resource.put(firstRevision, VersionArgument.Manual(1))
-//
-//        val expected = """
-//            {
-//                "currentVersion": {
-//                    "version": 1
-//                },
-//                "history": [
-//                    {
-//                        "entity": {
-//                            "id": ${original.id},
-//                            "name": "Original",
-//                            "silly": null
-//                        },
-//                        "version": 0
-//                    }
-//                ]
-//            }
-//        """.trimIndent()
-//        val path = SampleDb.Gadgets.tempFile(root, firstRevision)
-//        val actual = path.readText()
-//        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
+    fun `It should write first revision with auto version argument`() {
+        val original = Gadget(name = "Original")
+        resource.put(original, VersionArgument.Manual(0))
+        val firstRevision = original.copy(name = "First Revision")
+        val path = SampleDb.Gadgets.tempFile(root, firstRevision, 1)
+        val expectedFileContents = """
+            {
+                "entity": {
+                    "id": "${firstRevision.id}",
+                    "name": "First Revision",
+                    "silly": null
+                },
+                "version": 1
+            }
+        """.trimIndent()
+
+        val actual = resource.put(firstRevision, VersionArgument.Auto)
+
+        assertThat(actual, "actual returned container").version().isEqualTo(1)
+        assertThat(path).transform { it.toFile() }.exists()
+        JSONAssert.assertEquals(expectedFileContents, path.readText(), JSONCompareMode.LENIENT)
     }
 
     @Test
-    fun `It should fail to write revisions with invalid specific version arguments`() {
-        TODO()
+    fun `It should throw when put given entity with manual version not incremented correctly`() {
+        val original = Gadget(name = "Original")
+        resource.put(original, VersionArgument.Manual(0))
+        val firstRevision = original.copy(name = "First Revision")
+
+        val actual = assertThrows<IllegalArgumentException> {
+            resource.put(firstRevision, VersionArgument.Manual(1234 /* wrong */))
+        }
+
+        assertThat(actual).messageContains("increment")
     }
 
     @Test
-    fun itShouldWriteTimestampAsIsoString() {
-        TODO()
-//        val timestampAsString = "2019-05-18T20:55:01-04:00"
-//        val gadget = Gadget(silly = ZonedDateTime.parse(timestampAsString))
-//
-//        resource.put(gadget, VersionArgument.Auto)
-//
-//        val file = SampleDb.Gadgets.tempFile(root, gadget)
-//        val expected = """
-//            {
-//                "entity": {
-//                    "silly": "$timestampAsString"
-//                }
-//            }
-//        """.trimIndent()
-//        val actual = file.readText()
-//        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
-    }
+    fun `It should write second revision`() {
+        val original = Gadget(name = "Original")
+        resource.put(original, VersionArgument.Manual(0))
+        val firstRevision = original.copy(name = "First Revision")
+        resource.put(firstRevision, VersionArgument.Manual(1))
+        val secondRevision = firstRevision.copy(name = "Second Revision")
+        val path = SampleDb.Gadgets.tempFile(root, secondRevision, 2)
+        val expectedFileContents = """
+            {
+                "entity": {
+                    "id": "${secondRevision.id}",
+                    "name": "Second Revision",
+                    "silly": null
+                },
+                "version": 2
+            }
+        """.trimIndent()
 
-    @Test
-    fun itShouldWriteSecondRevision() {
-        TODO()
-//        val original = Gadget(name = "Original")
-//        resource.put(original, VersionArgument.Manual(0))
-//        val firstRevision = original.copy(name = "First Revision")
-//        resource.put(firstRevision, VersionArgument.Manual(1))
-//
-//        val secondRevision = firstRevision.copy(name = "Second Revision")
-//        resource.put(secondRevision, VersionArgument.Manual(2))
-//
-//        val expected = """
-//            {
-//                ${SampleDb.Gadgets.asJson(secondRevision)},
-//                "currentVersion": {
-//                    "version": 2
-//                },
-//                "history": [
-//                    {
-//                        ${SampleDb.Gadgets.asJson(original)},
-//                        "version": 0
-//                    },
-//                    {
-//                        ${SampleDb.Gadgets.asJson(firstRevision)},
-//                        "version": 1
-//                    }
-//                ]
-//            }
-//        """.trimIndent()
-//        val path = SampleDb.Gadgets.tempFile(root, secondRevision)
-//        val actual = path.readText()
-//        JSONAssert.assertEquals(expected, actual, JSONCompareMode.LENIENT)
+        val actual = resource.put(secondRevision, VersionArgument.Manual(2))
+
+        assertThat(actual, "actual returned container").version().isEqualTo(2)
+        assertThat(path).transform { it.toFile() }.exists()
+        JSONAssert.assertEquals(expectedFileContents, path.readText(), JSONCompareMode.LENIENT)
     }
 
     @Test

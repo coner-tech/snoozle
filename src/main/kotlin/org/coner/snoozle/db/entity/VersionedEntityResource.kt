@@ -146,12 +146,8 @@ class VersionedEntityResource<VE : VersionedEntity>(
             }
         }
         val temporaryHighestVersionMetadata = recordPath.resolveSibling("highest.version.tmp")
-        val temporaryHighestVersionMetadataOpenOptions = mutableListOf<OpenOption>(StandardOpenOption.WRITE)
-        if (container.version == 0) {
-            temporaryHighestVersionMetadataOpenOptions += StandardOpenOption.CREATE_NEW
-        }
         try {
-            Files.writeString(temporaryHighestVersionMetadata, useVersionArgument.value, *temporaryHighestVersionMetadataOpenOptions.toTypedArray())
+            Files.writeString(temporaryHighestVersionMetadata, useVersionArgument.value, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)
         } catch (t: Throwable) {
             attemptToDeleteTemporaryRecord()
             throw EntityIoException.WriteFailure("Failed to write highest version metadata to temporary file", t)
