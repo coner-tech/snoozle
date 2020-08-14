@@ -204,4 +204,24 @@ class GadgetIntegrationTest {
             assertThat(gadgetOneVersionListing).matchesPredicate { path -> Files.notExists(path) }
         }
     }
+
+    @Test
+    fun `It should throw when delete called with entity that doesn't exist`() {
+        val doesNotExist = Gadget(name = "does not exist")
+        val tempFile = SampleDb.Gadgets.tempFile(root, doesNotExist, 0)
+        Assumptions.assumeThat(tempFile).doesNotExist()
+
+        assertThrows<EntityIoException.NotFound> {
+            resource.delete(doesNotExist, VersionArgument.Manual(0))
+        }
+    }
+
+    @Test
+    fun `It should throw when delete called with version lower than highest`() {
+        val gadgetOneOriginal = SampleDb.Gadgets.GadgetOneVersions.first()
+        
+        assertThrows<IllegalArgumentException> {
+            resource.delete(gadgetOneOriginal.entity, VersionArgument.Manual(gadgetOneOriginal.version))
+        }
+    }
 }
