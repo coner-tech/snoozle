@@ -158,7 +158,6 @@ class GadgetIntegrationTest {
     @Test
     fun `It should get the highest version`() {
         val gadgetOne = SampleDb.Gadgets.GadgetOne
-        val resource = database.versionedEntity<Gadget>()
 
         val actual = resource.getEntity(gadgetOne.id)
 
@@ -169,7 +168,6 @@ class GadgetIntegrationTest {
     @ValueSource(ints = [0, 1, 2])
     fun `It should get specific versions`(version: Int) {
         val gadgetVersionContainer = SampleDb.Gadgets.GadgetOneVersions[version]
-        val resource = database.versionedEntity<Gadget>()
 
         val actual = resource.getEntity(SampleDb.Gadgets.GadgetOne.id, VersionArgument.Manual(version))
 
@@ -179,7 +177,6 @@ class GadgetIntegrationTest {
     @Test
     fun `it should list all by highest version`() {
         val allHighestVersions = SampleDb.Gadgets.allByHighestVersion
-        val resource = database.versionedEntity<Gadget>()
 
         val actual = resource.listAll().toList()
 
