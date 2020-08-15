@@ -3,7 +3,7 @@ package org.coner.snoozle.db
 import org.coner.snoozle.db.path.PathPart
 import java.util.*
 
-abstract class LiteralRecordDefinition<R : Record> : RecordDefinition<R>() {
+abstract class LiteralRecordDefinition<R : Record<K>, K : Key> : RecordDefinition<R, K>() {
 
     operator fun String.div(uuidExtractor: R.() -> UUID): MutableList<PathPart<R>> {
         return mutableListOf(
@@ -30,13 +30,13 @@ abstract class LiteralRecordDefinition<R : Record> : RecordDefinition<R>() {
         return this
     }
 
-    operator fun MutableList<PathPart<R>>.div(stringExtractor: StringArgumentExtractor<R>): MutableList<PathPart<R>> {
+    operator fun MutableList<PathPart<R>>.div(stringExtractor: StringArgumentExtractor<K>): MutableList<PathPart<R>> {
         add(PathPart.DirectorySeparator())
-        add(PathPart.StringVariable(stringExtractor::extract))
+        add(PathPart.StringVariable(stringExtractor))
         return this
     }
 
-    operator fun MutableList<PathPart<R>>.plus(stringExtractor: StringArgumentExtractor<R>): MutableList<PathPart<R>> {
+    operator fun MutableList<PathPart<R>>.plus(stringExtractor: StringArgumentExtractor<K>): MutableList<PathPart<R>> {
         add(PathPart.StringVariable(stringExtractor::extract))
         return this
     }
