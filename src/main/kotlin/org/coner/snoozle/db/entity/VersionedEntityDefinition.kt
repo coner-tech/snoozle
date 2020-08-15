@@ -8,7 +8,7 @@ import java.util.*
 class VersionedEntityDefinition<VE : VersionedEntity<EK>, EK : Key>
     : RecordDefinition<VersionedEntityContainer<VE, EK>, VersionedEntityContainerKey<EK>>() {
 
-    operator fun String.div(uuidExtractor: EK.() -> UUID): MutableList<PathPart<VersionedEntityContainer<VE, EK>>> {
+    operator fun String.div(uuidExtractor: EK.() -> UUID): MutableList<PathPart<VersionedEntityContainer<VE, EK>, EK, *>> {
         return mutableListOf(
                 PathPart.StringValue(this),
                 PathPart.DirectorySeparator(),

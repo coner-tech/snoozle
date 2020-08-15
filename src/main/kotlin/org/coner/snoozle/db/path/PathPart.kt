@@ -8,7 +8,7 @@ import java.io.File
 import java.util.*
 import java.util.regex.Pattern
 
-sealed class PathPart<R : Record<K>, K : Key, P> {
+sealed class PathPart<R : Record<*>, K : Key, P> {
 
     abstract fun pathPartFromKey(key: K): P?
     abstract fun keyValueFromPathPart(pathPart: String): P?
@@ -36,15 +36,15 @@ sealed class PathPart<R : Record<K>, K : Key, P> {
     interface VariableExtractor<R>
 
     class UuidVariable<R : Record<K>, K : Key>(
-            private val extractor: (K) -> UUID
+            private val extractor: K.() -> UUID
     ) : PathPart<R, K, UUID>(), VariableExtractor<R> {
         override fun pathPartFromKey(key: K) = extractor(key)
         override fun keyValueFromPathPart(pathPart: String): UUID = UUID.fromString(pathPart)
-        override val regex = hasUuidPattern
+        override val regex: Pattern = hasUuidPattern
     }
 
     class StringVariable<R : Record<K>, K : Key>(
-            private val extractor: (K) -> String
+            private val extractor: K.() -> String
     ) : PathPart<R, K, String>(), VariableExtractor<R> {
         override fun pathPartFromKey(key: K): String = extractor(key)
         override fun keyValueFromPathPart(pathPart: String) = pathPart
@@ -58,28 +58,18 @@ sealed class PathPart<R : Record<K>, K : Key, P> {
     }
 
     class VersionArgumentVariable<
-            R : VersionedEntityContainer<E, K>,
+            R : VersionedEntityContainer<E, EK>,
             K : VersionedEntityContainerKey<EK>,
             E : VersionedEntity<EK>,
             EK : Key
     > : PathPart<R, K, VersionArgument>(), VariableExtractor<R> {
-        override fun pathPartFromKey(key: K): VersionArgument? {
-            TODO("Not yet implemented")
-        }
 
-        override fun keyValueFromPathPart(pathPart: String): VersionArgument? {
-            TODO("Not yet implemented")
-        }
-
-        override fun extractQueryArgument(arg: Any?): String {
-            return (arg as VersionArgument).value
-        }
-        override fun produceQueryArgument(pathPart: String) = when {
+        override fun pathPartFromKey(key: K): VersionArgument = VersionArgument.Manual(key.version)
+        override fun keyValueFromPathPart(pathPart: String) = when {
             pathPart == VersionArgument.Auto.value -> VersionArgument.Auto
             positiveInteger.matcher(pathPart).matches() -> VersionArgument.Manual(pathPart.toInt())
             else -> throw IllegalArgumentException("Invalid pathPart segment: $pathPart")
         }
-        override fun forRecord(record: R) = (record as VersionedEntityContainer<*, *>).version.toString()
         override val regex = positiveInteger
 
         companion object {
