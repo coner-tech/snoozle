@@ -1,32 +1,28 @@
 package org.coner.snoozle.db.entity
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.ObjectReader
+import com.fasterxml.jackson.databind.ObjectWriter
 import io.reactivex.Observable
 import org.coner.snoozle.db.path.Pathfinder
 import org.coner.snoozle.util.PathObservables
 import org.coner.snoozle.util.nameWithoutExtension
 import org.coner.snoozle.util.uuid
 import org.coner.snoozle.util.watch
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.StandardCopyOption
-import java.nio.file.StandardWatchEventKinds
+import java.nio.file.*
+import kotlin.io.FileAlreadyExistsException
 import kotlin.streams.toList
 
 class EntityResource<E : Entity> constructor(
         private val root: Path,
         internal val entityDefinition: EntityDefinition<E>,
         private val objectMapper: ObjectMapper,
-        private val path: Pathfinder<E>,
-        private val entityIoDelegate: EntityIoDelegate<E>,
-        private val automaticEntityVersionIoDelegate: AutomaticEntityVersionIoDelegate<E>?
+        private val reader: ObjectReader,
+        private val writer: ObjectWriter,
+        private val path: Pathfinder<E>
 ) {
 
     fun get(vararg args: Any): E {
-        return getWholeRecord(*args).entityValue
-    }
-
-    fun getWholeRecord(vararg args: Any): WholeRecord<E> {
         val entityPath = path.findRecordByArgs(*args)
         val file = root.resolve(entityPath)
         return read(file)
@@ -47,16 +43,13 @@ class EntityResource<E : Entity> constructor(
         write(file, entity)
     }
 
-    private fun read(file: Path): WholeRecord<E> {
+    private fun read(file: Path): E {
         return if (Files.exists(file)) {
             Files.newInputStream(file).use { inputStream ->
                 try {
-                    val builder = (objectMapper.readValue(inputStream, WholeRecord.Builder::class.java) as WholeRecord.Builder<E>)
-                    entityIoDelegate.read(builder)
-                    automaticEntityVersionIoDelegate?.read(builder)
-                    builder.build()
+                    reader.readValue<E>(inputStream)
                 } catch (t: Throwable) {
-                    throw EntityIoException.ReadFailure("Failed to read/build entity: ${file.relativize(root)}", t)
+                    throw EntityIoException.ReadFailure("Failed to read entity: ${file.relativize(root)}", t)
                 }
             }
         } else {
@@ -65,17 +58,9 @@ class EntityResource<E : Entity> constructor(
     }
 
     private fun write(destination: Path, entity: E) {
-        val old = try {
-            read(destination)
-        } catch (entityIoException: EntityIoException.NotFound) {
-            null
-        }
-        val new = WholeRecord.Builder<E>()
-        entityIoDelegate.write(old, new, entity)
-        automaticEntityVersionIoDelegate?.write(old, new, entity)
         val tempFile = destination.resolveSibling(destination.fileName.toString() + ".tmp")
-        Files.newOutputStream(tempFile).use { outputStream ->
-            objectMapper.writeValue(outputStream, new)
+        Files.newOutputStream(tempFile, StandardOpenOption.CREATE_NEW).use { outputStream ->
+            writer.writeValue(outputStream, entity)
         }
         Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }
@@ -103,7 +88,7 @@ class EntityResource<E : Entity> constructor(
         return Files.list(listing)
                 .filter { Files.isRegularFile(it) && path.isRecord(root.relativize(it)) }
                 .sorted(compareBy(Path::toString))
-                .map { file -> read(file).entityValue }
+                .map { file -> read(file) }
                 .toList()
     }
 
@@ -119,7 +104,7 @@ class EntityResource<E : Entity> constructor(
                                 && Files.size(file) > 0
                         ) {
                             try {
-                                read(file).entityValue
+                                read(file)
                             } catch (t: Throwable) {
                                 null
                             }

@@ -1,9 +1,8 @@
 package org.coner.snoozle.db.sample
 
-import org.coner.snoozle.db.entity.CurrentVersionRecord
 import org.coner.snoozle.db.entity.Entity
-import org.coner.snoozle.db.entity.HistoricVersionRecord
-import org.coner.snoozle.db.entity.WholeRecord
+import org.coner.snoozle.db.entity.VersionedEntity
+import org.coner.snoozle.db.entity.VersionedEntityContainer
 import org.coner.snoozle.util.uuid
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -40,10 +39,8 @@ object SampleDb {
         override fun asJson(entity: Widget): String {
             return """
                 {
-                    entity: {
-                        id: "${entity.id}",
-                        name: "${entity.name}"
-                    }
+                    id: "${entity.id}",
+                    name: "${entity.name}"
                 }
             """.trimIndent()
         }
@@ -69,57 +66,86 @@ object SampleDb {
 
         override fun asJson(entity: Subwidget): String {
             return """
-                "entity": {
-                    "id": "${entity.id}",
-                    "widgetId": "${entity.widgetId}",
-                    "name": "${entity.name}"
-                }
+                "id": "${entity.id}",
+                "widgetId": "${entity.widgetId}",
+                "name": "${entity.name}"
             """.trimIndent()
         }
     }
 
-    object Gadgets : SampleEntity<Gadget> {
+    object Gadgets : SampleVersionedEntity<Gadget> {
         val GadgetOne
             get() = Gadget(
                     id = uuid("3d34e72e-14a5-4ab6-9bda-3d9262799274"),
                     name = "Gadget One",
                     silly = null
             )
+        val GadgetTwo
+            get() = Gadget(
+                    id = uuid("ed98db81-0b00-4184-8bf4-37d129bdafb9"),
+                    name = "Gadget Two",
+                    silly = null
+            )
 
-        val GadgetOneWholeRecord
-            get() = WholeRecord<Gadget>(
-                    entityValue = GadgetOne,
-                    currentVersion = CurrentVersionRecord(
+        val GadgetOneVersions
+            get() = listOf(
+                    VersionedEntityContainer(
+                            entity = Gadget(
+                                    id = GadgetOne.id,
+                                    name = null,
+                                    silly = null
+                            ),
+                            version = 0,
+                            ts = ZonedDateTime.parse("2019-05-16T21:40:00-05:00")
+                    ),
+                    VersionedEntityContainer(
+                            entity = Gadget(
+                                    id = GadgetOne.id,
+                                    name = "Gadget Won",
+                                    silly = ZonedDateTime.parse("2019-05-16T21:41:59-05:00")
+                            ),
+                            version = 1,
+                            ts = ZonedDateTime.parse("2019-05-16T21:42:00-05:00")
+                    ),
+                    VersionedEntityContainer(
+                            entity = GadgetOne,
                             version = 2,
                             ts = ZonedDateTime.parse("2019-05-16T21:43:00-05:00")
-                    ),
-                    history = listOf(
-                            HistoricVersionRecord(
-                                    version = 0,
-                                    ts = ZonedDateTime.parse("2019-05-16T21:40:00-05:00"),
-                                    entityValue = Gadget(
-                                            id = GadgetOne.id,
-                                            name = null,
-                                            silly = null
-                                    )
+                    )
+            )
+        val GadgetTwoVersions
+            get() = listOf(
+                    VersionedEntityContainer(
+                            entity = Gadget(
+                                    id = GadgetTwo.id,
+                                    name = "Gadget Too",
+                                    silly = ZonedDateTime.parse("2020-08-09T17:49:38-05:00")
                             ),
-                            HistoricVersionRecord(
-                                    version = 1,
-                                    ts = ZonedDateTime.parse("2019-05-16T21:42:00-05:00"),
-                                    entityValue = Gadget(
-                                            id = GadgetOne.id,
-                                            name = "Gadget Won",
-                                            silly = ZonedDateTime.parse("2019-05-16T21:41:59-05:00")
-                                    )
-                            )
+                            version = 0,
+                            ts = ZonedDateTime.parse("2020-08-09T17:47:00-05:00")
+                    ),
+                    VersionedEntityContainer(
+                            entity = Gadget(
+                                    id = GadgetTwo.id,
+                                    name = "Gadget Two",
+                                    silly = null
+                            ),
+                            version = 1,
+                            ts = ZonedDateTime.parse("2020-08-09T17:51:00-05:00")
                     )
             )
 
-        override fun tempFile(root: Path, entity: Gadget): Path {
-            return root.resolve("gadgets/${entity.id}.json")
+        val allByHighestVersion
+            get() = listOf(
+                    GadgetOneVersions.last(),
+                    GadgetTwoVersions.last()
+            )
+
+        override fun tempFile(root: Path, entity: Gadget, version: Int): Path {
+            return root.resolve("gadgets/${entity.id}/$version.json")
         }
 
-        override fun asJson(entity: Gadget): String {
+        override fun asJson(entity: Gadget, version: Int, ts: String): String {
             val silly = if (entity.silly != null) {
                 DateTimeFormatter.ISO_INSTANT.format(entity.silly)
                         .padStart(1, '"')
@@ -132,7 +158,9 @@ object SampleDb {
                     "id": "${entity.id}",
                     "name": "${entity.name}",
                     "silly": $silly
-                }
+                },
+                "version": $version,
+                "ts", $ts
             """.trimIndent()
         }
     }
@@ -140,5 +168,10 @@ object SampleDb {
     private interface SampleEntity<E : Entity> {
         fun tempFile(root: Path, entity: E): Path
         fun asJson(entity: E): String
+    }
+
+    private interface SampleVersionedEntity<VE : VersionedEntity> {
+        fun tempFile(root: Path, entity: VE, version: Int): Path
+        fun asJson(entity: VE, version: Int, ts: String): String
     }
 }

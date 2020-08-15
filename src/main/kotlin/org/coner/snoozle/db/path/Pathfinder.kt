@@ -1,14 +1,19 @@
 package org.coner.snoozle.db.path
 
-import java.nio.file.Path
-import java.nio.file.Paths
+import java.io.IOException
+import java.nio.file.*
+import java.nio.file.attribute.BasicFileAttributes
+import java.util.function.BiPredicate
+import java.util.regex.Pattern
+import java.util.stream.Stream
 
-class Pathfinder<R>(
-        private val pathParts: List<PathPart<R>>
+open class Pathfinder<R>(
+        protected val root: Path,
+        protected val pathParts: List<PathPart<R>>
 ) {
 
     private val recordVariablePathParts by lazy {
-        pathParts.filter { it is PathPart.VariablePathPart<*> }
+        pathParts.filter { it is PathPart.VariableExtractor<*> }
     }
     fun findRecordByArgs(vararg args: Any): Path {
         check(args.size == recordVariablePathParts.size) {
@@ -17,7 +22,7 @@ class Pathfinder<R>(
         val argsIterator = args.iterator()
         val mappedRelativePath = pathParts.map { pathPart ->
             pathPart to when (pathPart) {
-                is PathPart.VariablePathPart<*> -> argsIterator.next()
+                is PathPart.VariableExtractor<*> -> argsIterator.next()
                 else -> null
             }
         }.joinToString(separator = "") { (pathPart, arg) -> pathPart.extractQueryArgument(arg) }
@@ -32,10 +37,10 @@ class Pathfinder<R>(
     }
 
     private val listingPathParts by lazy {
-        pathParts.take(pathParts.indexOfLast { it is PathPart.DirectorySeparatorPathPart<R> })
+        pathParts.take(pathParts.indexOfLast { it is PathPart.DirectorySeparator<R> })
     }
     private val listingVariablePathPartsCount by lazy {
-        listingPathParts.count { it is PathPart.VariablePathPart<*> }
+        listingPathParts.count { it is PathPart.VariableExtractor<*> }
     }
 
     fun findListingByArgs(vararg args: Any?): Path {
@@ -45,7 +50,7 @@ class Pathfinder<R>(
         val argsIterator = args.iterator()
         val mappedRelativePath = listingPathParts.map { pathPart ->
             pathPart to when (pathPart) {
-                is PathPart.VariablePathPart<*> -> argsIterator.next()
+                is PathPart.VariableExtractor<*> -> argsIterator.next()
                 else -> null
             }
         }.joinToString(separator = "") { (pathPart, arg) -> pathPart.extractQueryArgument(arg) }
@@ -59,25 +64,36 @@ class Pathfinder<R>(
         return Paths.get(mappedRelativePath)
     }
 
-    private val directorySeparatorPathPart by lazy { PathPart.DirectorySeparatorPathPart<R>() }
+    private val recordCandidatePath: Pattern by lazy {
+        val joined = pathParts.map { it.regex.pattern() }.joinToString("")
+        Pattern.compile("^$joined$")
+    }
 
     fun isRecord(candidate: Path): Boolean {
-        return try {
-            var remainingCandidateParts = candidate.toString()
-            for (pathPart in pathParts) {
-                val matcher = pathPart.regex.matcher(remainingCandidateParts)
-                if (!matcher.find()) {
-                    break
-                }
-                if (matcher.start() != 0) {
-                    break
-                }
-                remainingCandidateParts = remainingCandidateParts.substring(matcher.end())
+        return recordCandidatePath.matcher(candidate.toString()).matches()
+    }
+
+    protected val listingStart: Path by lazy {
+        val firstIndexOfVariablePathPart = pathParts.indexOfFirst { it is PathPart.VariableExtractor<*> }
+        val staticPathParts = pathParts.take(firstIndexOfVariablePathPart)
+        staticPathParts.fold(root) { accumulator, pathPart ->
+            when (pathPart) {
+                is PathPart.DirectorySeparator -> accumulator
+                else -> accumulator.resolve(pathPart.extractQueryArgument(null))
             }
-            return remainingCandidateParts.isEmpty()
-        } catch (t: Throwable) {
-            false
         }
+    }
+
+    protected val listingMaxDepth: Int by lazy {
+        val firstIndexOfVariablePathPart = pathParts.indexOfFirst { it is PathPart.VariableExtractor<*> }
+        pathParts.subList(firstIndexOfVariablePathPart, pathParts.lastIndex)
+                .count { it is PathPart.DirectorySeparator }
+    }
+
+    open fun streamAll(): Stream<Path> {
+        return Files.find(listingStart, listingMaxDepth, BiPredicate { candidate: Path, attrs: BasicFileAttributes ->
+                    attrs.isDirectory && isRecord(root.relativize(candidate))
+        } ).sorted()
     }
 
 }

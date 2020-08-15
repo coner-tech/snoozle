@@ -27,7 +27,7 @@ class DatabaseTest {
         assertThat(database).all {
             transform("widget resource") { it.entity<Widget>() }.isNotNull()
             transform("subwidget resource") { it.entity<Subwidget>() }.isNotNull()
-            transform("gadget resource") { it.entity<Gadget>() }.isNotNull()
+            transform("gadget resource") { it.versionedEntity<Gadget>() }.isNotNull()
         }
     }
 

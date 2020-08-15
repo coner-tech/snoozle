@@ -7,33 +7,39 @@ import org.coner.snoozle.db.sample.Subwidget
 import org.coner.snoozle.db.sample.Widget
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Path
 import java.nio.file.Paths
 
 class PathfinderTest {
 
+    @TempDir
+    lateinit var temp: Path
     lateinit var widgetPathfinder: Pathfinder<Widget>
     lateinit var subwidgetPathfinder: Pathfinder<Subwidget>
 
     @BeforeEach
     fun before() {
         widgetPathfinder = Pathfinder(
+                root = temp,
                 pathParts = listOf(
-                        PathPart.StringPathPart("widgets"),
-                        PathPart.DirectorySeparatorPathPart(),
-                        PathPart.UuidVariablePathPart { it.id},
-                        PathPart.StringPathPart(".json")
+                        PathPart.StringValue("widgets"),
+                        PathPart.DirectorySeparator(),
+                        PathPart.UuidVariable { id},
+                        PathPart.StringValue(".json")
                 )
         )
         subwidgetPathfinder = Pathfinder(
+                root = temp,
                 pathParts = listOf(
-                        PathPart.StringPathPart("widgets"),
-                        PathPart.DirectorySeparatorPathPart(),
-                        PathPart.UuidVariablePathPart { it.widgetId },
-                        PathPart.DirectorySeparatorPathPart(),
-                        PathPart.StringPathPart("subwidgets"),
-                        PathPart.DirectorySeparatorPathPart(),
-                        PathPart.UuidVariablePathPart { it.id },
-                        PathPart.StringPathPart(".json")
+                        PathPart.StringValue("widgets"),
+                        PathPart.DirectorySeparator(),
+                        PathPart.UuidVariable { widgetId },
+                        PathPart.DirectorySeparator(),
+                        PathPart.StringValue("subwidgets"),
+                        PathPart.DirectorySeparator(),
+                        PathPart.UuidVariable { id },
+                        PathPart.StringValue(".json")
                 )
         )
     }

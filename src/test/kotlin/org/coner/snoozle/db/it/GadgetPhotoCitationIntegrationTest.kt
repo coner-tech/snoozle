@@ -6,6 +6,7 @@ import assertk.assertions.hasLineCount
 import assertk.assertions.hasSize
 import assertk.assertions.index
 import assertk.assertions.isEqualTo
+import org.coner.snoozle.db.entity.VersionArgument
 import org.coner.snoozle.db.sample.Gadget
 import org.coner.snoozle.db.sample.GadgetPhotoCitation
 import org.coner.snoozle.db.sample.SampleDatabase
@@ -61,7 +62,7 @@ class GadgetPhotoCitationIntegrationTest {
                 name = "Gadget Without Photo Citations",
                 silly = ZonedDateTime.parse("2020-01-01T12:09:00-05:00")
         )
-        database.entity<Gadget>().put(gadgetTwo)
+        database.versionedEntity<Gadget>().put(gadgetTwo, VersionArgument.Auto)
         val firstCitation = GadgetPhotoCitation(
                 gadgetId = gadgetTwo.id,
                 id = "first citation"
