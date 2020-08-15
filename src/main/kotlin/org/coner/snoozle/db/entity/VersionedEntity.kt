@@ -1,4 +1,6 @@
 package org.coner.snoozle.db.entity
 
-interface VersionedEntity : Entity {
+import org.coner.snoozle.db.Key
+
+interface VersionedEntity<K : Key> : Entity<K> {
 }

@@ -3,18 +3,18 @@ package org.coner.snoozle.db
 import org.coner.snoozle.db.path.PathPart
 import java.util.*
 
-abstract class RecordDefinition<R : Record> {
+abstract class RecordDefinition<R : Record<K>, K : Key> {
     var path: List<PathPart<R>> = mutableListOf()
 
-    abstract class PathArgumentExtractor<R : Record, P>(private val fn: R.() -> P) {
-        fun extract(record: R): P {
-            return fn(record)
+    abstract class PathArgumentExtractor<K : Key, P>(private val fn: K.() -> P) {
+        fun extract(key: K): P {
+            return fn(key)
         }
     }
 
-    class StringArgumentExtractor<R : Record>(fn: R.() -> String) : PathArgumentExtractor<R, String>(fn)
+    class StringArgumentExtractor<K : Key>(fn: K.() -> String) : PathArgumentExtractor<K, String>(fn)
 
-    fun string(extractor: R.() -> String): StringArgumentExtractor<R> {
+    fun string(extractor: K.() -> String): StringArgumentExtractor<K> {
         return StringArgumentExtractor(extractor)
     }
 

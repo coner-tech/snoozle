@@ -1,3 +1,5 @@
 package org.coner.snoozle.db
 
-interface Record
+interface Record<K : Key> {
+    val key: K
+}

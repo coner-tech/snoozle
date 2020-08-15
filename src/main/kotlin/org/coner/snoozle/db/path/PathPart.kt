@@ -68,7 +68,7 @@ sealed class PathPart<R> {
             positiveInteger.matcher(pathPart).matches() -> VersionArgument.Manual(pathPart.toInt())
             else -> throw IllegalArgumentException("Invalid pathPart segment: $pathPart")
         }
-        override fun forRecord(record: R) = (record as VersionedEntityContainer<*>).version.toString()
+        override fun forRecord(record: R) = (record as VersionedEntityContainer<*, *>).version.toString()
         override val regex = positiveInteger
 
         companion object {
