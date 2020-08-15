@@ -1,54 +1,53 @@
 package org.coner.snoozle.db.path
 
-import org.coner.snoozle.db.entity.VersionArgument
-import org.coner.snoozle.db.entity.VersionedEntityContainer
+import org.coner.snoozle.db.Key
+import org.coner.snoozle.db.Record
+import org.coner.snoozle.db.entity.*
 import org.coner.snoozle.util.hasUuidPattern
 import java.io.File
 import java.util.*
 import java.util.regex.Pattern
 
-sealed class PathPart<R> {
+sealed class PathPart<R : Record<K>, K : Key, P> {
 
-    abstract fun extractQueryArgument(arg: Any?): String
-    abstract fun produceQueryArgument(pathPart: String): Any?
-    abstract fun forRecord(record: R): String
+    abstract fun pathPartFromKey(key: K): P?
+    abstract fun keyValueFromPathPart(pathPart: String): P?
     abstract val regex: Pattern
 
-    class StringValue<R>(val value: String) : PathPart<R>(), StaticExtractor<R> {
-
-        override fun extractQueryArgument(arg: Any?) = value
-        override fun produceQueryArgument(pathPart: String) = null
-        override fun forRecord(record: R) = value
-        override val regex = Pattern.compile(value)
+    class StringValue<R : Record<K>, K : Key>(
+            private val value: String
+    ) : PathPart<R, K, String>(), StaticExtractor<R> {
+        override fun pathPartFromKey(key: K) = value
+        override fun keyValueFromPathPart(pathPart: String) = value
+        override val regex: Pattern = Pattern.compile(Pattern.quote(value))
     }
 
-    class DirectorySeparator<R> : PathPart<R>(), StaticExtractor<R> {
-        private val regexPattern by lazy { Pattern.compile(File.separator) }
+    class DirectorySeparator<R : Record<K>, K : Key> : PathPart<R, K, String>(), StaticExtractor<R> {
+        override fun pathPartFromKey(key: K): String = File.separator
+        override fun keyValueFromPathPart(pathPart: String): String = File.separator
+        override val regex: Pattern = regexPattern
 
-        override fun extractQueryArgument(arg: Any?) = File.separator
-        override fun produceQueryArgument(pathPart: String) = null
-        override fun forRecord(record: R) = File.separator
-        override val regex = regexPattern
+        companion object {
+            private val regexPattern by lazy { Pattern.compile(Pattern.quote(File.separator)) }
+        }
     }
 
     interface StaticExtractor<R>
     interface VariableExtractor<R>
 
-    class UuidVariable<R>(
-            private val recordExtractor: R.() -> UUID
-    ) : PathPart<R>(), VariableExtractor<R> {
-        override fun extractQueryArgument(arg: Any?) = (arg as UUID).toString()
-        override fun produceQueryArgument(pathPart: String) = UUID.fromString(pathPart)
-        override fun forRecord(record: R) = recordExtractor(record).toString()
+    class UuidVariable<R : Record<K>, K : Key>(
+            private val extractor: (K) -> UUID
+    ) : PathPart<R, K, UUID>(), VariableExtractor<R> {
+        override fun pathPartFromKey(key: K) = extractor(key)
+        override fun keyValueFromPathPart(pathPart: String): UUID = UUID.fromString(pathPart)
         override val regex = hasUuidPattern
     }
 
-    class StringVariable<R>(
-            private val recordExtractor: R.() -> String
-    ) : PathPart<R>(), VariableExtractor<R> {
-        override fun extractQueryArgument(arg: Any?) = arg as String
-        override fun produceQueryArgument(pathPart: String) = pathPart
-        override fun forRecord(record: R) = recordExtractor(record)
+    class StringVariable<R : Record<K>, K : Key>(
+            private val extractor: (K) -> String
+    ) : PathPart<R, K, String>(), VariableExtractor<R> {
+        override fun pathPartFromKey(key: K): String = extractor(key)
+        override fun keyValueFromPathPart(pathPart: String) = pathPart
         override val regex = alphanumericWithHyphensAndUnderscores
 
         companion object {
@@ -58,8 +57,20 @@ sealed class PathPart<R> {
         }
     }
 
-    class VersionArgumentVariable<R>(
-    ) : PathPart<R>(), VariableExtractor<R> {
+    class VersionArgumentVariable<
+            R : VersionedEntityContainer<E, K>,
+            K : VersionedEntityContainerKey<EK>,
+            E : VersionedEntity<EK>,
+            EK : Key
+    > : PathPart<R, K, VersionArgument>(), VariableExtractor<R> {
+        override fun pathPartFromKey(key: K): VersionArgument? {
+            TODO("Not yet implemented")
+        }
+
+        override fun keyValueFromPathPart(pathPart: String): VersionArgument? {
+            TODO("Not yet implemented")
+        }
+
         override fun extractQueryArgument(arg: Any?): String {
             return (arg as VersionArgument).value
         }
