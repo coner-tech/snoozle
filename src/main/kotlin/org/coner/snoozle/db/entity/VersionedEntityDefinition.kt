@@ -10,24 +10,29 @@ class VersionedEntityDefinition<VE : VersionedEntity<EK>, EK : Key>
 
     operator fun String.div(uuidExtractor: EK.() -> UUID): MutableList<PathPart<VersionedEntityContainer<VE, EK>, EK, *>> {
         return mutableListOf(
-                PathPart.StringValue(this),
-                PathPart.DirectorySeparator(),
-                PathPart.UuidVariable { entity.key.uuidExtractor() }
+                PathPart.StringValue<VersionedEntityContainer<VE, EK>, VersionedEntityContainerKey<EK>>(this) as PathPart<VersionedEntityContainer<VE, EK>, EK, *>,
+                PathPart.DirectorySeparator<VersionedEntityContainer<VE, EK>, VersionedEntityContainerKey<EK>>() as PathPart<VersionedEntityContainer<VE, EK>, EK, *>,
+                PathPart.UuidVariable<VersionedEntityContainer<VE, EK>, VersionedEntityContainerKey<EK>> { entity.key.uuidExtractor() } as PathPart<VersionedEntityContainer<VE, EK>, EK, *>
         )
     }
 
-    operator fun MutableList<PathPart<VersionedEntityContainer<VE, EK>>>.div(
+    operator fun MutableList<PathPart<VersionedEntityContainer<VE, EK>, EK, *>>.div(
             versionArgumentExtractor: VersionArgumentExtractor<VersionedEntityContainerKey<*>>
-    ): MutableList<PathPart<VersionedEntityContainer<VE, EK>>> {
-        add(PathPart.DirectorySeparator())
-        add(PathPart.VersionArgumentVariable())
+    ): MutableList<PathPart<VersionedEntityContainer<VE, EK>, EK, *>> {
+        add(PathPart.DirectorySeparator<VersionedEntityContainer<VE, EK>, VersionedEntityContainerKey<EK>>()  as PathPart<VersionedEntityContainer<VE, EK>, EK, *>)
+        add(PathPart.VersionArgumentVariable<
+                VersionedEntityContainer<VE, EK>,
+                VersionedEntityContainerKey<EK>,
+                VE,
+                EK
+                >()  as PathPart<VersionedEntityContainer<VE, EK>, EK, *>)
         return this
     }
 
-    operator fun MutableList<PathPart<VersionedEntityContainer<VE, EK>>>.plus(
+    operator fun MutableList<PathPart<VersionedEntityContainer<VE, EK>, EK, *>>.plus(
             extension: String
-    ): MutableList<PathPart<VersionedEntityContainer<VE, EK>>> {
-        add(PathPart.StringValue(extension))
+    ): MutableList<PathPart<VersionedEntityContainer<VE, EK>, EK, *>> {
+        add(PathPart.StringValue<VersionedEntityContainer<VE, EK>, VersionedEntityContainerKey<EK>>(extension) as PathPart<VersionedEntityContainer<VE, EK>, EK, *>)
         return this
     }
 

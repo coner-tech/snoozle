@@ -1,5 +1,6 @@
 package org.coner.snoozle.db.entity
 
+import org.coner.snoozle.db.Key
 import org.coner.snoozle.db.path.PathPart
 import org.coner.snoozle.db.path.Pathfinder
 import java.nio.file.Files
@@ -11,7 +12,7 @@ import java.util.function.BiPredicate
 import java.util.regex.Pattern
 import java.util.stream.Stream
 
-class VersionedEntityPathfinder<VE : VersionedEntity>(
+class VersionedEntityPathfinder<VE : VersionedEntity<EK>, EK : Key>(
         root: Path,
         pathParts: List<PathPart<VersionedEntityContainer<VE>>>
 ) : Pathfinder<VersionedEntityContainer<VE>>(
@@ -29,7 +30,7 @@ class VersionedEntityPathfinder<VE : VersionedEntity>(
         return Paths.get(mappedRelativePath)
     }
 
-    fun findVersionsListingForArgs(vararg args: Any): Path {
+    fun findVersionsListingForKey(key: EK): Path {
         val argsIterator = args.iterator()
         val pathPartsIterator = pathParts.listIterator()
         var foundVersionArgument = false
@@ -68,7 +69,7 @@ class VersionedEntityPathfinder<VE : VersionedEntity>(
         return versionedEntityContainerListingCandidatePath.matcher(candidate.toString()).matches()
     }
 
-    fun extractArgsWithoutVersion(versionListing: Path): Array<Any> {
+    fun extractKeyWithoutVersion(versionListing: Path): Array<Any> {
         // TODO: reduce this to use only one Pattern.matcher(CharSequence) instance
         var remainingPathParts = versionListing.toString()
         val args = mutableListOf<Any>()

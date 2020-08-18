@@ -24,8 +24,8 @@ class TypesRegistry(
         this.op()
     }
 
-    inline fun <reified E : Entity> entity(op: EntityDefinition<E>.() -> Unit) {
-        val entityDefinition = EntityDefinition<E>().apply(op)
+    inline fun <reified E : Entity<K>, K : Key> entity(op: EntityDefinition<E, K>.() -> Unit) {
+        val entityDefinition = EntityDefinition<E, K>().apply(op)
         entityResources[E::class] = EntityResource(
                 root = root,
                 entityDefinition = entityDefinition,
@@ -39,9 +39,9 @@ class TypesRegistry(
         )
     }
 
-    inline fun <reified VE : VersionedEntity> versionedEntity(op: VersionedEntityDefinition<VE>.() -> Unit) {
-        val versionedEntityDefinition = VersionedEntityDefinition<VE>().apply(op)
-        val jacksonTypeReference = object : TypeReference<VersionedEntityContainer<VE>>() { }
+    inline fun <reified VE : VersionedEntity<K>, K : Key> versionedEntity(op: VersionedEntityDefinition<VE, K>.() -> Unit) {
+        val versionedEntityDefinition = VersionedEntityDefinition<VE, K>().apply(op)
+        val jacksonTypeReference = object : TypeReference<VersionedEntityContainer<VE, K>>() { }
         versionedEntityResources[VE::class] = VersionedEntityResource(
                 root = root,
                 versionedEntityDefinition = versionedEntityDefinition,

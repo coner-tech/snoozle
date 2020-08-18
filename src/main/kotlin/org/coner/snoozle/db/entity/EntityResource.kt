@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.ObjectReader
 import com.fasterxml.jackson.databind.ObjectWriter
 import io.reactivex.Observable
+import org.coner.snoozle.db.Key
 import org.coner.snoozle.db.path.Pathfinder
 import org.coner.snoozle.util.PathObservables
 import org.coner.snoozle.util.nameWithoutExtension
@@ -13,9 +14,9 @@ import java.nio.file.*
 import kotlin.io.FileAlreadyExistsException
 import kotlin.streams.toList
 
-class EntityResource<E : Entity> constructor(
+class EntityResource<E : Entity<K>, K : Key> constructor(
         private val root: Path,
-        internal val entityDefinition: EntityDefinition<E>,
+        internal val entityDefinition: EntityDefinition<E, K>,
         private val objectMapper: ObjectMapper,
         private val reader: ObjectReader,
         private val writer: ObjectWriter,
