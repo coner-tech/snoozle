@@ -1,22 +1,22 @@
 package org.coner.snoozle.db.sample
 
 import org.coner.snoozle.db.Database
-import org.coner.snoozle.db.blob.BlobResource
-import org.coner.snoozle.db.entity.EntityResource
 import java.nio.file.Path
-import java.util.*
 
 class SampleDatabase(root: Path) : Database(root) {
 
     override val types = registerTypes {
-        entity<Widget> {
+        entity<Widget, WidgetKey> {
             path = "widgets" / { id } + ".json"
+            entityKeyParser { WidgetKey(id = uuidAt(0)) }
         }
-        entity<Subwidget> {
+        entity<Subwidget, SubwidgetKey> {
             path = "widgets" / { widgetId } / "subwidgets" / { id } + ".json"
+            entityKeyParser { SubwidgetKey(widgetId = uuidAt(0), id = uuidAt(1)) }
         }
-        versionedEntity<Gadget> {
+        versionedEntity<Gadget, GadgetKey> {
             path = "gadgets" / { id } / version + ".json"
+            versionedEntityKeyParser { GadgetKey(id = uuidAt(0)) }
         }
         blob<GadgetPhoto> {
             path = "gadgets" / { gadgetId } / "photos" / string { id } + "." + string { extension }
@@ -28,8 +28,3 @@ class SampleDatabase(root: Path) : Database(root) {
         }
     }
 }
-
-fun EntityResource<Widget>.getWidget(id: UUID) = get(id)
-fun EntityResource<Subwidget>.getSubwidget(widgetId: UUID, id: UUID) = get(widgetId, id)
-fun EntityResource<Gadget>.getGadget(id: UUID) = get(id)
-fun BlobResource<GadgetPhoto>.getGadgetPhoto(gadgetId: UUID, id: String) = getAsInputStream(gadgetId, id)

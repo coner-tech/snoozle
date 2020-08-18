@@ -24,7 +24,7 @@ class TypesRegistry(
         this.op()
     }
 
-    inline fun <reified E : Entity<K>, K : Key> entity(op: EntityDefinition<E, K>.() -> Unit) {
+    inline fun <reified E : Entity<K>, reified K : Key> entity(op: EntityDefinition<E, K>.() -> Unit) {
         val entityDefinition = EntityDefinition<E, K>().apply(op)
         entityResources[E::class] = EntityResource(
                 root = root,
