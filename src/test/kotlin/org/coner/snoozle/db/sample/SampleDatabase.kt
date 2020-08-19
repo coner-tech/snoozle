@@ -16,15 +16,15 @@ class SampleDatabase(root: Path) : Database(root) {
         }
         versionedEntity<Gadget, GadgetKey> {
             path = "gadgets" / { id } / version + ".json"
-            versionedEntityKeyParser { GadgetKey(id = uuidAt(0)) }
+            key = { GadgetKey(id = uuidAt(0)) }
         }
         blob<GadgetPhoto> {
             path = "gadgets" / { gadgetId } / "photos" / string { id } + "." + string { extension }
-            factory = GadgetPhoto.Factory()
+            key = { GadgetPhoto(gadgetId = uuidAt(0), id = stringAt(1), extension = stringAt(2)) }
         }
         blob<GadgetPhotoCitation> {
             path = "gadgets" / { gadgetId } / "photos" / "citations" / string { id } + ".citation"
-            factory = GadgetPhotoCitation.Factory()
+            key = { GadgetPhotoCitation(gadgetId = uuidAt(0), id = stringAt(1)) }
         }
     }
 }

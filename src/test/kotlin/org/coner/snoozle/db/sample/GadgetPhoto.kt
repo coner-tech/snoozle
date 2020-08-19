@@ -13,11 +13,4 @@ class GadgetPhoto(
         val extension: String
 ) : Blob {
 
-    class Factory : LambdaBlobFactory<GadgetPhoto>({
-        GadgetPhoto(
-                gadgetId = uuid(it.getName(1).toString()),
-                id = it.getName(3).nameWithoutExtension,
-                extension = it.fileName.extension
-        )
-    })
 }

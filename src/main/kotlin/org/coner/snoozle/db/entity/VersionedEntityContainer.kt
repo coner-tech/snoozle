@@ -9,7 +9,7 @@ data class VersionedEntityContainer<E : VersionedEntity<EK>, EK : Key>(
         val entity: E,
         val version: Int,
         val ts: ZonedDateTime
-) : Record<VersionedEntityContainerKey<EK>>, Comparable<VersionedEntityContainer<E, EK>> {
+) : Entity<VersionedEntityContainerKey<EK>>, Comparable<VersionedEntityContainer<E, EK>> {
 
         override fun compareTo(other: VersionedEntityContainer<E, EK>): Int {
                 return version.compareTo(other.version)

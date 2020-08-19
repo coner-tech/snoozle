@@ -8,6 +8,9 @@ import java.util.*
 class VersionedEntityDefinition<VE : VersionedEntity<EK>, EK : Key>
     : RecordDefinition<VersionedEntityContainer<VE, EK>, VersionedEntityContainerKey<EK>>() {
 
+    var path: List<PathPart<VersionedEntityContainer<VE, EK>, EK, *>> = mutableListOf()
+    var key: (EntityKeyParser<VE, EK>.Context.() -> EK)? = null
+
     operator fun String.div(uuidExtractor: EK.() -> UUID): MutableList<PathPart<VersionedEntityContainer<VE, EK>, EK, *>> {
         return mutableListOf(
                 PathPart.StringValue<VersionedEntityContainer<VE, EK>, VersionedEntityContainerKey<EK>>(this) as PathPart<VersionedEntityContainer<VE, EK>, EK, *>,
