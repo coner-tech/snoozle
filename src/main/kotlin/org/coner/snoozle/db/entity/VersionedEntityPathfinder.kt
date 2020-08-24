@@ -26,7 +26,10 @@ class VersionedEntityPathfinder<VE : VersionedEntity<EK>, EK : Key>(
                 version = Int.MIN_VALUE,
                 ts = ZonedDateTime.now()
         )
-        val mappedRelativePath = versionedEntityContainerListingPathParts.joinToString(separator = "") { it.forRecord(container) }
+        val key = container.key.entity
+        val mappedRelativePath = versionedEntityContainerListingPathParts.joinToString(separator = "") {
+            it.pathPartFromKey(key)?.toString() ?: ""
+        }
         return Paths.get(mappedRelativePath)
     }
 
@@ -35,7 +38,7 @@ class VersionedEntityPathfinder<VE : VersionedEntity<EK>, EK : Key>(
     }
 
     private val versionedEntityContainerListingPathParts by lazy {
-        pathParts.takeWhile { it !is PathPart.VersionArgumentVariable }
+        pathParts.takeWhile { it !is PathPart.VersionArgumentVariable<*, *, *, *> }
     }
 
     private val versionedEntityContainerListingCandidatePath: Pattern by lazy {
@@ -48,10 +51,23 @@ class VersionedEntityPathfinder<VE : VersionedEntity<EK>, EK : Key>(
         return versionedEntityContainerListingCandidatePath.matcher(candidate.toString()).matches()
     }
 
+    private val streamAllStart: Path by lazy {
+        val relativeListingStart = pathParts.takeWhile { it is PathPart.StaticExtractor<*> }
+                .joinToString("")
+        root.resolve(relativeListingStart)
+    }
+
+    private val streamAllMaxDepth: Int by lazy {
+        val indexOfListingStartPathPart = pathParts.indexOfFirst { it !is PathPart.StaticExtractor<*> }
+        val depthOfListingStart = pathParts.take(indexOfListingStartPathPart).count { it is PathPart.DirectorySeparator }
+        val trueDepth = pathParts.count { it is PathPart.DirectorySeparator } - 1
+        trueDepth - depthOfListingStart
+    }
+
     override fun streamAll(): Stream<Path> {
         return Files.find(
-                listingStart,
-                listingMaxDepth,
+                streamAllStart,
+                streamAllMaxDepth,
                 BiPredicate { candidate: Path, attrs: BasicFileAttributes ->
                     attrs.isDirectory && isVersionedEntityContainerListing(root.relativize(candidate))
                 }
