@@ -1,7 +1,8 @@
 package org.coner.snoozle.db.path
 
-import assertk.assertions.isEqualTo
 import org.assertj.core.api.Assertions
+import org.coner.snoozle.db.PathPart
+import org.coner.snoozle.db.Pathfinder
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Subwidget
 import org.coner.snoozle.db.sample.Widget
@@ -25,7 +26,7 @@ class PathfinderTest {
                 pathParts = listOf(
                         PathPart.StringValue("widgets"),
                         PathPart.DirectorySeparator(),
-                        PathPart.UuidVariable { id},
+                        PathPart.UuidVariable { id },
                         PathPart.StringValue(".json")
                 )
         )

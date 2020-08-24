@@ -6,10 +6,10 @@ import org.coner.snoozle.db.Pathfinder
 import java.nio.file.Path
 import java.util.*
 
-class EntityKeyParser<E : Entity<K>, K : Key>(
+class VersionedEntityKeyParser<E : Entity<K>, K : Key>(
         private val definition: EntityDefinition<E, K>,
         private val path: Pathfinder<E, K>,
-        private val fn: EntityKeyParser<E, K>.Context.() -> K
+        private val fn: VersionedEntityKeyParser<E, K>.Context.() -> K
 ) {
 
     private val uuidPathPartExtractors: Array<PathPart.UuidVariable<E, K>?> by lazy {

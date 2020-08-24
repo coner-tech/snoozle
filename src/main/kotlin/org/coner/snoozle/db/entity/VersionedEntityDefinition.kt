@@ -2,7 +2,7 @@ package org.coner.snoozle.db.entity
 
 import org.coner.snoozle.db.Key
 import org.coner.snoozle.db.RecordDefinition
-import org.coner.snoozle.db.path.PathPart
+import org.coner.snoozle.db.PathPart
 import java.util.*
 
 class VersionedEntityDefinition<VE : VersionedEntity<EK>, EK : Key>

@@ -15,10 +15,10 @@ data class VersionedEntityContainer<E : VersionedEntity<EK>, EK : Key>(
                 return version.compareTo(other.version)
         }
 
-        override val key by lazy { VersionedEntityContainerKey(entity = entity, version = version )}
+        override val key by lazy { VersionedEntityContainerKey(entity = entity.key, version = version )}
 }
 
 data class VersionedEntityContainerKey<EK : Key>(
-        val entity: Entity<EK>,
+        val entity: EK,
         val version: Int
 ) : Key

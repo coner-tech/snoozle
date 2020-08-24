@@ -2,7 +2,7 @@ package org.coner.snoozle.db.blob
 
 import org.coner.snoozle.db.LiteralRecordDefinition
 import org.coner.snoozle.db.Record
-import org.coner.snoozle.db.path.PathPart
+import org.coner.snoozle.db.PathPart
 
 class BlobDefinition<B : Blob> : LiteralRecordDefinition<Record<B>, B>() {
 

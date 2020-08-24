@@ -1,6 +1,5 @@
 package org.coner.snoozle.db
 
-import org.coner.snoozle.db.path.PathPart
 import java.util.*
 
 abstract class LiteralRecordDefinition<R : Record<K>, K : Key> : RecordDefinition<R, K>() {

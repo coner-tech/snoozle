@@ -1,11 +1,10 @@
 package org.coner.snoozle.db.blob
 
-import org.coner.snoozle.db.path.Pathfinder
+import org.coner.snoozle.db.Pathfinder
 import org.coner.snoozle.util.readText
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.streams.toList
 
 class BlobResource<B : Blob> constructor(
         private val root: Path,

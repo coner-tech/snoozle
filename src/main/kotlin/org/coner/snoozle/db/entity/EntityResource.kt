@@ -1,30 +1,28 @@
 package org.coner.snoozle.db.entity
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.ObjectReader
 import com.fasterxml.jackson.databind.ObjectWriter
 import io.reactivex.Observable
 import org.coner.snoozle.db.Key
-import org.coner.snoozle.db.path.Pathfinder
-import org.coner.snoozle.util.PathObservables
+import org.coner.snoozle.db.Pathfinder
 import org.coner.snoozle.util.nameWithoutExtension
 import org.coner.snoozle.util.uuid
 import org.coner.snoozle.util.watch
 import java.nio.file.*
-import kotlin.io.FileAlreadyExistsException
-import kotlin.streams.toList
+import java.util.function.Predicate
+import java.util.stream.Stream
 
 class EntityResource<E : Entity<K>, K : Key> constructor(
         private val root: Path,
-        internal val entityDefinition: EntityDefinition<E, K>,
-        private val objectMapper: ObjectMapper,
+        internal val definition: EntityDefinition<E, K>,
         private val reader: ObjectReader,
         private val writer: ObjectWriter,
-        private val path: Pathfinder<E>
+        private val path: Pathfinder<E, K>,
+        private val key: EntityKeyParser<E, K>
 ) {
 
-    fun get(vararg args: Any): E {
-        val entityPath = path.findRecordByArgs(*args)
+    fun get(key: K): E {
+        val entityPath = path.findRecord(key)
         val file = root.resolve(entityPath)
         return read(file)
     }
@@ -32,13 +30,13 @@ class EntityResource<E : Entity<K>, K : Key> constructor(
     fun put(entity: E) {
         val entityParentPath = path.findListingByRecord(entity)
         val parent = root.resolve(entityParentPath)
-        try {
-            Files.createDirectories(parent)
-        } catch (fileAlreadyExists: FileAlreadyExistsException) {
-            // that's fine
-        } catch (t: Throwable) {
-            val message = "Failed to create parent folder for ${entityDefinition::class.java.simpleName} $entityParentPath"
-            throw EntityIoException.WriteFailure(message, t)
+        if (!Files.exists(parent)) {
+            try {
+                Files.createDirectories(parent)
+            } catch (t: Throwable) {
+                val message = "Failed to create parent folder for ${definition::class.java.simpleName} $entityParentPath"
+                throw EntityIoException.WriteFailure(message, t)
+            }
         }
         val file = root.resolve(path.findRecord(entity))
         write(file, entity)
@@ -71,35 +69,18 @@ class EntityResource<E : Entity<K>, K : Key> constructor(
         Files.delete(file)
     }
 
-    fun list(vararg args: Any): List<E> {
-        val listingPath = path.findListingByArgs(*args)
-        val listing = root.resolve(listingPath)
-        if (!Files.exists(listing)) {
-            try {
-                Files.createDirectories(listing)
-            } catch (t: Throwable) {
-                val message = """
-                    Failed to create listing:
-                    $listingPath
-                    Does its parent exist?
-                """.trimIndent()
-                throw EntityIoException.WriteFailure(message, t)
-            }
-        }
-        return Files.list(listing)
-                .filter { Files.isRegularFile(it) && path.isRecord(root.relativize(it)) }
-                .sorted(compareBy(Path::toString))
-                .map { file -> read(file) }
-                .toList()
+    fun streamAll(keyFilter: Predicate<K>? = null): Stream<E> {
+        val allPathsMappedToKeys = path.streamAll()
+                .map { recordPath: Path -> key.parse(recordPath) }
+        val allKeysForRead = keyFilter?.let { allPathsMappedToKeys.filter(it) } ?: allPathsMappedToKeys
+        return allKeysForRead.map { read(path.findRecord(it)) }
     }
 
-    fun watchListing(vararg args: Any): Observable<EntityEvent<E>> {
-        val relativeListing = path.findListingByArgs(*args)
-        val absoluteListing = root.resolve(relativeListing)
-        return absoluteListing.watch(recursive = false)
-                .filter { path.isRecord(relativeListing.resolve(it.context() as Path)) }
+    fun watchListing(): Observable<EntityEvent<E, K>> {
+        return root.watch(recursive = true)
+                .filter { path.isRecord(root.relativize(it.context() as Path)) }
                 .map {
-                    val file = absoluteListing.resolve(it.context() as Path)
+                    val file = it.context() as Path
                         val entity = if (it.kind() != StandardWatchEventKinds.ENTRY_DELETE
                                 && Files.exists(file)
                                 && Files.size(file) > 0

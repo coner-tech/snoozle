@@ -1,7 +1,7 @@
 package org.coner.snoozle.db.blob
 
 import org.coner.snoozle.db.Record
-import org.coner.snoozle.db.path.PathPart
+import org.coner.snoozle.db.PathPart
 import java.util.*
 
 class BlobKeyParser<B : Blob>(

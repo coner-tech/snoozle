@@ -1,7 +1,5 @@
-package org.coner.snoozle.db.path
+package org.coner.snoozle.db
 
-import org.coner.snoozle.db.Key
-import org.coner.snoozle.db.Record
 import org.coner.snoozle.db.entity.*
 import org.coner.snoozle.util.hasUuidPattern
 import java.io.File
