@@ -1,18 +1,16 @@
-package org.coner.snoozle.db.entity
+package org.coner.snoozle.db
 
-import org.coner.snoozle.db.Key
-import org.coner.snoozle.db.PathPart
-import org.coner.snoozle.db.Pathfinder
 import java.nio.file.Path
 import java.util.*
 
-class VersionedEntityKeyParser<E : Entity<K>, K : Key>(
-        private val definition: EntityDefinition<E, K>,
-        private val path: Pathfinder<E, K>,
-        private val fn: VersionedEntityKeyParser<E, K>.Context.() -> K
+class KeyMapper<K : Key, R : Record<K>>(
+        private val definition: RecordDefinition<K, R>,
+        private val pathfinder: Pathfinder<K, R>,
+        private val relativeRecordFn: KeyMapper<K, R>.RelativeRecordContext.() -> K,
+        private val instanceFn: R.() -> K
 ) {
 
-    private val uuidPathPartExtractors: Array<PathPart.UuidVariable<E, K>?> by lazy {
+    private val uuidPathPartExtractors: Array<PathPart.UuidVariable<K, R>?> by lazy {
         definition.path
                 .map { when (it) {
                     is PathPart.UuidVariable -> it
@@ -20,7 +18,7 @@ class VersionedEntityKeyParser<E : Entity<K>, K : Key>(
                 } }
                 .toTypedArray()
     }
-    private val stringPathPartExtractors: Array<PathPart.StringVariable<E, K>?> by lazy {
+    private val stringPathPartExtractors: Array<PathPart.StringVariable<K, R>?> by lazy {
         definition.path
                 .map { when (it) {
                     is PathPart.StringVariable -> it
@@ -29,12 +27,16 @@ class VersionedEntityKeyParser<E : Entity<K>, K : Key>(
                 .toTypedArray()
     }
 
-    fun parse(relativeRecord: Path): K {
-        val rawStringParts = path.findVariableStringParts(relativeRecord)
-        return fn.invoke(Context(rawStringParts))
+    fun fromRelativeRecord(relativeRecord: Path): K {
+        val rawStringParts = pathfinder.findVariableStringParts(relativeRecord)
+        return relativeRecordFn.invoke(RelativeRecordContext(rawStringParts))
     }
 
-    inner class Context(
+    fun fromInstance(instance: R): K {
+        return instanceFn(instance)
+    }
+
+    inner class RelativeRecordContext(
             private val rawStringParts: Array<String>
     ) {
         fun uuidAt(index: Int): UUID {

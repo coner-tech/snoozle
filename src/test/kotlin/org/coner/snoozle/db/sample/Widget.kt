@@ -7,9 +7,8 @@ import java.util.*
 data class Widget(
         val id: UUID = UUID.randomUUID(),
         val name: String
-) : Entity<WidgetKey> {
+) : Entity<Widget.Key> {
 
-    override val key by lazy { WidgetKey(id = id) }
+    data class Key(val id: UUID) : org.coner.snoozle.db.Key
 }
 
-data class WidgetKey(val id: UUID) : Key

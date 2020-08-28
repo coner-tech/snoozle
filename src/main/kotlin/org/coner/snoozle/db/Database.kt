@@ -18,20 +18,12 @@ abstract class Database(
         return TypesRegistry(root, objectMapper, op)
     }
 
-    inline fun <reified E : Entity<K>, K : Key> entity(): EntityResource<E, K> {
+    inline fun <K : Key, reified E : Entity<K>> entity(): EntityResource<K, E> {
         return entity(E::class)
     }
 
-    fun <E : Entity<K>, K : Key> entity(type: KClass<E>): EntityResource<E, K> {
-        return types.entityResources[type] as EntityResource<E, K>
-    }
-
-    inline fun <reified VE : VersionedEntity<K>, K : Key> versionedEntity(): VersionedEntityResource<VE, K> {
-        return versionedEntity(VE::class)
-    }
-
-    fun <VE : VersionedEntity<K>, K : Key> versionedEntity(entity: KClass<VE>): VersionedEntityResource<VE, K> {
-        return types.versionedEntityResources[entity]
+    fun <K : Key, E : Entity<K>> entity(type: KClass<E>): EntityResource<K, E> {
+        return types.entityResources[type] as EntityResource<K, E>
     }
 
     inline fun <reified B : Blob> blob(): BlobResource<B> {

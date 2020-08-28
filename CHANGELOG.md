@@ -1,9 +1,9 @@
 # Changelog
 
 # 0.4.0 (pending)
-
+- [#33](https://github.com/caeos/snoozle/issues/33) Use parameterized key types for lookups instead of vararg Any
+    - Eliminated entity versioning
 - [#25](https://github.com/caeos/snoozle/issues/25) Revise the database path definition to use receiver functions
-- [#28](https://github.com/caeos/snoozle/issues/28) Single file per version entity storage
 
 # 0.3.4 (2020-08-04)
 

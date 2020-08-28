@@ -6,38 +6,16 @@ import java.util.function.BiPredicate
 import java.util.regex.Pattern
 import java.util.stream.Stream
 
-open class Pathfinder<R : Record<K>, K : Key>(
+open class Pathfinder<K : Key, R : Record<K>>(
         protected val root: Path,
-        protected val pathParts: List<PathPart<R, K, *>>
+        protected val pathParts: List<PathPart<K, R, *>>
 ) {
-
-    private val recordVariablePathParts by lazy {
-        pathParts.filter { it is PathPart.VariableExtractor<*> }
-    }
 
     fun findRecord(key: K): Path {
         val relativePath = pathParts.joinToString(separator = "") { pathPart ->
             pathPart.pathPartFromKey(key).toString()
         }
         return Paths.get(relativePath)
-    }
-
-    fun findRecord(record: R): Path {
-        return findRecord(record.key)
-    }
-
-    private val listingPathParts by lazy {
-        pathParts.take(pathParts.indexOfLast { it is PathPart.DirectorySeparator<*, *> })
-    }
-    private val listingVariablePathPartsCount by lazy {
-        listingPathParts.count { it is PathPart.VariableExtractor<*> }
-    }
-
-    fun findListingByRecord(record: R): Path {
-        val mappedRelativePath = listingPathParts.joinToString(separator = "") { pathPart ->
-            pathPart.pathPartFromKey(record.key).toString()
-        }
-        return Paths.get(mappedRelativePath)
     }
 
     private val recordCandidatePath: Pattern by lazy {
@@ -62,7 +40,7 @@ open class Pathfinder<R : Record<K>, K : Key>(
         trueDepth - depthOfListingStart
     }
 
-    open fun streamAll(): Stream<Path> {
+    fun streamAll(): Stream<Path> {
         return Files.find(
                 listingStart,
                 listingMaxDepth,
@@ -70,10 +48,22 @@ open class Pathfinder<R : Record<K>, K : Key>(
                     attrs.isRegularFile && isRecord(root.relativize(candidate))
                 }
         )
+                .map { root.relativize(it) }
     }
 
     fun findVariableStringParts(relativeRecordPath: Path): Array<String> {
-
+        var remainingPathParts = relativeRecordPath.toString()
+        val extractedVariables = mutableListOf<Any>()
+        pathParts.forEach { pathPart ->
+            val matcher = pathPart.regex.matcher(remainingPathParts)
+            check(matcher.matches()) { "Not a relative record path" }
+            if (pathPart is PathPart.VariableExtractor<*, *>) {
+                extractedVariables += matcher.group()
+            }
+            remainingPathParts = remainingPathParts.substring(matcher.end())
+        }
+        check(remainingPathParts.isEmpty()) { "Remaining path parts must be empty but were not"}
+        return extractedVariables.map { it.toString() }.toTypedArray()
     }
 
 }

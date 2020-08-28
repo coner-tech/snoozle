@@ -5,8 +5,8 @@ import org.coner.snoozle.db.PathPart
 import java.util.*
 
 class BlobKeyParser<B : Blob>(
-        private val uuidPathPartExtractors: Array<PathPart.UuidVariable<Record<B>, B>?>,
-        private val stringPathPartExtractors: Array<PathPart.StringVariable<Record<B>, B>?>,
+        private val uuidPathPartExtractors: Array<PathPart.UuidVariable<B, Record<B>>?>,
+        private val stringPathPartExtractors: Array<PathPart.StringVariable<B, Record<B>>?>,
         private val fn: BlobKeyParser<B>.Context.() -> B
 ) {
 

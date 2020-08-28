@@ -8,12 +8,13 @@ data class Subwidget(
         val id: UUID = UUID.randomUUID(),
         val widgetId: UUID,
         val name: String
-) : Entity<SubwidgetKey> {
+) : Entity<Subwidget.Key> {
 
-    override val key by lazy { SubwidgetKey(id = id, widgetId = id) }
+    override val key by lazy { Key(id = id, widgetId = id) }
+
+    data class Key(
+            val id: UUID,
+            val widgetId: UUID
+    ) : org.coner.snoozle.db.Key
+
 }
-
-data class SubwidgetKey(
-        val id: UUID,
-        val widgetId: UUID
-) : Key

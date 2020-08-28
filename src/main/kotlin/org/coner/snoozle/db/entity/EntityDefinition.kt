@@ -2,11 +2,13 @@ package org.coner.snoozle.db.entity
 
 import org.coner.snoozle.db.Key
 import org.coner.snoozle.db.LiteralRecordDefinition
-import org.coner.snoozle.db.PathPart
+import kotlin.reflect.KClass
 
-class EntityDefinition<E : Entity<K>, K : Key> : LiteralRecordDefinition<E, K>() {
+class EntityDefinition<K : Key, E : Entity<K>>(
+        keyClass: KClass<K>,
+        entityClass: KClass<E>
+) : LiteralRecordDefinition<K, E>(keyClass, entityClass) {
 
-    var path: List<PathPart<E, K, *>> = mutableListOf()
-    var key: (EntityKeyParser<E, K>.Context.() -> K)? = null
+    var keyFromEntity: (E.() -> K)? = null
 
 }

@@ -6,25 +6,28 @@ import java.nio.file.Path
 class SampleDatabase(root: Path) : Database(root) {
 
     override val types = registerTypes {
-        entity<Widget, WidgetKey> {
+        entity<Widget.Key, Widget> {
             path = "widgets" / { id } + ".json"
-            key = { WidgetKey(id = uuidAt(0)) }
+            keyFromPath = { Widget.Key(id = uuidAt(0)) }
+            keyFromEntity = { Widget.Key(id = id) }
         }
-        entity<Subwidget, SubwidgetKey> {
+        entity<Subwidget.Key, Subwidget> {
             path = "widgets" / { widgetId } / "subwidgets" / { id } + ".json"
-            key = { SubwidgetKey(widgetId = uuidAt(0), id = uuidAt(1)) }
+            keyFromPath = { Subwidget.Key(widgetId = uuidAt(0), id = uuidAt(1)) }
+            keyFromEntity = { Subwidget.Key(widgetId = widgetId, id = id) }
         }
-        versionedEntity<Gadget, GadgetKey> {
-            path = "gadgets" / { id } / version + ".json"
-            key = { GadgetKey(id = uuidAt(0)) }
+        entity<Gadget.Key, Gadget> {
+            path = "gadgets" / { id } + ".json"
+            keyFromPath = { Gadget.Key(uuidAt(0)) }
+            keyFromEntity = { Gadget.Key(id = id) }
         }
         blob<GadgetPhoto> {
             path = "gadgets" / { gadgetId } / "photos" / string { id } + "." + string { extension }
-            key = { GadgetPhoto(gadgetId = uuidAt(0), id = stringAt(1), extension = stringAt(2)) }
+            keyFromPath = { GadgetPhoto(gadgetId = uuidAt(0), id = stringAt(1), extension = stringAt(2)) }
         }
         blob<GadgetPhotoCitation> {
             path = "gadgets" / { gadgetId } / "photos" / "citations" / string { id } + ".citation"
-            key = { GadgetPhotoCitation(gadgetId = uuidAt(0), id = stringAt(1)) }
+            keyFromPath = { GadgetPhotoCitation(gadgetId = uuidAt(0), id = stringAt(1)) }
         }
     }
 }
