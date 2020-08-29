@@ -97,7 +97,7 @@ class SubwidgetIntegrationTest {
     fun `It should stream Subwidgets`() {
         val actual = resource.stream()
                 .toList()
-                .sortedBy { it.widgetId }
+                .sortedBy { it.name }
 
         assertThat(actual).all {
             hasSize(2)

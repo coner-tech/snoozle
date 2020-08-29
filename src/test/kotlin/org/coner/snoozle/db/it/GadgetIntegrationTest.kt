@@ -59,10 +59,12 @@ class GadgetIntegrationTest {
     }
 
     @Test
-    fun `it should list all gadgets`() {
+    fun `it should stream Gadgets`() {
         val all = SampleDb.Gadgets.all
 
-        val actual = resource.stream().toList()
+        val actual = resource.stream()
+                .toList()
+                .sortedBy { it.name }
 
         assertThat(actual).isEqualTo(all)
     }

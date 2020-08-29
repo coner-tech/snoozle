@@ -71,7 +71,7 @@ class WidgetIntegrationTest {
     fun `It should stream Widgets`() {
         val widgets = resource.stream()
                 .toList()
-                .sortedBy { it.id }
+                .sortedBy { it.name }
 
         assertk.assertThat(widgets).all {
             hasSize(2)

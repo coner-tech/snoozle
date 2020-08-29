@@ -1,5 +1,10 @@
 package org.coner.snoozle.db
 
+import assertk.assertAll
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isTrue
 import org.assertj.core.api.Assertions
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Subwidget
@@ -50,7 +55,7 @@ class PathfinderTest {
 
         val actual = widgetPathfinder.findRecord(key)
 
-        val expected = Paths.get("widgets/${widget.id}.json")
+        val expected = Paths.get("widgets", "${widget.id}.json")
         Assertions.assertThat(actual)
                 .isRelative()
                 .isEqualTo(expected)
@@ -63,7 +68,7 @@ class PathfinderTest {
 
         val actual = subwidgetPathfinder.findRecord(key)
 
-        val expected = Paths.get("widgets/${subwidget.widgetId}/subwidgets/${subwidget.id}.json")
+        val expected = Paths.get("widgets", subwidget.widgetId.toString(), "subwidgets", "${subwidget.id}.json")
         Assertions.assertThat(actual)
                 .isRelative()
                 .isEqualTo(expected)
@@ -71,31 +76,62 @@ class PathfinderTest {
 
     @Test
     fun `It should find correct Widget candidate path is a record`() {
-        TODO()
+        val correctWidgetCandidate = root.relativize(SampleDb.Widgets.tempFile(root, SampleDb.Widgets.One))
+
+        val actual = widgetPathfinder.isRecord(correctWidgetCandidate)
+
+        assertThat(actual).isTrue()
     }
 
     @Test
-    fun `It should find incorrect Widget candidate path is not a record`() {
-        TODO()
+    fun `It should find incorrect Widget candidate paths are not a record`() {
+        val notRelativizedWidgetCandidate = SampleDb.Widgets.tempFile(root, SampleDb.Widgets.One)
+        assertThat(widgetPathfinder.isRecord(notRelativizedWidgetCandidate)).isFalse()
+
+        val correctSubwidgetCandidate = root.relativize(SampleDb.Subwidgets.tempFile(root, SampleDb.Subwidgets.WidgetOneSubwidgetOne))
+        assertThat(widgetPathfinder.isRecord(correctSubwidgetCandidate)).isFalse()
     }
 
     @Test
     fun `It should find correct Subwidget candidate path is a record`() {
-        TODO()
+        val correctSubwidgetCandidate = root.relativize(SampleDb.Subwidgets.tempFile(root, SampleDb.Subwidgets.WidgetOneSubwidgetOne))
+
+        val actual = subwidgetPathfinder.isRecord(correctSubwidgetCandidate)
+
+        assertThat(actual).isTrue()
     }
 
     @Test
     fun `It should find incorrect Subwidget candidate path is not a record`() {
-        TODO()
+        val notRelativizedSubwidgetCandidate = SampleDb.Subwidgets.tempFile(root, SampleDb.Subwidgets.WidgetOneSubwidgetOne)
+        assertThat(subwidgetPathfinder.isRecord(notRelativizedSubwidgetCandidate)).isFalse()
+
+        val correctWidgetCandidate = root.relativize(SampleDb.Widgets.tempFile(root, SampleDb.Widgets.One))
+        assertThat(subwidgetPathfinder.isRecord(correctWidgetCandidate)).isFalse()
     }
 
     @Test
     fun `It should find variable string parts from Widget path`() {
-        TODO()
+        val widgetOne = SampleDb.Widgets.One
+        val relativeRecordPath = Paths.get("widgets", "${widgetOne.id}.json")
+        val expected = arrayOf(widgetOne.id.toString())
+
+        val actual = widgetPathfinder.findVariableStringParts(relativeRecordPath)
+
+        assertThat(actual).isEqualTo(expected)
     }
 
     @Test
     fun `It should find variable string parts from Subwidget path`() {
-        TODO()
+        val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
+        val relativeRecordPath = Paths.get("widgets", "${subwidget.widgetId}", "subwidgets", "${subwidget.id}.json")
+        val expected = arrayOf(
+                "${subwidget.widgetId}",
+                "${subwidget.id}"
+        )
+
+        val actual = subwidgetPathfinder.findVariableStringParts(relativeRecordPath)
+
+        assertThat(actual).isEqualTo(expected)
     }
 }

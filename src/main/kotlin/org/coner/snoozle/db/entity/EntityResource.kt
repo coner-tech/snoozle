@@ -92,6 +92,9 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
 
     fun delete(key: K) {
         val file = root.resolve(pathfinder.findRecord(key))
+        if (Files.notExists(file)) {
+            throw EntityIoException.NotFound(key)
+        }
         Files.delete(file)
     }
 
@@ -103,7 +106,7 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
         val allPathsMappedToKeys = pathfinder.streamAll()
                 .map { recordPath: Path -> keyMapper.fromRelativeRecord(recordPath) }
         val allKeysForRead = keyFilter?.let { allPathsMappedToKeys.filter(it) } ?: allPathsMappedToKeys
-        return allKeysForRead.map { read(pathfinder.findRecord(it)) }
+        return allKeysForRead.map { read(root.resolve(pathfinder.findRecord(it))) }
     }
 
     fun watch(keyFilter: Predicate<K>? = null): Observable<EntityEvent<K, E>> {

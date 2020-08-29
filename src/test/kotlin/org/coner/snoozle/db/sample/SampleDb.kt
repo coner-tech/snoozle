@@ -64,9 +64,11 @@ object SampleDb {
 
         override fun asJson(entity: Subwidget): String {
             return """
-                "id": "${entity.id}",
-                "widgetId": "${entity.widgetId}",
-                "name": "${entity.name}"
+                {
+                    "id": "${entity.id}",
+                    "widgetId": "${entity.widgetId}",
+                    "name": "${entity.name}"
+                }
             """.trimIndent()
         }
     }
@@ -104,9 +106,11 @@ object SampleDb {
                 null
             }
             return """
-                "id": "${entity.id}",
-                "name": "${entity.name}",
-                "silly": $silly
+                {
+                    "id": "${entity.id}",
+                    "name": "${entity.name}",
+                    "silly": $silly
+                }
             """.trimIndent()
         }
     }
