@@ -5,6 +5,7 @@ import assertk.assertions.*
 import io.reactivex.observers.TestObserver
 import io.reactivex.schedulers.Schedulers
 import org.apache.commons.lang3.SystemUtils
+import org.coner.snoozle.util.PathWatchEvent
 import org.coner.snoozle.util.watch
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
@@ -19,7 +20,7 @@ class PathObservablesTest {
 
     @TempDir
     lateinit var directory: Path
-    lateinit var observer: TestObserver<WatchEvent<*>>
+    lateinit var observer: TestObserver<PathWatchEvent>
 
     val subscriptionDelayMs = 100L // needed because the registration of the watcher needs some time
 
@@ -100,7 +101,7 @@ class PathObservablesTest {
 
         for (i in 0 until cycles) {
             print(">>> $i ")
-            val observer = TestObserver<WatchEvent<*>>()
+            val observer = TestObserver<PathWatchEvent>()
             val watch = directory.watch(recursive = false)
             watch
                     .observeOn(Schedulers.io())

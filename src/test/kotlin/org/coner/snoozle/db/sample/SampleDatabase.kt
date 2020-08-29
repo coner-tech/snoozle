@@ -1,35 +1,33 @@
 package org.coner.snoozle.db.sample
 
 import org.coner.snoozle.db.Database
-import org.coner.snoozle.db.blob.BlobResource
-import org.coner.snoozle.db.entity.EntityResource
 import java.nio.file.Path
-import java.util.*
 
 class SampleDatabase(root: Path) : Database(root) {
 
     override val types = registerTypes {
-        entity<Widget> {
+        entity<Widget.Key, Widget> {
             path = "widgets" / { id } + ".json"
+            keyFromPath = { Widget.Key(id = uuidAt(0)) }
+            keyFromEntity = { Widget.Key(id = id) }
         }
-        entity<Subwidget> {
+        entity<Subwidget.Key, Subwidget> {
             path = "widgets" / { widgetId } / "subwidgets" / { id } + ".json"
+            keyFromPath = { Subwidget.Key(widgetId = uuidAt(0), id = uuidAt(1)) }
+            keyFromEntity = { Subwidget.Key(widgetId = widgetId, id = id) }
         }
-        versionedEntity<Gadget> {
-            path = "gadgets" / { id } / version + ".json"
+        entity<Gadget.Key, Gadget> {
+            path = "gadgets" / { id } + ".json"
+            keyFromPath = { Gadget.Key(uuidAt(0)) }
+            keyFromEntity = { Gadget.Key(id = id) }
         }
         blob<GadgetPhoto> {
             path = "gadgets" / { gadgetId } / "photos" / string { id } + "." + string { extension }
-            factory = GadgetPhoto.Factory()
+            keyFromPath = { GadgetPhoto(gadgetId = uuidAt(0), id = stringAt(1), extension = stringAt(2)) }
         }
         blob<GadgetPhotoCitation> {
             path = "gadgets" / { gadgetId } / "photos" / "citations" / string { id } + ".citation"
-            factory = GadgetPhotoCitation.Factory()
+            keyFromPath = { GadgetPhotoCitation(gadgetId = uuidAt(0), id = stringAt(1)) }
         }
     }
 }
-
-fun EntityResource<Widget>.getWidget(id: UUID) = get(id)
-fun EntityResource<Subwidget>.getSubwidget(widgetId: UUID, id: UUID) = get(widgetId, id)
-fun EntityResource<Gadget>.getGadget(id: UUID) = get(id)
-fun BlobResource<GadgetPhoto>.getGadgetPhoto(gadgetId: UUID, id: String) = getAsInputStream(gadgetId, id)

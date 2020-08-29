@@ -19,7 +19,7 @@ import java.util.*
  * @throws IOException
  */
 @Throws(IOException::class)
-fun Path.watch(recursive: Boolean = false): Observable<WatchEvent<*>> {
+fun Path.watch(recursive: Boolean = false): Observable<PathWatchEvent> {
     return createPathWatchObservable(this, recursive)
 }
 
@@ -45,7 +45,7 @@ object PathObservables {
 internal fun createPathWatchObservable(
         directory: Path,
         recursive: Boolean
-): Observable<WatchEvent<*>> {
+): Observable<PathWatchEvent> {
 
     val directoriesByKey: MutableMap<WatchKey, Path> = HashMap()
 
@@ -67,7 +67,7 @@ internal fun createPathWatchObservable(
     }
 
     fun registerNewDirectory(
-            subscriber: ObservableEmitter<WatchEvent<*>>,
+            subscriber: ObservableEmitter<PathWatchEvent>,
             dir: Path?,
             watcher: WatchService,
             event: WatchEvent<*>) {
@@ -85,7 +85,7 @@ internal fun createPathWatchObservable(
             }
         }
     }
-    return Observable.create { subscriber: ObservableEmitter<WatchEvent<*>> ->
+    return Observable.create { subscriber: ObservableEmitter<PathWatchEvent> ->
         var errorFree = true
         directory.fileSystem.newWatchService().use { watcher ->
             try {
@@ -109,9 +109,13 @@ internal fun createPathWatchObservable(
                     errorFree = false
                     break
                 }
-                val dir = directoriesByKey[key]
+                val dir = directoriesByKey[key] ?: continue
                 for (event in key.pollEvents()) {
-                    subscriber.onNext(event)
+                    val pathWatchEvent = PathWatchEvent(
+                            file = dir.resolve(event.context() as Path),
+                            kind = event.kind() as WatchEvent.Kind<Path>
+                    )
+                    subscriber.onNext(pathWatchEvent)
                     registerNewDirectory(subscriber, dir, watcher, event)
                 }
                 // reset key and remove from set if directory is no longer accessible
@@ -130,3 +134,8 @@ internal fun createPathWatchObservable(
         }
     }
 }
+
+class PathWatchEvent(
+        val file: Path,
+        val kind: WatchEvent.Kind<Path>
+)

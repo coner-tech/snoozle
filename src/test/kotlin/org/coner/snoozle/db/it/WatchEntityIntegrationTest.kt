@@ -1,13 +1,18 @@
 package org.coner.snoozle.db.it
 
 import assertk.all
-import assertk.assertAll
 import assertk.assertThat
-import assertk.assertions.*
+import assertk.assertions.hasSize
+import assertk.assertions.index
+import assertk.assertions.isEqualTo
+import assertk.assertions.prop
+import io.reactivex.Observer
 import io.reactivex.observers.TestObserver
 import io.reactivex.schedulers.Schedulers
+import org.coner.snoozle.db.Key
 import org.coner.snoozle.db.entity.Entity
 import org.coner.snoozle.db.entity.EntityEvent
+import org.coner.snoozle.db.entity.EntityResource
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Widget
@@ -25,11 +30,13 @@ class WatchEntityIntegrationTest {
     lateinit var root: Path
 
     private lateinit var database: SampleDatabase
-    private lateinit var widgetObserver: TestObserver<EntityEvent<Widget>>
+    private lateinit var resource: EntityResource<Widget.Key, Widget>
+    private lateinit var widgetObserver: TestObserver<EntityEvent<Widget.Key, Widget>>
 
     @BeforeEach
     fun before() {
         database = SampleDb.factory(root)
+        resource = database.entity()
         widgetObserver = observe()
     }
 
@@ -39,12 +46,13 @@ class WatchEntityIntegrationTest {
     }
 
     @Test
-    fun itShouldEmitWhenPutChangesEntity() {
+    fun `It should emit when Widget updated`() {
         val changed = SampleDb.Widgets.One.copy(name = "changed")
 
-        database.entity<Widget>().put(changed)
+        resource.update(changed)
+
         widgetObserver.awaitCount(1)
-        val actual: List<EntityEvent<Widget>> = widgetObserver.values()
+        val actual: List<EntityEvent<Widget.Key, Widget>> = widgetObserver.values()
 
         assertThat(actual).all {
             hasSize(1)
@@ -56,8 +64,8 @@ class WatchEntityIntegrationTest {
     }
 
     @Test
-    fun itShouldEmitWhenDeleteRemovesEntity() {
-        database.entity<Widget>().delete(SampleDb.Widgets.One)
+    fun `It should emit when delete removes Widget`() {
+        resource.delete(SampleDb.Widgets.One)
 
         widgetObserver.run {
             awaitCount(1)
@@ -70,50 +78,51 @@ class WatchEntityIntegrationTest {
     }
 
     @Test
-    fun itShouldEmitWhenPutCreatesEntity() {
-        val created = Widget(name = "created")
+    fun `It should emit when Widget created`() {
+        val create = Widget(name = "created")
 
-        database.entity<Widget>().put(created)
+        resource.create(create)
 
         widgetObserver.run {
             awaitCount(1)
             assertValueCount(1)
             assertValueAt(0) {
                 it.state == EntityEvent.State.EXISTS
-                        && it.entity == created
+                        && it.entity == create
             }
         }
     }
 
     @Test
-    fun itShouldNotEmitWhenJunkDataWritten() {
+    fun `It should not emit when junk data written`() {
         val widget = Widget(
-                name = "itShouldNotEmitWhenJunkDataWritten"
+                name = "It should not emit when junk data written"
         )
         val widgetAsJson = SampleDb.Widgets.asJson(widget)
+        // cut the json in half, simulates a non-atomic update
         val halfWidgetAsJson = widgetAsJson.substring(0..(widgetAsJson.length.div(2)))
         val widgetPath = root.resolve(Paths.get("widgets", "${widget.id}.json"))
 
         // sanity check the observer before testing
-        database.entity<Widget>().put(widget)
+        resource.create(widget)
         widgetObserver.awaitCount(1)
         widgetObserver.assertValueAt(0) {
             it.state == EntityEvent.State.EXISTS
                     && it.entity == widget
         }
 
-        // actually write some junk data
+        // write junk data
         widgetPath.toFile().writeText(halfWidgetAsJson)
 
         // sanity check the observer afterwards to ensure it has had its chance to emit or blow up somehow
-        database.entity<Widget>().delete(widget)
-        val revisedWidget = widget.copy(name = "revisedWidget")
+        resource.delete(widget)
+        val revisedWidget = widget.copy(name = "Revised")
         widgetObserver.awaitCount(2)
         widgetObserver.assertValueAt(1) {
             it.state == EntityEvent.State.DELETED
                     && it.entity == null
         }
-        database.entity<Widget>().put(revisedWidget)
+        resource.create(revisedWidget)
         widgetObserver.awaitCount(3)
         widgetObserver.assertValueAt(2) {
             it.state == EntityEvent.State.EXISTS
@@ -123,11 +132,11 @@ class WatchEntityIntegrationTest {
         widgetObserver.assertNoErrors()
     }
 
-    private inline fun <reified E : Entity> observe(): TestObserver<EntityEvent<E>> {
-        val testObserver = TestObserver<EntityEvent<E>>()
-        database.entity<E>().watchListing()
+    private inline fun <reified K : Key, reified E : Entity<K>> observe(): TestObserver<EntityEvent<K, E>> {
+        val testObserver: TestObserver<EntityEvent<K, E>> = TestObserver()
+        resource.watch()
                 .subscribeOn(Schedulers.io())
-                .subscribe(testObserver)
+                .subscribe(testObserver as Observer<in EntityEvent<Widget.Key, Widget>>)
 
         // this is unfortunate, but i'm not seeing a more reliable way to wait just long enough for the
         // file watch to activate

@@ -7,4 +7,11 @@ data class Subwidget(
         val id: UUID = UUID.randomUUID(),
         val widgetId: UUID,
         val name: String
-) : Entity
+) : Entity<Subwidget.Key> {
+
+    data class Key(
+            val id: UUID,
+            val widgetId: UUID
+    ) : org.coner.snoozle.db.Key
+
+}

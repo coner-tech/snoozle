@@ -1,46 +1,80 @@
 package org.coner.snoozle.db.entity
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.ObjectReader
 import com.fasterxml.jackson.databind.ObjectWriter
 import io.reactivex.Observable
-import org.coner.snoozle.db.path.Pathfinder
-import org.coner.snoozle.util.PathObservables
-import org.coner.snoozle.util.nameWithoutExtension
-import org.coner.snoozle.util.uuid
+import org.coner.snoozle.db.Key
+import org.coner.snoozle.db.KeyMapper
+import org.coner.snoozle.db.Pathfinder
+import org.coner.snoozle.util.PathWatchEvent
 import org.coner.snoozle.util.watch
 import java.nio.file.*
-import kotlin.io.FileAlreadyExistsException
-import kotlin.streams.toList
+import java.util.function.Predicate
+import java.util.stream.Stream
 
-class EntityResource<E : Entity> constructor(
+class EntityResource<K : Key, E : Entity<K>> constructor(
         private val root: Path,
-        internal val entityDefinition: EntityDefinition<E>,
-        private val objectMapper: ObjectMapper,
+        internal val definition: EntityDefinition<K, E>,
         private val reader: ObjectReader,
         private val writer: ObjectWriter,
-        private val path: Pathfinder<E>
+        private val pathfinder: Pathfinder<K, E>,
+        private val keyMapper: KeyMapper<K, E>
 ) {
 
-    fun get(vararg args: Any): E {
-        val entityPath = path.findRecordByArgs(*args)
+    fun key(entity: E): K {
+        return keyMapper.fromInstance(entity)
+    }
+
+    fun create(entity: E) {
+        val key = keyMapper.fromInstance(entity)
+        val relativeRecord = pathfinder.findRecord(key)
+        val destination = root.resolve(relativeRecord)
+        if (Files.exists(destination)) {
+            throw EntityIoException.CreateFailure("Entity already exists with key: $key")
+        }
+        createParentIfNotExists(key, destination)
+        val tempFile = destination.resolveSibling(destination.fileName.toString() + ".tmp")
+        Files.newOutputStream(tempFile, StandardOpenOption.CREATE_NEW).use { outputStream ->
+            writer.writeValue(outputStream, entity)
+        }
+        Files.move(tempFile, destination, StandardCopyOption.ATOMIC_MOVE)
+    }
+
+    fun read(key: K): E {
+        val entityPath = pathfinder.findRecord(key)
         val file = root.resolve(entityPath)
         return read(file)
     }
 
-    fun put(entity: E) {
-        val entityParentPath = path.findListingByRecord(entity)
-        val parent = root.resolve(entityParentPath)
-        try {
-            Files.createDirectories(parent)
-        } catch (fileAlreadyExists: FileAlreadyExistsException) {
-            // that's fine
-        } catch (t: Throwable) {
-            val message = "Failed to create parent folder for ${entityDefinition::class.java.simpleName} $entityParentPath"
-            throw EntityIoException.WriteFailure(message, t)
+    fun reread(entity: E): E {
+        return read(keyMapper.fromInstance(entity))
+    }
+
+    private fun createParentIfNotExists(key: K, destination: Path) {
+        val absoluteParent = destination.parent
+        if (!Files.exists(absoluteParent)) {
+            try {
+                Files.createDirectories(absoluteParent)
+            } catch (t: Throwable) {
+                val message = "Failed to create parent folder for $key"
+                throw EntityIoException.WriteFailure(message, t)
+            }
         }
-        val file = root.resolve(path.findRecord(entity))
-        write(file, entity)
+    }
+
+    fun update(entity: E) {
+        val key = keyMapper.fromInstance(entity)
+        val relativeRecord = pathfinder.findRecord(key)
+        val destination = root.resolve(relativeRecord)
+        if (Files.notExists(destination)) {
+            throw EntityIoException.NotFound(key)
+        }
+        createParentIfNotExists(key, destination)
+        val tempFile = destination.resolveSibling(destination.fileName.toString() + ".tmp")
+        Files.newOutputStream(tempFile, StandardOpenOption.CREATE_NEW).use { outputStream ->
+            writer.writeValue(outputStream, entity)
+        }
+        Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }
 
     private fun read(file: Path): E {
@@ -57,72 +91,60 @@ class EntityResource<E : Entity> constructor(
         }
     }
 
-    private fun write(destination: Path, entity: E) {
-        val tempFile = destination.resolveSibling(destination.fileName.toString() + ".tmp")
-        Files.newOutputStream(tempFile, StandardOpenOption.CREATE_NEW).use { outputStream ->
-            writer.writeValue(outputStream, entity)
+    fun delete(key: K) {
+        val file = root.resolve(pathfinder.findRecord(key))
+        if (Files.notExists(file)) {
+            throw EntityIoException.NotFound(key)
         }
-        Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-    }
-
-    fun delete(entity: E) {
-        val file = root.resolve(path.findRecord(entity))
         Files.delete(file)
     }
 
-    fun list(vararg args: Any): List<E> {
-        val listingPath = path.findListingByArgs(*args)
-        val listing = root.resolve(listingPath)
-        if (!Files.exists(listing)) {
-            try {
-                Files.createDirectories(listing)
-            } catch (t: Throwable) {
-                val message = """
-                    Failed to create listing:
-                    $listingPath
-                    Does its parent exist?
-                """.trimIndent()
-                throw EntityIoException.WriteFailure(message, t)
-            }
-        }
-        return Files.list(listing)
-                .filter { Files.isRegularFile(it) && path.isRecord(root.relativize(it)) }
-                .sorted(compareBy(Path::toString))
-                .map { file -> read(file) }
-                .toList()
+    fun delete(entity: E) {
+        delete(keyMapper.fromInstance(entity))
     }
 
-    fun watchListing(vararg args: Any): Observable<EntityEvent<E>> {
-        val relativeListing = path.findListingByArgs(*args)
-        val absoluteListing = root.resolve(relativeListing)
-        return absoluteListing.watch(recursive = false)
-                .filter { path.isRecord(relativeListing.resolve(it.context() as Path)) }
+    fun stream(keyFilter: Predicate<K>? = null): Stream<E> {
+        val allPathsMappedToKeys = pathfinder.streamAll()
+                .map { recordPath: Path -> keyMapper.fromRelativeRecord(recordPath) }
+        val allKeysForRead = keyFilter?.let { allPathsMappedToKeys.filter(it) } ?: allPathsMappedToKeys
+        return allKeysForRead.map { read(root.resolve(pathfinder.findRecord(it))) }
+    }
+
+    fun watch(keyFilter: Predicate<K>? = null): Observable<EntityEvent<K, E>> {
+        return root.watch(recursive = true)
+                .filter { pathfinder.isRecord(root.relativize(it.file)) }
+                .map { event: PathWatchEvent ->
+                    PreReadWatchEventPayload(
+                            event = event,
+                            key = keyMapper.fromRelativeRecord(root.relativize(event.file))
+                    )
+                }
+                .filter { keyFilter?.test(it.key) != false }
                 .map {
-                    val file = absoluteListing.resolve(it.context() as Path)
-                        val entity = if (it.kind() != StandardWatchEventKinds.ENTRY_DELETE
-                                && Files.exists(file)
-                                && Files.size(file) > 0
-                        ) {
-                            try {
-                                read(file)
-                            } catch (t: Throwable) {
-                                null
-                            }
-                        } else {
+                    val entity = if (it.event.kind != StandardWatchEventKinds.ENTRY_DELETE
+                            && Files.exists(it.event.file)
+                            && Files.size(it.event.file) > 0
+                    ) {
+                        try {
+                            read(it.event.file)
+                        } catch (t: Throwable) {
                             null
                         }
-                        it to entity
+                    } else {
+                        null
+                    }
+                    PostReadWatchEventPayload(it.event, it.key, entity)
                 }
                 .filter {
-                    when (it.first.kind()) {
-                        StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE -> it.second != null
-                        StandardWatchEventKinds.ENTRY_DELETE -> it.second == null
+                    when (it.event.kind) {
+                        StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE -> it.entity != null
+                        StandardWatchEventKinds.ENTRY_DELETE -> it.entity == null
                         StandardWatchEventKinds.OVERFLOW -> true
                         else -> false
                     }
                 }
                 .map {
-                    val state = when(it.first.kind()) {
+                    val state = when(it.event.kind) {
                         StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE -> EntityEvent.State.EXISTS
                         StandardWatchEventKinds.ENTRY_DELETE -> EntityEvent.State.DELETED
                         StandardWatchEventKinds.OVERFLOW -> EntityEvent.State.OVERFLOW
@@ -130,9 +152,20 @@ class EntityResource<E : Entity> constructor(
                     }
                     EntityEvent(
                             state = state,
-                            id = uuid((it.first.context() as Path).nameWithoutExtension),
-                            entity = it.second
+                            key = it.key,
+                            entity = it.entity
                     )
                 }
     }
+
+    private class PreReadWatchEventPayload<K : Key>(
+        val event: PathWatchEvent,
+        val key: K
+    )
+
+    private class PostReadWatchEventPayload<K : Key, E : Entity<K>>(
+            val event: PathWatchEvent,
+            val key: K,
+            val entity: E?
+    )
 }

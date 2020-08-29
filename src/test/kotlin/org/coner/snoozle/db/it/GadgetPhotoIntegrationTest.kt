@@ -3,6 +3,7 @@ package org.coner.snoozle.db.it
 import assertk.all
 import assertk.assertThat
 import assertk.assertions.*
+import org.coner.snoozle.db.blob.BlobResource
 import org.coner.snoozle.db.sample.GadgetPhoto
 import org.coner.snoozle.db.sample.SampleDatabase
 import org.coner.snoozle.db.sample.SampleDb
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import javax.imageio.ImageIO
+import kotlin.streams.toList
 
 class GadgetPhotoIntegrationTest {
 
@@ -18,15 +20,17 @@ class GadgetPhotoIntegrationTest {
     lateinit var root: Path
 
     private lateinit var database: SampleDatabase
+    private lateinit var resource: BlobResource<GadgetPhoto>
 
     @BeforeEach
     fun before() {
         database = SampleDb.factory(root)
+        resource = database.blob()
     }
 
     @Test
-    fun itShouldGetGadgetPhotos() {
-        val actualGadgetPhotos = database.blob<GadgetPhoto>().list(SampleDb.Gadgets.GadgetOne.id)
+    fun `It should stream GadgetPhotos`() {
+        val actualGadgetPhotos = resource.stream().toList()
 
         assertThat(actualGadgetPhotos).all {
             index(0).all {
@@ -41,7 +45,7 @@ class GadgetPhotoIntegrationTest {
         }
 
         val images = actualGadgetPhotos
-                .map { database.blob<GadgetPhoto>().getAsInputStream(it) }
+                .map { resource.getAsInputStream(it) }
                 .map { ImageIO.read(it) }
         assertThat(images).all {
             index(0).all {
@@ -54,7 +58,7 @@ class GadgetPhotoIntegrationTest {
             }
         }
 
-        val actualGadgetPhotoZeroPath = database.blob<GadgetPhoto>().getAbsolutePathTo(actualGadgetPhotos[0])
+        val actualGadgetPhotoZeroPath = resource.getAbsolutePathTo(actualGadgetPhotos[0])
         assertThat(actualGadgetPhotoZeroPath).all {
             toStringFun().all {
                 startsWith(root.toString())
@@ -64,11 +68,7 @@ class GadgetPhotoIntegrationTest {
             isReadable()
         }
 
-        val actualGadgetPhotoOnePath = database.blob<GadgetPhoto>().getAbsolutePathTo(
-                actualGadgetPhotos[1].gadgetId,
-                actualGadgetPhotos[1].id,
-                actualGadgetPhotos[1].extension
-        )
+        val actualGadgetPhotoOnePath = resource.getAbsolutePathTo(actualGadgetPhotos[1])
         assertThat(actualGadgetPhotoOnePath).all {
             toStringFun().all {
                 startsWith(root.toString())

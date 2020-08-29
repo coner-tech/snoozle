@@ -1,20 +1,24 @@
 package org.coner.snoozle.db
 
-import org.coner.snoozle.db.path.PathPart
-import java.util.*
+import kotlin.reflect.KClass
 
-abstract class RecordDefinition<R : Record> {
-    var path: List<PathPart<R>> = mutableListOf()
+abstract class RecordDefinition<K : Key, R : Record<K>>(
+        val keyClass: KClass<K>,
+        val recordClass: KClass<R>
+) {
 
-    abstract class PathArgumentExtractor<R : Record, P>(private val fn: R.() -> P) {
-        fun extract(record: R): P {
-            return fn(record)
+    var path: List<PathPart<K, R, *>> = mutableListOf()
+    var keyFromPath: (KeyMapper<K, R>.RelativeRecordContext.() -> K)? = null
+
+    abstract class PathArgumentExtractor<K : Key, P>(private val fn: K.() -> P) {
+        fun extract(key: K): P {
+            return fn(key)
         }
     }
 
-    class StringArgumentExtractor<R : Record>(fn: R.() -> String) : PathArgumentExtractor<R, String>(fn)
+    class StringArgumentExtractor<K : Key>(fn: K.() -> String) : PathArgumentExtractor<K, String>(fn)
 
-    fun string(extractor: R.() -> String): StringArgumentExtractor<R> {
+    fun string(extractor: K.() -> String): StringArgumentExtractor<K> {
         return StringArgumentExtractor(extractor)
     }
 
