@@ -9,13 +9,13 @@
     <properties>
         <kotlin.version>1.4.0</kotlin.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
-        <jackson.version>2.9.9</jackson.version>
-        <rxjava2.version>2.2.17</rxjava2.version>
+        <jackson.version>2.11.2</jackson.version>
+        <rxjava2.version>2.2.19</rxjava2.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>${maven.compiler.source}</maven.compiler.target>
         <junit5.platform.version>1.6.0</junit5.platform.version>
         <junit5.jupiter.version>5.6.0</junit5.jupiter.version>
-        <assertj.version>3.14.0</assertj.version>
+        <assertj.version>3.17.0</assertj.version>
         <assertk.version>0.22</assertk.version>
         <jsonassert.version>1.5.0</jsonassert.version>
         <mockk.version>1.9.3</mockk.version>
