@@ -6,6 +6,7 @@ import io.reactivex.Observable
 import org.coner.snoozle.db.Key
 import org.coner.snoozle.db.KeyMapper
 import org.coner.snoozle.db.Pathfinder
+import org.coner.snoozle.util.PathWatchEvent
 import org.coner.snoozle.util.watch
 import java.nio.file.*
 import java.util.function.Predicate
@@ -65,7 +66,7 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
         val key = keyMapper.fromInstance(entity)
         val relativeRecord = pathfinder.findRecord(key)
         val destination = root.resolve(relativeRecord)
-        if (!Files.exists(destination)) {
+        if (Files.notExists(destination)) {
             throw EntityIoException.NotFound(key)
         }
         createParentIfNotExists(key, destination)
@@ -111,22 +112,21 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
 
     fun watch(keyFilter: Predicate<K>? = null): Observable<EntityEvent<K, E>> {
         return root.watch(recursive = true)
-                .map { event: WatchEvent<*> ->
-                    val file = event.context() as Path
+                .filter { pathfinder.isRecord(root.relativize(it.file)) }
+                .map { event: PathWatchEvent ->
                     PreReadWatchEventPayload(
                             event = event,
-                            file = file,
-                            key = keyMapper.fromRelativeRecord(root.relativize(file))
+                            key = keyMapper.fromRelativeRecord(root.relativize(event.file))
                     )
                 }
-                .filter { pathfinder.isRecord(it.file) && keyFilter?.test(it.key) != false }
+                .filter { keyFilter?.test(it.key) != false }
                 .map {
-                    val entity = if (it.event.kind() != StandardWatchEventKinds.ENTRY_DELETE
-                            && Files.exists(it.file)
-                            && Files.size(it.file) > 0
+                    val entity = if (it.event.kind != StandardWatchEventKinds.ENTRY_DELETE
+                            && Files.exists(it.event.file)
+                            && Files.size(it.event.file) > 0
                     ) {
                         try {
-                            read(it.file)
+                            read(it.event.file)
                         } catch (t: Throwable) {
                             null
                         }
@@ -136,7 +136,7 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
                     PostReadWatchEventPayload(it.event, it.key, entity)
                 }
                 .filter {
-                    when (it.event.kind()) {
+                    when (it.event.kind) {
                         StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE -> it.entity != null
                         StandardWatchEventKinds.ENTRY_DELETE -> it.entity == null
                         StandardWatchEventKinds.OVERFLOW -> true
@@ -144,7 +144,7 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
                     }
                 }
                 .map {
-                    val state = when(it.event.kind()) {
+                    val state = when(it.event.kind) {
                         StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE -> EntityEvent.State.EXISTS
                         StandardWatchEventKinds.ENTRY_DELETE -> EntityEvent.State.DELETED
                         StandardWatchEventKinds.OVERFLOW -> EntityEvent.State.OVERFLOW
@@ -159,13 +159,12 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
     }
 
     private class PreReadWatchEventPayload<K : Key>(
-        val event: WatchEvent<*>,
-        val file: Path,
+        val event: PathWatchEvent,
         val key: K
     )
 
     private class PostReadWatchEventPayload<K : Key, E : Entity<K>>(
-            val event: WatchEvent<*>,
+            val event: PathWatchEvent,
             val key: K,
             val entity: E?
     )

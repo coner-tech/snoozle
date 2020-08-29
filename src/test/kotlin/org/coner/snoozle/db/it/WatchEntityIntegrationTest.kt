@@ -122,7 +122,7 @@ class WatchEntityIntegrationTest {
             it.state == EntityEvent.State.DELETED
                     && it.entity == null
         }
-        resource.update(revisedWidget)
+        resource.create(revisedWidget)
         widgetObserver.awaitCount(3)
         widgetObserver.assertValueAt(2) {
             it.state == EntityEvent.State.EXISTS
