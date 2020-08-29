@@ -1,8 +1,6 @@
-package org.coner.snoozle.db.path
+package org.coner.snoozle.db
 
 import org.assertj.core.api.Assertions
-import org.coner.snoozle.db.PathPart
-import org.coner.snoozle.db.Pathfinder
 import org.coner.snoozle.db.sample.SampleDb
 import org.coner.snoozle.db.sample.Subwidget
 import org.coner.snoozle.db.sample.Widget
@@ -15,14 +13,14 @@ import java.nio.file.Paths
 class PathfinderTest {
 
     @TempDir
-    lateinit var temp: Path
-    lateinit var widgetPathfinder: Pathfinder<Widget>
-    lateinit var subwidgetPathfinder: Pathfinder<Subwidget>
+    lateinit var root: Path
+    lateinit var widgetPathfinder: Pathfinder<Widget.Key, Widget>
+    lateinit var subwidgetPathfinder: Pathfinder<Subwidget.Key, Subwidget>
 
     @BeforeEach
     fun before() {
         widgetPathfinder = Pathfinder(
-                root = temp,
+                root = root,
                 pathParts = listOf(
                         PathPart.StringValue("widgets"),
                         PathPart.DirectorySeparator(),
@@ -31,7 +29,7 @@ class PathfinderTest {
                 )
         )
         subwidgetPathfinder = Pathfinder(
-                root = temp,
+                root = root,
                 pathParts = listOf(
                         PathPart.StringValue("widgets"),
                         PathPart.DirectorySeparator(),
@@ -46,10 +44,11 @@ class PathfinderTest {
     }
 
     @Test
-    fun itShouldFindPathForWidgetByArgs() {
+    fun `It should find path for Widget by key`() {
         val widget = SampleDb.Widgets.One
+        val key = Widget.Key(id = widget.id)
 
-        val actual = widgetPathfinder.findRecordByArgs(widget.id)
+        val actual = widgetPathfinder.findRecord(key)
 
         val expected = Paths.get("widgets/${widget.id}.json")
         Assertions.assertThat(actual)
@@ -58,13 +57,11 @@ class PathfinderTest {
     }
 
     @Test
-    fun itShouldFindPathOfSubwidgetByArgs() {
+    fun `It should find path for Subwidget by key`() {
         val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
+        val key = Subwidget.Key(widgetId = subwidget.widgetId, id = subwidget.id)
 
-        val actual = subwidgetPathfinder.findRecordByArgs(
-                subwidget.widgetId,
-                subwidget.id
-        )
+        val actual = subwidgetPathfinder.findRecord(key)
 
         val expected = Paths.get("widgets/${subwidget.widgetId}/subwidgets/${subwidget.id}.json")
         Assertions.assertThat(actual)
@@ -73,45 +70,32 @@ class PathfinderTest {
     }
 
     @Test
-    fun itShouldFindPathListingOfWidgetByArgs() {
-        val actual = widgetPathfinder.findListingByArgs()
-
-        val expected = Paths.get("widgets/")
-        Assertions.assertThat(actual)
-                .isRelative()
-                .isEqualTo(expected)
+    fun `It should find correct Widget candidate path is a record`() {
+        TODO()
     }
 
     @Test
-    fun itShouldFindPathListingOfSubwidgetByArgs() {
-        val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
-
-        val actual = subwidgetPathfinder.findListingByArgs(subwidget.widgetId)
-
-        val expected = Paths.get("widgets/${subwidget.widgetId}/subwidgets/")
-        Assertions.assertThat(actual)
-                .isRelative()
-                .isEqualTo(expected)
+    fun `It should find incorrect Widget candidate path is not a record`() {
+        TODO()
     }
 
     @Test
-    fun itShouldFindPathListingOfWidgetByRecordInstance() {
-        val widget = SampleDb.Widgets.One
-
-        val actual = widgetPathfinder.findListingByRecord(record = widget)
-
-        val expected = Paths.get("widgets/")
-        assertk.assertThat(actual).isEqualTo(expected)
+    fun `It should find correct Subwidget candidate path is a record`() {
+        TODO()
     }
 
     @Test
-    fun itShouldFindPathListingOfSubwidgetByRecordInstance() {
-        val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
-
-        val actual = subwidgetPathfinder.findListingByRecord(record = subwidget)
-
-        val expected = Paths.get("widgets/${subwidget.widgetId}/subwidgets/")
-        assertk.assertThat(actual).isEqualTo(expected)
+    fun `It should find incorrect Subwidget candidate path is not a record`() {
+        TODO()
     }
 
+    @Test
+    fun `It should find variable string parts from Widget path`() {
+        TODO()
+    }
+
+    @Test
+    fun `It should find variable string parts from Subwidget path`() {
+        TODO()
+    }
 }

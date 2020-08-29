@@ -1,7 +1,6 @@
 package org.coner.snoozle.db.sample
 
 import org.coner.snoozle.db.entity.Entity
-import org.coner.snoozle.db.Key
 import java.util.*
 
 data class Subwidget(
@@ -9,8 +8,6 @@ data class Subwidget(
         val widgetId: UUID,
         val name: String
 ) : Entity<Subwidget.Key> {
-
-    override val key by lazy { Key(id = id, widgetId = id) }
 
     data class Key(
             val id: UUID,

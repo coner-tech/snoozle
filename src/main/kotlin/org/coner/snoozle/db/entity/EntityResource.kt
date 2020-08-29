@@ -20,26 +20,60 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
         private val keyMapper: KeyMapper<K, E>
 ) {
 
-    fun get(key: K): E {
+    fun key(entity: E): K {
+        return keyMapper.fromInstance(entity)
+    }
+
+    fun create(entity: E) {
+        val key = keyMapper.fromInstance(entity)
+        val relativeRecord = pathfinder.findRecord(key)
+        val destination = root.resolve(relativeRecord)
+        if (Files.exists(destination)) {
+            throw EntityIoException.CreateFailure("Entity already exists with key: $key")
+        }
+        createParentIfNotExists(key, destination)
+        val tempFile = destination.resolveSibling(destination.fileName.toString() + ".tmp")
+        Files.newOutputStream(tempFile, StandardOpenOption.CREATE_NEW).use { outputStream ->
+            writer.writeValue(outputStream, entity)
+        }
+        Files.move(tempFile, destination, StandardCopyOption.ATOMIC_MOVE)
+    }
+
+    fun read(key: K): E {
         val entityPath = pathfinder.findRecord(key)
         val file = root.resolve(entityPath)
         return read(file)
     }
 
-    fun put(entity: E) {
-        val key = keyMapper.fromInstance(entity)
-        val relativeRecord = pathfinder.findRecord(key)
-        val absoluteParent = root.resolve(relativeRecord.parent)
+    fun reread(entity: E): E {
+        return read(keyMapper.fromInstance(entity))
+    }
+
+    private fun createParentIfNotExists(key: K, destination: Path) {
+        val absoluteParent = destination.parent
         if (!Files.exists(absoluteParent)) {
             try {
                 Files.createDirectories(absoluteParent)
             } catch (t: Throwable) {
-                val message = "Failed to create parent folder for ${definition.recordClass.simpleName} ${relativeRecord.parent}"
+                val message = "Failed to create parent folder for $key"
                 throw EntityIoException.WriteFailure(message, t)
             }
         }
-        val file = root.resolve(relativeRecord)
-        write(file, entity)
+    }
+
+    fun update(entity: E) {
+        val key = keyMapper.fromInstance(entity)
+        val relativeRecord = pathfinder.findRecord(key)
+        val destination = root.resolve(relativeRecord)
+        if (!Files.exists(destination)) {
+            throw EntityIoException.NotFound(key)
+        }
+        createParentIfNotExists(key, destination)
+        val tempFile = destination.resolveSibling(destination.fileName.toString() + ".tmp")
+        Files.newOutputStream(tempFile, StandardOpenOption.CREATE_NEW).use { outputStream ->
+            writer.writeValue(outputStream, entity)
+        }
+        Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }
 
     private fun read(file: Path): E {
@@ -56,17 +90,13 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
         }
     }
 
-    private fun write(destination: Path, entity: E) {
-        val tempFile = destination.resolveSibling(destination.fileName.toString() + ".tmp")
-        Files.newOutputStream(tempFile, StandardOpenOption.CREATE_NEW).use { outputStream ->
-            writer.writeValue(outputStream, entity)
-        }
-        Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-    }
-
     fun delete(key: K) {
         val file = root.resolve(pathfinder.findRecord(key))
         Files.delete(file)
+    }
+
+    fun delete(entity: E) {
+        delete(keyMapper.fromInstance(entity))
     }
 
     fun stream(keyFilter: Predicate<K>? = null): Stream<E> {

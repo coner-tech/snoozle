@@ -25,9 +25,9 @@ class DatabaseTest {
     @Test
     fun itShouldLookUpEntityResources() {
         assertThat(database).all {
-            transform("widget resource") { it.entity<Widget>() }.isNotNull()
-            transform("subwidget resource") { it.entity<Subwidget>() }.isNotNull()
-            transform("gadget resource") { it.versionedEntity<Gadget>() }.isNotNull()
+            transform("widget resource") { it.entity<Widget.Key, Widget>() }.isNotNull()
+            transform("subwidget resource") { it.entity<Subwidget.Key, Subwidget>() }.isNotNull()
+            transform("gadget resource") { it.entity<Gadget.Key, Gadget>() }.isNotNull()
         }
     }
 

@@ -11,8 +11,6 @@ data class Gadget(
         var silly: ZonedDateTime? = null
 ) : Entity<Gadget.Key> {
 
-    override val key by lazy { Key(id = id) }
-
     data class Key(val id: UUID) : org.coner.snoozle.db.Key
 
 }

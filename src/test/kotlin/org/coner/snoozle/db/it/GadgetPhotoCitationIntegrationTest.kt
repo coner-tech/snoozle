@@ -6,7 +6,7 @@ import assertk.assertions.hasLineCount
 import assertk.assertions.hasSize
 import assertk.assertions.index
 import assertk.assertions.isEqualTo
-import org.coner.snoozle.db.entity.VersionArgument
+import org.coner.snoozle.db.blob.BlobResource
 import org.coner.snoozle.db.sample.Gadget
 import org.coner.snoozle.db.sample.GadgetPhotoCitation
 import org.coner.snoozle.db.sample.SampleDatabase
@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import java.time.ZonedDateTime
+import kotlin.streams.toList
 
 class GadgetPhotoCitationIntegrationTest {
 
@@ -23,20 +24,21 @@ class GadgetPhotoCitationIntegrationTest {
     lateinit var root: Path
 
     private lateinit var database: SampleDatabase
+    private lateinit var resource: BlobResource<GadgetPhotoCitation>
 
     @BeforeEach
     fun before() {
         database = SampleDb.factory(root)
+        resource = database.blob()
     }
 
     @Test
-    fun itShouldGetGadgetPhotoCitations() {
-        val actual = database.blob<GadgetPhotoCitation>().list(SampleDb.Gadgets.GadgetOne.id)
+    fun `It should stream gadget photo citations`() {
+        val actual = resource.stream().toList()
 
         assertThat(actual).hasSize(2)
 
-        val texts = actual
-                .map { database.blob<GadgetPhotoCitation>().getAsText(it) }
+        val texts = actual.map { resource.getAsText(it) }
         assertThat(texts).all {
             hasSize(2)
             index(0).hasLineCount(3)
@@ -45,31 +47,33 @@ class GadgetPhotoCitationIntegrationTest {
     }
 
     @Test
-    fun itShouldPutGadgetPhotoCitationForGadgetWithExistingPhotoCitations() {
+    fun `It should put gadget photo citation for Gadget with existing PhotoCitations`() {
         val blob = GadgetPhotoCitation(
                 gadgetId = SampleDb.Gadgets.GadgetOne.id,
                 id = "close-up-photography-of-smartphone-beside-binder-clip-1841841"
         )
 
-        database.blob<GadgetPhotoCitation>().put(blob, "foo")
+        resource.put(blob, "foo")
 
-        assertThat(database.blob<GadgetPhotoCitation>().getAsText(blob)).isEqualTo("foo")
+        val actualText = resource.getAsText(blob)
+        assertThat(actualText).isEqualTo("foo")
     }
 
     @Test
-    fun itShouldPutGadgetPhotoCitationForGadgetWithoutPhotoCitations() {
+    fun `It should put GadgetPhotoCitation for Gadget without PhotoCitations`() {
         val gadgetTwo = Gadget(
                 name = "Gadget Without Photo Citations",
                 silly = ZonedDateTime.parse("2020-01-01T12:09:00-05:00")
         )
-        database.versionedEntity<Gadget>().put(gadgetTwo, VersionArgument.Auto)
+        database.entity<Gadget.Key, Gadget>().create(gadgetTwo)
         val firstCitation = GadgetPhotoCitation(
                 gadgetId = gadgetTwo.id,
                 id = "first citation"
         )
 
-        database.blob<GadgetPhotoCitation>().put(firstCitation, "foo")
+        resource.put(firstCitation, "foo")
 
-        assertThat(database.blob<GadgetPhotoCitation>().getAsText(firstCitation)).isEqualTo("foo")
+        val actualText = resource.getAsText(firstCitation)
+        assertThat(actualText).isEqualTo("foo")
     }
 }
