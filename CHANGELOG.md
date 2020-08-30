@@ -1,5 +1,8 @@
 # Changelog
 
+# 0.4.1 (pending)
+- [#36](https://github.com/caeos/snoozle/issues/36) Return an empty stream instead of throwing NoSuchFileException when streaming resource with no records
+
 # 0.4.0 (2020-08-29)
 - [#33](https://github.com/caeos/snoozle/issues/33) Use parameterized key types for lookups instead of vararg Any
     - Eliminated entity versioning

@@ -5,6 +5,7 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.util.function.BiPredicate
 import java.util.regex.Pattern
 import java.util.stream.Stream
+import kotlin.streams.asStream
 
 open class Pathfinder<K : Key, R : Record<K>>(
         protected val root: Path,
@@ -48,14 +49,18 @@ open class Pathfinder<K : Key, R : Record<K>>(
     fun streamAll(): Stream<Path> {
         val start = listingStart
         val maxDepth = listingMaxDepth
-        return Files.find(
-                start,
-                maxDepth,
-                BiPredicate { candidate: Path, attrs: BasicFileAttributes ->
-                    attrs.isRegularFile && isRecord(root.relativize(candidate))
-                }
-        )
-                .map { root.relativize(it) }
+        return try {
+            Files.find(
+                    start,
+                    maxDepth,
+                    { candidate: Path, attrs: BasicFileAttributes ->
+                        attrs.isRegularFile && isRecord(root.relativize(candidate))
+                    }
+            )
+                    .map { root.relativize(it) }
+        } catch (noSuchFileException: NoSuchFileException) {
+            Stream.empty()
+        }
     }
 
     fun findVariableStringParts(relativeRecordPath: Path): Array<String> {

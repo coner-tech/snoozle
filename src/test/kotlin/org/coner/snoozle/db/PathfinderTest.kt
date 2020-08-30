@@ -134,4 +134,11 @@ class PathfinderTest {
 
         assertThat(actual).isEqualTo(expected)
     }
+
+    @Test
+    fun `It should return an empty stream when no records exist`() {
+        val actual = widgetPathfinder.streamAll()
+        
+        Assertions.assertThat(actual).isEmpty()
+    }
 }
