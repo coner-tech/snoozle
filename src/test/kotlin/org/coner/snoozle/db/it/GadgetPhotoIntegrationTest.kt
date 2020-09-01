@@ -30,7 +30,9 @@ class GadgetPhotoIntegrationTest {
 
     @Test
     fun `It should stream GadgetPhotos`() {
-        val actualGadgetPhotos = resource.stream().toList()
+        val actualGadgetPhotos = resource.stream()
+                .toList()
+                .sortedBy { it.id }
 
         assertThat(actualGadgetPhotos).all {
             index(0).all {
