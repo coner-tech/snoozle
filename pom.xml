@@ -4,7 +4,7 @@
 
     <groupId>org.coner</groupId>
     <artifactId>snoozle</artifactId>
-    <version>0.4.1</version>
+    <version>0.4.2-SNAPSHOT</version>
 
     <properties>
         <kotlin.version>1.4.0</kotlin.version>
@@ -156,7 +156,7 @@
 
     <scm>
         <developerConnection>scm:git:git@github.com:caeos/snoozle.git</developerConnection>
-        <tag>v0.4.1</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <distributionManagement>
