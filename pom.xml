@@ -7,7 +7,7 @@
     <version>0.4.2-SNAPSHOT</version>
 
     <properties>
-        <kotlin.version>1.4.0</kotlin.version>
+        <kotlin.version>1.5.31</kotlin.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <jackson.version>2.11.2</jackson.version>
         <rxjava2.version>2.2.19</rxjava2.version>

@@ -1,5 +1,9 @@
 # Changelog
 
+# 0.5.0 (pending)
+
+- Rename package to tech.coner.snoozle
+
 # 0.4.1 (2020-09-02)
 - [#36](https://github.com/caeos/snoozle/issues/36) Return an empty stream instead of throwing NoSuchFileException when streaming resource with no records
 
