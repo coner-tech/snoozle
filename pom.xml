@@ -9,16 +9,17 @@
     <properties>
         <kotlin.version>1.5.31</kotlin.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
-        <jackson.version>2.11.2</jackson.version>
-        <rxjava2.version>2.2.19</rxjava2.version>
+        <jackson.version>2.13.0</jackson.version>
+        <rxjava2.version>2.2.21</rxjava2.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>${maven.compiler.source}</maven.compiler.target>
-        <junit5.platform.version>1.6.2</junit5.platform.version>
-        <junit5.jupiter.version>5.6.2</junit5.jupiter.version>
-        <assertj.version>3.17.0</assertj.version>
-        <assertk.version>0.22</assertk.version>
+        <junit5.platform.version>1.8.2</junit5.platform.version>
+        <junit5.jupiter.version>5.8.2</junit5.jupiter.version>
+        <assertj.version>3.21.0</assertj.version>
+        <assertk.version>0.25</assertk.version>
         <jsonassert.version>1.5.0</jsonassert.version>
-        <mockk.version>1.10.0</mockk.version>
+        <mockk.version>1.12.1</mockk.version>
+        <apache-commons.version>3.12.0</apache-commons.version>
     </properties>
 
     <dependencies>
@@ -93,7 +94,7 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.9</version>
+            <version>${apache-commons.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

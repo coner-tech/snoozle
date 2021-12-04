@@ -6,6 +6,7 @@
 - Change the Maven coordinates to
   - Group ID: tech.coner.snoozle
   - Artifact ID: snoozle
+- Upgrade dependencies
 
 # 0.4.1 (2020-09-02)
 - [#36](https://github.com/caeos/snoozle/issues/36) Return an empty stream instead of throwing NoSuchFileException when streaming resource with no records
