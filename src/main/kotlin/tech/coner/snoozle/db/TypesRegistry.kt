@@ -7,19 +7,39 @@ import tech.coner.snoozle.db.blob.BlobResource
 import tech.coner.snoozle.db.entity.Entity
 import tech.coner.snoozle.db.entity.EntityDefinition
 import tech.coner.snoozle.db.entity.EntityResource
+import tech.coner.snoozle.db.metadata.DatabaseVersionBlob
+import tech.coner.snoozle.db.metadata.SessionMetadataEntity
 import java.nio.file.Path
 import kotlin.reflect.KClass
 
 class TypesRegistry(
         val root: Path,
-        val objectMapper: ObjectMapper,
-        op: TypesRegistry.() -> Unit
+        val objectMapper: ObjectMapper
 ) {
     val entityResources = mutableMapOf<KClass<*>, EntityResource<*, *>>()
     val blobResources = mutableMapOf<KClass<*>, BlobResource<*>>()
 
     init {
-        this.op()
+        blob<DatabaseVersionBlob> {
+            path = listOf(
+                PathPart.StringValue(".snoozle"),
+                PathPart.DirectorySeparator(),
+                PathPart.StringValue("database_version")
+            )
+            keyFromPath = { DatabaseVersionBlob }
+        }
+        entity<SessionMetadataEntity.Key, SessionMetadataEntity> {
+            path = listOf(
+                PathPart.StringValue(".snoozle"),
+                PathPart.DirectorySeparator(),
+                PathPart.StringValue("sessions"),
+                PathPart.DirectorySeparator(),
+                PathPart.UuidVariable { id },
+                PathPart.StringValue(".json")
+            )
+            keyFromPath = { SessionMetadataEntity.Key(id = uuidAt(0)) }
+            keyFromEntity = { SessionMetadataEntity.Key(id = id) }
+        }
     }
 
     inline fun <reified K : Key, reified E : Entity<K>> entity(op: EntityDefinition<K, E>.() -> Unit) {

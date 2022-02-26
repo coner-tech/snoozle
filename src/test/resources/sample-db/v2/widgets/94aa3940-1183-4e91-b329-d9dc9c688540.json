@@ -1,0 +1,24 @@
+{
+  "id": "94aa3940-1183-4e91-b329-d9dc9c688540",
+  "name": "Widget Two",
+  "notWidget": false,
+  "boolean": false,
+  "nullBoolean": null,
+  "string": "string",
+  "nullString": null,
+  "int": 0,
+  "nullInt": null,
+  "nullFloat": null,
+  "float": 1.1,
+  "double": 1.2345678912345679E8,
+  "nullDouble": null,
+  "long": 123456789,
+  "nullLong": null,
+  "short": 0,
+  "nullShort": null,
+  "array": [],
+  "object": {
+    "array": []
+  },
+  "null": null
+}

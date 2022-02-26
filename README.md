@@ -32,7 +32,7 @@ entity<Widget.Key, Widget> {
     keyFromEntity = { Widget.Key(id = id) }
 }
 ```
-Refer to `org.coner.snoozle.db.sample.SampleDatabase` in the test source set for more detail.
+Refer to `tech.coner.snoozle.db.sample.SampleDatabase` in the test source set for more detail.
 
 ### Snoozle Queue
 

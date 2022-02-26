@@ -1,4 +1,5 @@
 {
   "id": "1f30d7b6-0296-489a-9615-55868aeef78a",
-  "name": "Widget One"
+  "name": "Widget One",
+  "notWidget": false
 }

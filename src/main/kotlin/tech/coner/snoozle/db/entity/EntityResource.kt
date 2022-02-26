@@ -11,6 +11,7 @@ import tech.coner.snoozle.util.watch
 import java.nio.file.*
 import java.util.function.Predicate
 import java.util.stream.Stream
+import kotlin.io.path.notExists
 
 class EntityResource<K : Key, E : Entity<K>> constructor(
     private val root: Path,
@@ -30,14 +31,32 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
         val relativeRecord = pathfinder.findRecord(key)
         val destination = root.resolve(relativeRecord)
         if (Files.exists(destination)) {
-            throw EntityIoException.CreateFailure("Entity already exists with key: $key")
+            throw EntityIoException.AlreadyExists("Entity already exists with key: $key")
         }
         createParentIfNotExists(key, destination)
         val tempFile = destination.resolveSibling(destination.fileName.toString() + ".tmp")
-        Files.newOutputStream(tempFile, StandardOpenOption.CREATE_NEW).use { outputStream ->
-            writer.writeValue(outputStream, entity)
+        try {
+            Files.newOutputStream(tempFile, StandardOpenOption.CREATE_NEW).use { outputStream ->
+                writer.writeValue(outputStream, entity)
+            }
+            Files.move(tempFile, destination, StandardCopyOption.ATOMIC_MOVE)
+        } catch (t: Throwable) {
+            throw EntityIoException.WriteFailure("Failed to write entity", t)
         }
-        Files.move(tempFile, destination, StandardCopyOption.ATOMIC_MOVE)
+    }
+
+    fun deleteOnExit(entity: E) {
+        val key = keyMapper.fromInstance(entity)
+        val relativeRecord = pathfinder.findRecord(key)
+        val destination = root.resolve(relativeRecord)
+        if (destination.notExists()) {
+            throw EntityIoException.NotFound(key)
+        }
+        try {
+            destination.toFile().deleteOnExit()
+        } catch (t: Throwable) {
+            throw EntityIoException.DeleteOnExitFailure(key)
+        }
     }
 
     fun read(key: K): E {

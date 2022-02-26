@@ -6,14 +6,15 @@ import assertk.assertions.hasLineCount
 import assertk.assertions.hasSize
 import assertk.assertions.index
 import assertk.assertions.isEqualTo
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import tech.coner.snoozle.db.blob.BlobResource
 import tech.coner.snoozle.db.sample.Gadget
 import tech.coner.snoozle.db.sample.GadgetPhotoCitation
-import tech.coner.snoozle.db.sample.SampleDatabase
-import tech.coner.snoozle.db.sample.SampleDb
+import tech.coner.snoozle.db.sample.SampleDatabaseFixture
+import tech.coner.snoozle.db.session.data.DataSession
 import java.nio.file.Path
 import java.time.ZonedDateTime
 
@@ -22,13 +23,24 @@ class GadgetPhotoCitationIntegrationTest {
     @TempDir
     lateinit var root: Path
 
-    private lateinit var database: SampleDatabase
+    private lateinit var session: DataSession
     private lateinit var resource: BlobResource<GadgetPhotoCitation>
 
     @BeforeEach
     fun before() {
-        database = SampleDb.factory(root)
-        resource = database.blob()
+        session = SampleDatabaseFixture
+            .factory(
+                root = root,
+                version = SampleDatabaseFixture.VERSION_HIGHEST
+            )
+            .openDataSession()
+            .getOrThrow()
+        resource = session.blob()
+    }
+
+    @AfterEach
+    fun after() {
+        session.close()
     }
 
     @Test
@@ -48,7 +60,7 @@ class GadgetPhotoCitationIntegrationTest {
     @Test
     fun `It should put gadget photo citation for Gadget with existing PhotoCitations`() {
         val blob = GadgetPhotoCitation(
-                gadgetId = SampleDb.Gadgets.GadgetOne.id,
+                gadgetId = SampleDatabaseFixture.Gadgets.GadgetOne.id,
                 id = "close-up-photography-of-smartphone-beside-binder-clip-1841841"
         )
 
@@ -64,7 +76,7 @@ class GadgetPhotoCitationIntegrationTest {
                 name = "Gadget Without Photo Citations",
                 silly = ZonedDateTime.parse("2020-01-01T12:09:00-05:00")
         )
-        database.entity<Gadget.Key, Gadget>().create(gadgetTwo)
+        session.entity<Gadget.Key, Gadget>().create(gadgetTwo)
         val firstCitation = GadgetPhotoCitation(
                 gadgetId = gadgetTwo.id,
                 id = "first citation"

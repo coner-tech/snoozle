@@ -1,10 +1,12 @@
 package tech.coner.snoozle.db.sample
 
 import tech.coner.snoozle.db.Database
+import tech.coner.snoozle.db.migration.MigrationPathMatcher
 import java.nio.file.Path
 
-class SampleDatabase(root: Path) : tech.coner.snoozle.db.Database(root) {
+class SampleDatabase(root: Path) : Database(root) {
 
+    override val version: Int = 3
     override val types = registerTypes {
         entity<Widget.Key, Widget> {
             path = "widgets" / { id } + ".json"
@@ -28,6 +30,82 @@ class SampleDatabase(root: Path) : tech.coner.snoozle.db.Database(root) {
         blob<GadgetPhotoCitation> {
             path = "gadgets" / { gadgetId } / "photos" / "citations" / string { id } + ".citation"
             keyFromPath = { GadgetPhotoCitation(gadgetId = uuidAt(0), id = stringAt(1)) }
+        }
+    }
+    override val migrations = registerMigrations {
+        migrate(null to 1) {
+            val widgets: List<MigrationPathMatcher> = "widgets" / matchUuid() + ".json"
+            move(
+                from = "widget" / matchUuid() + ".json",
+                to = widgets
+            )
+            move(
+                from = "widget" / matchUuid() / "subwidget" / matchUuid() + ".json",
+                to = "widgets" / matchUuid() / "subwidgets" / matchUuid() + ".json"
+            )
+            deleteDirectories("widget" / matchUuid() / "subwidget")
+            deleteDirectories("widget" / matchUuid())
+            deleteDirectory("widget")
+            onEntities(widgets) {
+                addBooleanProperty("boolean", false)
+                addBooleanProperty("nullBoolean", null)
+                addStringProperty("string", "string")
+                addStringProperty("nullString", null)
+                addIntProperty("int", 0)
+                addIntProperty("nullInt", null as Int?)
+                addFloatProperty("nullFloat", null)
+                addFloatProperty("float", 1.1f)
+                addDoubleProperty("double", 1.2345678912345679E8)
+                addDoubleProperty("nullDouble", null)
+                addLongProperty("long", 123456789)
+                addLongProperty("nullLong", null)
+                addShortProperty("short", 0)
+                addShortProperty("nullShort", null)
+                addArray("array")
+                addObject("object")
+                addNull("null")
+                onNode("/object") {
+                    addArray("array")
+                }
+            }
+        }
+        migrate(1 to 2) {
+            val widgets: List<MigrationPathMatcher> = "widgets" / matchUuid() + ".json"
+            onEntities(widgets) {
+                onNode("/object") {
+                    onArrayObjects("array") {
+                        addBooleanProperty("boolean", true)
+                    }
+                }
+            }
+        }
+        migrate(2 to 3) {
+            val widgets: List<MigrationPathMatcher> = "widgets" / matchUuid() + ".json"
+            onEntities(widgets) {
+                addBooleanProperty(name = "widget", defaultValue = true)
+                removeProperty(name = "notWidget")
+                removeProperties(
+                    "boolean",
+                    "nullBoolean",
+                    "double",
+                    "nullDouble",
+                    "string",
+                    "nullString",
+                    "int",
+                    "nullInt",
+                    "float",
+                    "nullFloat",
+                    "double",
+                    "nullDouble",
+                    "long",
+                    "nullLong",
+                    "short",
+                    "nullShort",
+                    "array",
+                    "object",
+                    "null"
+                )
+            }
         }
     }
 }

@@ -29,6 +29,7 @@
     <properties>
         <kotlin.version>1.5.31</kotlin.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
+        <kotlinx-coroutines.version>1.5.2</kotlinx-coroutines.version>
         <jackson.version>2.13.0</jackson.version>
         <rxjava2.version>2.2.21</rxjava2.version>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -47,6 +48,11 @@
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-stdlib-jdk8</artifactId>
             <version>${kotlin.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlinx</groupId>
+            <artifactId>kotlinx-coroutines-jdk8</artifactId>
+            <version>${kotlinx-coroutines.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>

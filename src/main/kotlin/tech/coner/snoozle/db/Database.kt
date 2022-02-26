@@ -1,39 +1,47 @@
 package tech.coner.snoozle.db
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import tech.coner.snoozle.db.blob.Blob
-import tech.coner.snoozle.db.blob.BlobResource
-import tech.coner.snoozle.db.entity.Entity
-import tech.coner.snoozle.db.entity.EntityResource
+import tech.coner.snoozle.db.session.SessionFactory
+import tech.coner.snoozle.db.session.administrative.AdministrativeSession
+import tech.coner.snoozle.db.session.data.DataSession
 import tech.coner.snoozle.util.snoozleJacksonObjectMapper
 import java.nio.file.Path
-import kotlin.reflect.KClass
 
 abstract class Database(
     protected val root: Path,
-    private val objectMapper: ObjectMapper = snoozleJacksonObjectMapper()
+    private val objectMapper: ObjectMapper = snoozleJacksonObjectMapper(),
+    sessionFactory: SessionFactory? = null
 ) {
+    protected abstract val version: Int
     protected abstract val types: TypesRegistry
+    protected abstract val migrations: MigrationsRegistry
+    private val sessionFactory by lazy {
+        sessionFactory
+            ?: SessionFactory(
+                version = version,
+                root = root,
+                types = types,
+                migrations = migrations
+            )
+    }
 
     protected fun registerTypes(op: TypesRegistry.() -> Unit): TypesRegistry {
-        return TypesRegistry(root, objectMapper, op)
+        return TypesRegistry(root, objectMapper)
+            .apply(op)
     }
 
-    inline fun <K : Key, reified E : Entity<K>> entity(): EntityResource<K, E> {
-        return entity(E::class)
+    fun openAdministrativeSession(): Result<AdministrativeSession> {
+        return sessionFactory.createAdministrativeSession()
     }
 
-    fun <K : Key, E : Entity<K>> entity(type: KClass<E>): EntityResource<K, E> {
-        return types.entityResources[type] as EntityResource<K, E>
+    fun openDataSession(): Result<DataSession> {
+        return sessionFactory.createDataSession()
     }
 
-    inline fun <reified B : Blob> blob(): BlobResource<B> {
-        return blob(B::class)
+    protected fun registerMigrations(op: MigrationsRegistry.Builder.() -> Unit): MigrationsRegistry {
+        return MigrationsRegistry.Builder(objectMapper)
+            .apply(op)
+            .build()
     }
-
-    fun <B : Blob> blob(type: KClass<B>): BlobResource<B> {
-        return types.blobResources[type] as BlobResource<B>
-    }
-
 }
 

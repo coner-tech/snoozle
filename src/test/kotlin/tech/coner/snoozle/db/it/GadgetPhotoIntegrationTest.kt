@@ -3,13 +3,14 @@ package tech.coner.snoozle.db.it
 import assertk.all
 import assertk.assertThat
 import assertk.assertions.*
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import tech.coner.snoozle.db.blob.BlobResource
 import tech.coner.snoozle.db.sample.GadgetPhoto
-import tech.coner.snoozle.db.sample.SampleDatabase
-import tech.coner.snoozle.db.sample.SampleDb
+import tech.coner.snoozle.db.sample.SampleDatabaseFixture
+import tech.coner.snoozle.db.session.data.DataSession
 import java.nio.file.Path
 import javax.imageio.ImageIO
 
@@ -18,13 +19,24 @@ class GadgetPhotoIntegrationTest {
     @TempDir
     lateinit var root: Path
 
-    private lateinit var database: SampleDatabase
+    private lateinit var session: DataSession
     private lateinit var resource: BlobResource<GadgetPhoto>
 
     @BeforeEach
     fun before() {
-        database = SampleDb.factory(root)
-        resource = database.blob()
+        session = SampleDatabaseFixture
+            .factory(
+                root = root,
+                version = SampleDatabaseFixture.VERSION_HIGHEST
+            )
+            .openDataSession()
+            .getOrThrow()
+        resource = session.blob()
+    }
+
+    @AfterEach
+    fun after() {
+        session.close()
     }
 
     @Test

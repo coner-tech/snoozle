@@ -16,9 +16,9 @@ import org.junit.jupiter.api.io.TempDir
 import tech.coner.snoozle.db.entity.Entity
 import tech.coner.snoozle.db.entity.EntityEvent
 import tech.coner.snoozle.db.entity.EntityResource
-import tech.coner.snoozle.db.sample.SampleDatabase
-import tech.coner.snoozle.db.sample.SampleDb
+import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.sample.Widget
+import tech.coner.snoozle.db.session.data.DataSession
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
@@ -28,25 +28,32 @@ class WatchEntityIntegrationTest {
     @TempDir
     lateinit var root: Path
 
-    private lateinit var database: SampleDatabase
+    private lateinit var session: DataSession
     private lateinit var resource: EntityResource<Widget.Key, Widget>
     private lateinit var widgetObserver: TestObserver<EntityEvent<Widget.Key, Widget>>
 
     @BeforeEach
     fun before() {
-        database = SampleDb.factory(root)
-        resource = database.entity()
+        session = SampleDatabaseFixture
+            .factory(
+                root = root,
+                version = SampleDatabaseFixture.VERSION_HIGHEST
+            )
+            .openDataSession()
+            .getOrThrow()
+        resource = session.entity()
         widgetObserver = observe()
     }
 
     @AfterEach
     fun after() {
         widgetObserver.dispose()
+        session.close()
     }
 
     @Test
     fun `It should emit when Widget updated`() {
-        val changed = SampleDb.Widgets.One.copy(name = "changed")
+        val changed = SampleDatabaseFixture.Widgets.One.copy(name = "changed")
 
         resource.update(changed)
 
@@ -64,7 +71,7 @@ class WatchEntityIntegrationTest {
 
     @Test
     fun `It should emit when delete removes Widget`() {
-        resource.delete(SampleDb.Widgets.One)
+        resource.delete(SampleDatabaseFixture.Widgets.One)
 
         widgetObserver.run {
             awaitCount(1)
@@ -78,7 +85,7 @@ class WatchEntityIntegrationTest {
 
     @Test
     fun `It should emit when Widget created`() {
-        val create = Widget(name = "created")
+        val create = Widget(name = "created", widget = true)
 
         resource.create(create)
 
@@ -95,9 +102,10 @@ class WatchEntityIntegrationTest {
     @Test
     fun `It should not emit when junk data written`() {
         val widget = Widget(
-                name = "It should not emit when junk data written"
+            name = "It should not emit when junk data written",
+            widget = true
         )
-        val widgetAsJson = SampleDb.Widgets.asJson(widget)
+        val widgetAsJson = SampleDatabaseFixture.Widgets.asJson(widget)
         // cut the json in half, simulates a non-atomic update
         val halfWidgetAsJson = widgetAsJson.substring(0..(widgetAsJson.length.div(2)))
         val widgetPath = root.resolve(Paths.get("widgets", "${widget.id}.json"))

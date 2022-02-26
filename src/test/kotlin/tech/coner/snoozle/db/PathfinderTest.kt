@@ -8,7 +8,7 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import tech.coner.snoozle.db.sample.SampleDb
+import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.sample.Subwidget
 import tech.coner.snoozle.db.sample.Widget
 import java.nio.file.Path
@@ -49,7 +49,7 @@ class PathfinderTest {
 
     @Test
     fun `It should find path for Widget by key`() {
-        val widget = SampleDb.Widgets.One
+        val widget = SampleDatabaseFixture.Widgets.One
         val key = Widget.Key(id = widget.id)
 
         val actual = widgetPathfinder.findRecord(key)
@@ -62,7 +62,7 @@ class PathfinderTest {
 
     @Test
     fun `It should find path for Subwidget by key`() {
-        val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
+        val subwidget = SampleDatabaseFixture.Subwidgets.WidgetOneSubwidgetOne
         val key = Subwidget.Key(widgetId = subwidget.widgetId, id = subwidget.id)
 
         val actual = subwidgetPathfinder.findRecord(key)
@@ -75,7 +75,7 @@ class PathfinderTest {
 
     @Test
     fun `It should find correct Widget candidate path is a record`() {
-        val correctWidgetCandidate = root.relativize(SampleDb.Widgets.tempFile(root, SampleDb.Widgets.One))
+        val correctWidgetCandidate = root.relativize(SampleDatabaseFixture.Widgets.tempFile(root, SampleDatabaseFixture.Widgets.One))
 
         val actual = widgetPathfinder.isRecord(correctWidgetCandidate)
 
@@ -84,16 +84,16 @@ class PathfinderTest {
 
     @Test
     fun `It should find incorrect Widget candidate paths are not a record`() {
-        val notRelativizedWidgetCandidate = SampleDb.Widgets.tempFile(root, SampleDb.Widgets.One)
+        val notRelativizedWidgetCandidate = SampleDatabaseFixture.Widgets.tempFile(root, SampleDatabaseFixture.Widgets.One)
         assertThat(widgetPathfinder.isRecord(notRelativizedWidgetCandidate)).isFalse()
 
-        val correctSubwidgetCandidate = root.relativize(SampleDb.Subwidgets.tempFile(root, SampleDb.Subwidgets.WidgetOneSubwidgetOne))
+        val correctSubwidgetCandidate = root.relativize(SampleDatabaseFixture.Subwidgets.tempFile(root, SampleDatabaseFixture.Subwidgets.WidgetOneSubwidgetOne))
         assertThat(widgetPathfinder.isRecord(correctSubwidgetCandidate)).isFalse()
     }
 
     @Test
     fun `It should find correct Subwidget candidate path is a record`() {
-        val correctSubwidgetCandidate = root.relativize(SampleDb.Subwidgets.tempFile(root, SampleDb.Subwidgets.WidgetOneSubwidgetOne))
+        val correctSubwidgetCandidate = root.relativize(SampleDatabaseFixture.Subwidgets.tempFile(root, SampleDatabaseFixture.Subwidgets.WidgetOneSubwidgetOne))
 
         val actual = subwidgetPathfinder.isRecord(correctSubwidgetCandidate)
 
@@ -102,16 +102,16 @@ class PathfinderTest {
 
     @Test
     fun `It should find incorrect Subwidget candidate path is not a record`() {
-        val notRelativizedSubwidgetCandidate = SampleDb.Subwidgets.tempFile(root, SampleDb.Subwidgets.WidgetOneSubwidgetOne)
+        val notRelativizedSubwidgetCandidate = SampleDatabaseFixture.Subwidgets.tempFile(root, SampleDatabaseFixture.Subwidgets.WidgetOneSubwidgetOne)
         assertThat(subwidgetPathfinder.isRecord(notRelativizedSubwidgetCandidate)).isFalse()
 
-        val correctWidgetCandidate = root.relativize(SampleDb.Widgets.tempFile(root, SampleDb.Widgets.One))
+        val correctWidgetCandidate = root.relativize(SampleDatabaseFixture.Widgets.tempFile(root, SampleDatabaseFixture.Widgets.One))
         assertThat(subwidgetPathfinder.isRecord(correctWidgetCandidate)).isFalse()
     }
 
     @Test
     fun `It should find variable string parts from Widget path`() {
-        val widgetOne = SampleDb.Widgets.One
+        val widgetOne = SampleDatabaseFixture.Widgets.One
         val relativeRecordPath = Paths.get("widgets", "${widgetOne.id}.json")
         val expected = arrayOf(widgetOne.id.toString())
 
@@ -122,7 +122,7 @@ class PathfinderTest {
 
     @Test
     fun `It should find variable string parts from Subwidget path`() {
-        val subwidget = SampleDb.Subwidgets.WidgetOneSubwidgetOne
+        val subwidget = SampleDatabaseFixture.Subwidgets.WidgetOneSubwidgetOne
         val relativeRecordPath = Paths.get("widgets", "${subwidget.widgetId}", "subwidgets", "${subwidget.id}.json")
         val expected = arrayOf(
                 "${subwidget.widgetId}",

@@ -3,11 +3,11 @@ package tech.coner.snoozle.db.blob
 import tech.coner.snoozle.db.KeyMapper
 import tech.coner.snoozle.db.Pathfinder
 import tech.coner.snoozle.db.Record
-import tech.coner.snoozle.util.readText
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.stream.Stream
+import kotlin.io.path.readText
 
 class BlobResource<B : Blob> constructor(
     private val root: Path,
@@ -18,7 +18,11 @@ class BlobResource<B : Blob> constructor(
     fun getAsText(blob: B): String {
         val file = getAbsolutePathTo(blob)
         return if (Files.exists(file)) {
-            file.readText()
+            try {
+                file.readText()
+            } catch (t: Throwable) {
+                throw BlobIoException(BlobIoException.Reason.ReadFailure, t)
+            }
         } else {
             throw BlobIoException(BlobIoException.Reason.NotFound)
         }
@@ -27,7 +31,11 @@ class BlobResource<B : Blob> constructor(
     fun getAsInputStream(blob: B): InputStream {
         val file = getAbsolutePathTo(blob)
         return if (Files.exists(file)) {
-            file.toFile().inputStream().buffered()
+            try {
+                file.toFile().inputStream().buffered()
+            } catch (t: Throwable) {
+                throw BlobIoException(BlobIoException.Reason.ReadFailure, t)
+            }
         } else {
             throw BlobIoException(BlobIoException.Reason.NotFound)
         }

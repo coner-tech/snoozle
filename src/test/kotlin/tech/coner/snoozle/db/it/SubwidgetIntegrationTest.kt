@@ -7,35 +7,47 @@ import assertk.assertions.index
 import assertk.assertions.isEqualTo
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assumptions
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
 import tech.coner.snoozle.db.entity.EntityResource
-import tech.coner.snoozle.db.sample.SampleDatabase
-import tech.coner.snoozle.db.sample.SampleDb
+import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.sample.Subwidget
-import tech.coner.snoozle.util.readText
+import tech.coner.snoozle.db.session.data.DataSession
 import java.nio.file.Path
+import kotlin.io.path.readText
 
 class SubwidgetIntegrationTest {
 
     @TempDir
     lateinit var root: Path
 
-    private lateinit var database: SampleDatabase
+    private lateinit var session: DataSession
     private lateinit var resource: EntityResource<Subwidget.Key, Subwidget>
 
     @BeforeEach
     fun before() {
-        database = SampleDb.factory(root)
-        resource = database.entity()
+        session = SampleDatabaseFixture
+            .factory(
+                root = root,
+                version = SampleDatabaseFixture.VERSION_HIGHEST
+            )
+            .openDataSession()
+            .getOrThrow()
+        resource = session.entity()
+    }
+
+    @AfterEach
+    fun after() {
+        session.close()
     }
 
     @Test
     fun `It should read a Subwidget`() {
-        val widgetOneSubwidgetOne = SampleDb.Subwidgets.WidgetOneSubwidgetOne
+        val widgetOneSubwidgetOne = SampleDatabaseFixture.Subwidgets.WidgetOneSubwidgetOne
         val key = Subwidget.Key(
                 widgetId = widgetOneSubwidgetOne.widgetId,
                 id = widgetOneSubwidgetOne.id
@@ -49,29 +61,29 @@ class SubwidgetIntegrationTest {
     @Test
     fun `It should create a Subwidget`() {
         val subwidget = Subwidget(
-                widgetId = SampleDb.Widgets.Two.id,
+                widgetId = SampleDatabaseFixture.Widgets.Two.id,
                 name = "Widget Two Subwidget Two"
         )
 
         resource.create(subwidget)
 
-        val expectedFile = SampleDb.Subwidgets.tempFile(root, subwidget)
+        val expectedFile = SampleDatabaseFixture.Subwidgets.tempFile(root, subwidget)
         Assertions.assertThat(expectedFile).exists()
-        val expectedJson = SampleDb.Subwidgets.asJson(subwidget)
+        val expectedJson = SampleDatabaseFixture.Subwidgets.asJson(subwidget)
         val actualJson = expectedFile.readText()
         JSONAssert.assertEquals(expectedJson, actualJson, JSONCompareMode.LENIENT)
     }
 
     @Test
     fun `It should update a Subwidget`() {
-        val widgetOneSubwidgetOne = SampleDb.Subwidgets.WidgetOneSubwidgetOne
-        val expectedFile = SampleDb.Subwidgets.tempFile(root, widgetOneSubwidgetOne)
+        val widgetOneSubwidgetOne = SampleDatabaseFixture.Subwidgets.WidgetOneSubwidgetOne
+        val expectedFile = SampleDatabaseFixture.Subwidgets.tempFile(root, widgetOneSubwidgetOne)
         Assumptions.assumeThat(expectedFile).exists()
         val update = widgetOneSubwidgetOne.copy(
                 name = "Updated"
         )
         val beforeJson = expectedFile.readText()
-        val expectedJson = SampleDb.Subwidgets.asJson(update)
+        val expectedJson = SampleDatabaseFixture.Subwidgets.asJson(update)
 
         resource.update(update)
 
@@ -82,8 +94,8 @@ class SubwidgetIntegrationTest {
 
     @Test
     fun `It should delete Subwidget`() {
-        val widgetOneSubwidgetOne = SampleDb.Subwidgets.WidgetOneSubwidgetOne
-        val actualFile = SampleDb.Subwidgets.tempFile(root, widgetOneSubwidgetOne)
+        val widgetOneSubwidgetOne = SampleDatabaseFixture.Subwidgets.WidgetOneSubwidgetOne
+        val actualFile = SampleDatabaseFixture.Subwidgets.tempFile(root, widgetOneSubwidgetOne)
         Assumptions.assumeThat(actualFile).exists()
 
         resource.delete(widgetOneSubwidgetOne)
@@ -99,8 +111,8 @@ class SubwidgetIntegrationTest {
 
         assertThat(actual).all {
             hasSize(2)
-            index(0).isEqualTo(SampleDb.Subwidgets.WidgetOneSubwidgetOne)
-            index(1).isEqualTo(SampleDb.Subwidgets.WidgetTwoSubwidgetOne)
+            index(0).isEqualTo(SampleDatabaseFixture.Subwidgets.WidgetOneSubwidgetOne)
+            index(1).isEqualTo(SampleDatabaseFixture.Subwidgets.WidgetTwoSubwidgetOne)
 
         }
     }
