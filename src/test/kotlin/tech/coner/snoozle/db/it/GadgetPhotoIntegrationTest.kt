@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import tech.coner.snoozle.db.blob.BlobResource
+import tech.coner.snoozle.db.closeAndAssertSuccess
 import tech.coner.snoozle.db.sample.GadgetPhoto
 import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.session.data.DataSession
@@ -36,7 +37,7 @@ class GadgetPhotoIntegrationTest {
 
     @AfterEach
     fun after() {
-        session.close()
+        session.closeAndAssertSuccess()
     }
 
     @Test

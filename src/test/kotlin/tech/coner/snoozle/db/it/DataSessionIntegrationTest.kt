@@ -103,10 +103,13 @@ class DataSessionIntegrationTest {
         val database = SampleDatabaseFixture.factory(root, SampleDatabaseFixture.VERSION_HIGHEST)
         val session = database.openDataSession().getOrThrow()
 
-        session.close()
+        val actual = session.close()
 
-        val sessionPath = session.path
-        assertThat(sessionPath).doesNotExist()
+        assertAll {
+            assertThat(actual, "session closed").isSuccess()
+            val sessionPath = session.path
+            assertThat(sessionPath).doesNotExist()
+        }
     }
 
     @Test

@@ -115,12 +115,13 @@ class SessionFactory(
         } }
     )
 
-    private fun onSessionClosed(): Unit = runBlocking {
+    private fun onSessionClosed(sessionToClose: Session): Unit = runBlocking {
         sessionMutex.withLock {
-            session = session?.let {
-                metadataRepository.deleteSessionMetadata(it.toSessionMetadataKey())
-                null
-            } ?: throw SessionException.AlreadyClosed()
+            if (sessionToClose.closed) {
+                throw SessionException.AlreadyClosed()
+            }
+            metadataRepository.deleteSessionMetadata(sessionToClose.toSessionMetadataKey())
+            session = null
         }
     }
 }

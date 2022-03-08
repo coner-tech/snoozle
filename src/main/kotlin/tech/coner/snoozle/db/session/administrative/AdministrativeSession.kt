@@ -15,7 +15,7 @@ class AdministrativeSession(
     private val version: Int,
     private val migrationsRegistry: MigrationsRegistry,
     metadataRepository: MetadataRepository,
-    onClose: () -> Unit
+    onClose: (sessionToClose: Session) -> Unit
 ) : Session(
     id = UUID.randomUUID(),
     metadataRepository = metadataRepository,

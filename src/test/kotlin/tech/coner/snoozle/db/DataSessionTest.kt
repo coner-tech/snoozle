@@ -35,7 +35,7 @@ class DataSessionTest {
 
     @AfterEach
     fun after() {
-        session.close()
+        session.closeAndAssertSuccess()
     }
 
     @Test

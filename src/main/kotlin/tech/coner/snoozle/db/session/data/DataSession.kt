@@ -14,7 +14,7 @@ import kotlin.reflect.KClass
 class DataSession(
     private val types: TypesRegistry,
     metadataRepository: MetadataRepository,
-    onClose: () -> Unit
+    onClose: (sessionToClose: Session) -> Unit
 ) : Session(
     id = UUID.randomUUID(),
     metadataRepository = metadataRepository,

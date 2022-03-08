@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
+import tech.coner.snoozle.db.closeAndAssertSuccess
 import tech.coner.snoozle.db.migration.MigrationException
 import tech.coner.snoozle.db.sample.SampleDatabase
 import tech.coner.snoozle.db.sample.SampleDatabaseFixture
@@ -58,7 +59,7 @@ class MigrationIntegrationTest {
 
         @AfterEach
         fun after() {
-            session.close()
+            session.closeAndAssertSuccess()
         }
 
         @Test
@@ -375,7 +376,7 @@ class MigrationIntegrationTest {
                     .isInstanceOf(MigrationException::class)
                     .hasMessage("Cannot migrate because version on disk is not lower than latest database version")
             } finally {
-                session.close()
+                session.closeAndAssertSuccess()
             }
         }
 
