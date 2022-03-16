@@ -1,6 +1,6 @@
 # Changelog
 
-# 0.5.1 (2022-03-16)
+# 0.5.2 (2022-03-16)
 
 - Rename package to tech.coner.snoozle
 - Change the Maven coordinates to
