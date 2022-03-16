@@ -13,6 +13,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import tech.coner.snoozle.db.closeAndAssertSuccess
 import tech.coner.snoozle.db.entity.Entity
 import tech.coner.snoozle.db.entity.EntityEvent
 import tech.coner.snoozle.db.entity.EntityResource
@@ -48,7 +49,7 @@ class WatchEntityIntegrationTest {
     @AfterEach
     fun after() {
         widgetObserver.dispose()
-        session.close()
+        session.closeAndAssertSuccess()
     }
 
     @Test

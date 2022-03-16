@@ -11,6 +11,7 @@ import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
+import tech.coner.snoozle.db.closeAndAssertSuccess
 import tech.coner.snoozle.db.entity.EntityIoException
 import tech.coner.snoozle.db.entity.EntityResource
 import tech.coner.snoozle.db.sample.Gadget
@@ -40,7 +41,7 @@ class GadgetIntegrationTest {
 
     @AfterEach
     fun after() {
-        session.close()
+        session.closeAndAssertSuccess()
     }
 
     @Test

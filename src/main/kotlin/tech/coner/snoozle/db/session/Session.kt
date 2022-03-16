@@ -9,15 +9,16 @@ import java.util.*
 abstract class Session internal constructor(
     val id: UUID,
     protected val metadataRepository: MetadataRepository,
-    private val onClose: () -> Unit
+    private val onClose: (sessionToClose: Session) -> Unit
 ) {
 
     private val closedMutex = Mutex()
-    private var closed: Boolean = false
+    var closed: Boolean = false
+        private set
 
     fun close() = execute {
+        onClose(this)
         closed = true
-        onClose()
     }
 
     protected fun <T> execute(fn: () -> T): Result<T> = runBlocking {

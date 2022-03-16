@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
+import tech.coner.snoozle.db.closeAndAssertSuccess
 import tech.coner.snoozle.db.entity.EntityResource
 import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.sample.Subwidget
@@ -42,7 +43,7 @@ class SubwidgetIntegrationTest {
 
     @AfterEach
     fun after() {
-        session.close()
+        session.closeAndAssertSuccess()
     }
 
     @Test

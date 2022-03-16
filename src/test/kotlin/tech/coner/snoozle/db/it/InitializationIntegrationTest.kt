@@ -11,6 +11,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import tech.coner.snoozle.db.closeAndAssertSuccess
 import tech.coner.snoozle.db.initialization.CannotInitializeException
 import tech.coner.snoozle.db.initialization.FailedToInitializeException
 import tech.coner.snoozle.db.sample.SampleDatabase
@@ -37,7 +38,10 @@ class InitializationIntegrationTest {
 
     @AfterEach
     fun after() {
-        session.close()
+        // one test marks a directory not writable which causes
+        Files.find(root, 3, { _, attrs -> attrs.isDirectory })
+            .forEach { it.toFile().setWritable(true) }
+        session.closeAndAssertSuccess()
     }
 
     @Test
