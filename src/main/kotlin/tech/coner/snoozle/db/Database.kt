@@ -1,6 +1,8 @@
 package tech.coner.snoozle.db
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import tech.coner.snoozle.db.session.SessionFactory
 import tech.coner.snoozle.db.session.administrative.AdministrativeSession
 import tech.coner.snoozle.db.session.data.DataSession
@@ -10,7 +12,11 @@ import java.nio.file.Path
 abstract class Database(
     protected val root: Path,
     private val objectMapper: ObjectMapper = snoozleJacksonObjectMapper(),
-    sessionFactory: SessionFactory? = null
+    sessionFactory: SessionFactory? = null,
+    private val watchEngine: WatchEngine = WatchEngine(
+        coroutineContext = Dispatchers.IO + Job(),
+        root = root
+    )
 ) {
     protected abstract val version: Int
     protected abstract val types: TypesRegistry
@@ -26,7 +32,7 @@ abstract class Database(
     }
 
     protected fun registerTypes(op: TypesRegistry.() -> Unit): TypesRegistry {
-        return TypesRegistry(root, objectMapper)
+        return TypesRegistry(root, watchEngine, objectMapper)
             .apply(op)
     }
 
@@ -34,8 +40,20 @@ abstract class Database(
         return sessionFactory.createAdministrativeSession()
     }
 
+    fun useAdministrativeSession(fn: (administrativeSession: AdministrativeSession) -> Unit) {
+        openAdministrativeSession()
+            .getOrThrow()
+            .use(fn)
+    }
+
     fun openDataSession(): Result<DataSession> {
         return sessionFactory.createDataSession()
+    }
+
+    fun useDataSession(fn: (dataSession: DataSession) -> Unit) {
+        openDataSession()
+            .getOrThrow()
+            .use(fn)
     }
 
     protected fun registerMigrations(op: MigrationsRegistry.Builder.() -> Unit): MigrationsRegistry {

@@ -23,25 +23,6 @@ fun Path.watch(recursive: Boolean = false): Observable<PathWatchEvent> {
     return createPathWatchObservable(this, recursive)
 }
 
-object PathObservables {
-
-    @Deprecated(
-            message = "Use java.nio.Path extension function `watch` instead",
-            replaceWith = ReplaceWith(
-                    expression = "path.watch(recursive = false)"
-            )
-    )
-    fun watchNonRecursive(path: Path) = path.watch(recursive = false)
-
-    @Deprecated(
-            message = "Use java.nio.Path extension function `watch` instead",
-            replaceWith = ReplaceWith(
-                    expression = "path.watch(recursive = true)"
-            )
-    )
-    fun watchRecursive(path: Path) = path.watch(recursive = true)
-}
-
 internal fun createPathWatchObservable(
         directory: Path,
         recursive: Boolean

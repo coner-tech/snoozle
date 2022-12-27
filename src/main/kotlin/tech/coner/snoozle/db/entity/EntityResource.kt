@@ -6,9 +6,14 @@ import io.reactivex.Observable
 import tech.coner.snoozle.db.Key
 import tech.coner.snoozle.db.KeyMapper
 import tech.coner.snoozle.db.Pathfinder
+import tech.coner.snoozle.db.WatchEngine
 import tech.coner.snoozle.util.PathWatchEvent
 import tech.coner.snoozle.util.watch
-import java.nio.file.*
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
+import java.nio.file.StandardWatchEventKinds
 import java.util.function.Predicate
 import java.util.stream.Stream
 import kotlin.io.path.notExists
@@ -19,7 +24,8 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
     private val reader: ObjectReader,
     private val writer: ObjectWriter,
     private val pathfinder: Pathfinder<K, E>,
-    private val keyMapper: KeyMapper<K, E>
+    private val keyMapper: KeyMapper<K, E>,
+    private val watchEngine: WatchEngine
 ) {
 
     fun key(entity: E): K {

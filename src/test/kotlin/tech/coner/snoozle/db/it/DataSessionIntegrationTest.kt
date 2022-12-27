@@ -3,16 +3,33 @@ package tech.coner.snoozle.db.it
 import assertk.all
 import assertk.assertAll
 import assertk.assertThat
-import assertk.assertions.*
+import assertk.assertions.exists
+import assertk.assertions.hasSize
+import assertk.assertions.index
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFailure
+import assertk.assertions.isInstanceOf
+import assertk.assertions.isSuccess
+import assertk.assertions.prop
+import io.reactivex.observers.TestObserver
+import io.reactivex.schedulers.Schedulers
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
+import tech.coner.snoozle.db.entity.EntityEvent
 import tech.coner.snoozle.db.metadata.SessionMetadataEntity
+import tech.coner.snoozle.db.sample.SampleDatabase
 import tech.coner.snoozle.db.sample.SampleDatabaseFixture
+import tech.coner.snoozle.db.sample.Widget
+import tech.coner.snoozle.db.sample.widgets
 import tech.coner.snoozle.db.session.data.DataSession
 import tech.coner.snoozle.db.session.data.DataSessionException
 import tech.coner.snoozle.util.doesNotExist
+import tech.coner.snoozle.util.entity
+import tech.coner.snoozle.util.key
 import tech.coner.snoozle.util.resolve
+import tech.coner.snoozle.util.state
 import java.net.InetAddress
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
@@ -103,10 +120,9 @@ class DataSessionIntegrationTest {
         val database = SampleDatabaseFixture.factory(root, SampleDatabaseFixture.VERSION_HIGHEST)
         val session = database.openDataSession().getOrThrow()
 
-        val actual = session.close()
+        session.close()
 
         assertAll {
-            assertThat(actual, "session closed").isSuccess()
             val sessionPath = session.path
             assertThat(sessionPath).doesNotExist()
         }
@@ -126,6 +142,39 @@ class DataSessionIntegrationTest {
             .isInstanceOf(DataSessionException.MetadataWriteFailure::class)
     }
 
+    @Test
+    @Disabled
+    fun `It should watch records in an empty newly created database`() {
+//        val database = SampleDatabaseFixture.factory(root, SampleDatabaseFixture.VERSION_HIGHEST)
+        val database = SampleDatabase(root)
+        database.useAdministrativeSession { it.initializeDatabase() }
+        database.useDataSession {
+            val widgets = it.widgets()
+            val observer = TestObserver<EntityEvent<Widget.Key, Widget>>()
+            widgets.watch()
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
+                .subscribe(observer)
+            try {
+                val widgetWatch = Widget(name = "Watch for this record", widget = true)
+                Thread.sleep(10)
+                widgets.create(widgetWatch)
+                observer.awaitCount(1)
+                val actual = observer.values()
+                assertThat(actual).all {
+                    hasSize(1)
+                    index(0).all {
+                        state().isEqualTo(EntityEvent.State.EXISTS)
+                        key().isEqualTo(Widget.Key(widgetWatch.id))
+                        entity().isEqualTo(widgetWatch)
+                    }
+                }
+            } finally {
+                observer.dispose()
+            }
+        }
+
+    }
 
     private val DataSession.path: Path
         get() = root.resolve(".snoozle", "sessions", "$id.json")

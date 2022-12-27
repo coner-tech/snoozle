@@ -1,7 +1,9 @@
 package tech.coner.snoozle.db.sample
 
 import tech.coner.snoozle.db.Database
+import tech.coner.snoozle.db.entity.EntityResource
 import tech.coner.snoozle.db.migration.MigrationPathMatcher
+import tech.coner.snoozle.db.session.data.DataSession
 import java.nio.file.Path
 
 class SampleDatabase(root: Path) : Database(root) {
@@ -109,3 +111,6 @@ class SampleDatabase(root: Path) : Database(root) {
         }
     }
 }
+
+typealias WidgetResource = EntityResource<Widget.Key, Widget>
+fun DataSession.widgets(): WidgetResource = entity()

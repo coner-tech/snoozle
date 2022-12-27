@@ -1,9 +1,10 @@
 package tech.coner.snoozle.db
 
-import assertk.assertThat
-import assertk.assertions.isSuccess
+import org.junit.jupiter.api.assertDoesNotThrow
 import tech.coner.snoozle.db.session.Session
 
 fun Session.closeAndAssertSuccess() {
-   assertThat(close(), "close session").isSuccess()
+   assertDoesNotThrow {
+      close()
+   }
 }

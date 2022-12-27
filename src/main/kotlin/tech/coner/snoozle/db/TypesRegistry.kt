@@ -14,6 +14,7 @@ import kotlin.reflect.KClass
 
 class TypesRegistry(
         val root: Path,
+        val watchEngine: WatchEngine,
         val objectMapper: ObjectMapper
 ) {
     val entityResources = mutableMapOf<KClass<*>, EntityResource<*, *>>()
@@ -52,17 +53,18 @@ class TypesRegistry(
                 pathParts = entityDefinition.path
         )
         entityResources[E::class] = EntityResource(
-                root = root,
+            root = root,
+            definition = entityDefinition,
+            reader = objectMapper.readerFor(E::class.java),
+            writer = objectMapper.writerFor(E::class.java),
+            pathfinder = pathfinder,
+            keyMapper = KeyMapper(
                 definition = entityDefinition,
-                reader = objectMapper.readerFor(E::class.java),
-                writer = objectMapper.writerFor(E::class.java),
                 pathfinder = pathfinder,
-                keyMapper = KeyMapper(
-                    definition = entityDefinition,
-                    pathfinder = pathfinder,
-                    relativeRecordFn = requireNotNull(entityDefinition.keyFromPath),
-                    instanceFn = requireNotNull(entityDefinition.keyFromEntity)
-                )
+                relativeRecordFn = requireNotNull(entityDefinition.keyFromPath),
+                instanceFn = requireNotNull(entityDefinition.keyFromEntity)
+            ),
+            watchEngine = watchEngine
         )
     }
 

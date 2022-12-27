@@ -1,11 +1,12 @@
 package tech.coner.snoozle.db
 
-import java.nio.file.*
+import java.nio.file.Files
+import java.nio.file.NoSuchFileException
+import java.nio.file.Path
+import java.nio.file.Paths
 import java.nio.file.attribute.BasicFileAttributes
-import java.util.function.BiPredicate
 import java.util.regex.Pattern
 import java.util.stream.Stream
-import kotlin.streams.asStream
 
 open class Pathfinder<K : tech.coner.snoozle.db.Key, R : Record<K>>(
         protected val root: Path,
@@ -26,6 +27,20 @@ open class Pathfinder<K : tech.coner.snoozle.db.Key, R : Record<K>>(
     private val recordCandidatePath: Pattern by lazy {
         val joined = pathParts.joinToString("") { it.regex.pattern() }
         Pattern.compile("^$joined$")
+    }
+
+    private val recordParentCandidatePath: Pattern by lazy {
+        val indexOfLastDirectorySeparator = pathParts.indexOfLast {
+            it is PathPart.DirectorySeparator<K, R>
+        }
+        pathParts
+            .take(indexOfLastDirectorySeparator)
+            .joinToString("") { it.regex.pattern() }
+            .let { Pattern.compile("^$it$") }
+    }
+
+    fun isRecordParent(candidate: Path): Boolean {
+        return recordParentCandidatePath.matcher(candidate.toString()).matches()
     }
 
     fun isRecord(candidate: Path): Boolean {
