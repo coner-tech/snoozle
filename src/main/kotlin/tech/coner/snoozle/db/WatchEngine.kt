@@ -118,7 +118,8 @@ class WatchEngine(
         }
         val directoryWatchKeyEntry = findDirectoryWatchKeyEntry(takenWatchKey)
             ?: return@coroutineScope // directory no longer watched, avoid race condition
-        val newDirectoryAbsolutePath = directoryWatchKeyEntry.absoluteDirectory.value.resolve(event.context()).asAbsolute()
+        val newDirectoryAbsolutePath =
+            directoryWatchKeyEntry.absoluteDirectory.value.resolve(event.context()).asAbsolute()
         newDirectoryAbsolutePath.toString()
             .let { pathAsString ->
                 scopes.values.firstOrNull { scope ->
@@ -129,13 +130,14 @@ class WatchEngine(
             }
             ?.let { scope ->
                 service
-                    ?.let { newDirectoryAbsolutePath.register(it, watchEventKinds) }
+                    ?.let { newDirectoryAbsolutePath.value.register(it, watchEventKinds) }
                     ?.let {
-                        scope
-                            .copyAndAddDirectoryWatchKeyEntry(
-                                directory = newDirectoryAbsolutePath,
+                        scope.copyAndAddDirectoryWatchKeyEntry(
+                            directoryWatchKeyEntryFactory(
+                                absoluteDirectory = newDirectoryAbsolutePath,
                                 watchKey = it
                             )
+                        )
                     }
             }
             ?.also { newScope -> scopes[newScope.token] = newScope }
@@ -151,7 +153,7 @@ class WatchEngine(
         TODO("remove directory watch key entries for subdirectories")
     }
 
-    private suspend fun scanNewWatchedDirectory(newDirectory: Path): Unit = coroutineScope {
+    private suspend fun scanNewWatchedDirectory(newDirectory: AbsolutePath): Unit = coroutineScope {
         launch {
             /*
             new directories might have new files. by the time we register to watch the new directory,
@@ -166,36 +168,46 @@ class WatchEngine(
                 if (!isActive || service == null || scopes.isEmpty()) {
                     return@withLock
                 }
-                newDirectory
+                newDirectory.value
                     .listDirectoryEntries()
                     .forEach { newDirectoryEntryCandidate ->
-                        val newRecordCandidateAbsolute: AbsolutePath = newDirectory.resolve(newDirectoryEntryCandidate).asAbsolute()
-                        val newRecordCandidateRelative: RelativePath = newDirectory.resolve(newDirectoryEntryCandidate).asRelative()
+                        val newRecordCandidateAbsolute: AbsolutePath = newDirectory.value.resolve(newDirectoryEntryCandidate).asAbsolute()
+                        val newRecordCandidateRelative: RelativePath = newDirectory.value.resolve(newDirectoryEntryCandidate).asRelative()
                         val newRecordCandidateRelativeAsString = newRecordCandidateRelative.toString()
-                        val newDirectoryWatchKeyEntriesToAdd = mutableMapOf<Token, MutableList<Pair<Path, WatchKey>>>()
-                        scopes.values.forEach { scope ->
-                            if (newRecordCandidateRelative.value.isDirectory(LinkOption.NOFOLLOW_LINKS)) {
+                        if (newRecordCandidateRelative.value.isDirectory(LinkOption.NOFOLLOW_LINKS)) {
+                            val newDirectoryWatchKeyEntriesToAdd = mutableMapOf<Token, MutableList<Scope.DirectoryWatchKeyEntry>>()
+                            scopes.values.forEach { scope ->
                                 if (scope.directoryPatterns.any { it.matcher(newRecordCandidateRelativeAsString).matches() }) {
                                     newRecordCandidateRelative.value.register(service, watchEventKinds)
                                         .also { watchKey ->
                                             newDirectoryWatchKeyEntriesToAdd[scope.token] = (newDirectoryWatchKeyEntriesToAdd[scope.token] ?: mutableListOf())
-                                                .apply { add(newRecordCandidateRelative to watchKey) }
+                                                .apply {
+                                                    add(
+                                                        directoryWatchKeyEntryFactory(
+                                                            absoluteDirectory = newRecordCandidateAbsolute,
+                                                            watchKey = watchKey
+                                                        )
+                                                    )
+                                                }
                                         }
                                 }
-                            } else if (newRecordCandidateRelative.value.isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
+                            }
+                            newDirectoryWatchKeyEntriesToAdd.forEach { (token, directoryWatchKeyEntriesToAdd) ->
+                                directoryWatchKeyEntriesToAdd.forEach { entryToAdd ->
+                                    scopes[token]
+                                        ?.copyAndAddDirectoryWatchKeyEntry(entryToAdd)
+                                        ?.also { scopes[token] = it }
+                                        ?.also { scanNewWatchedDirectory(entryToAdd.absoluteDirectory) }
+                                }
+                            }
+                        } else if (newRecordCandidateRelative.value.isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
+                            scopes.values.forEach { scope ->
                                 if (scope.recordPatterns.any { it.matcher(newRecordCandidateRelativeAsString).matches() }) {
                                     scope.token.events.emit(Event.Record.Exists(newRecordCandidateRelative))
                                 }
                             }
                         }
-                        newDirectoryWatchKeyEntriesToAdd.entries.forEach { (token, directoryWatchKeyEntryToAdd) ->
-                            directoryWatchKeyEntryToAdd.forEach { (directoryToAdd, watchKey) ->
-                                scopes[token]
-                                    ?.also { scanNewWatchedDirectory(directoryToAdd) }
-                                    ?.copyAndAddDirectoryWatchKeyEntry(directoryToAdd, watchKey)
-                                    ?.also { scopes[token] = it }
-                            }
-                        }
+
                     }
             }
         }
@@ -213,7 +225,7 @@ class WatchEngine(
             // guard unknown / not handled event kinds
             return@coroutineScope
         }
-        val recordCandidateRelativePath = event.findRelativePath(takenWatchKey)
+        val recordCandidateRelativePath = event.contextAsRelativePath(takenWatchKey)
             ?: return@coroutineScope // no watch key in a scope matched taken watch key, ignore
         val recordCandidateRelativePathAsString = recordCandidateRelativePath.toString()
         scopes.values.forEach { scope ->
@@ -254,11 +266,12 @@ class WatchEngine(
                 ?.also { newScope -> scopes[token] = newScope }
             Files.walkFileTree(root, object : SimpleFileVisitor<Path>() {
                 override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
-                    val relativePath = dir.relativize(root)
-                    if (directoryPattern.matcher(relativePath.toString()).matches()) {
+                    val dirAsAbsolute = dir.asAbsolute()
+                    val dirAsRelative = root.relativize(dir).asRelative()
+                    if (directoryPattern.matcher(dirAsRelative.value.toString()).matches()) {
                         val watchKey = dir.register(service, watchEventKinds)
                         scopes[token]
-                            ?.copyAndAddDirectoryWatchKeyEntry(dir, watchKey)
+                            ?.copyAndAddDirectoryWatchKeyEntry(directoryWatchKeyEntryFactory(dirAsAbsolute, watchKey))
                             ?.also { newScope -> scopes[token] = newScope }
                     }
                     // TODO register subdirectories
@@ -344,10 +357,16 @@ class WatchEngine(
         }
     }
 
-    private fun WatchEvent<Path>.findRelativePath(takenWatchKey: WatchKey): com.sun.tools.javac.file.RelativePath? {
+    private fun WatchEvent<Path>.contextAsRelativePath(takenWatchKey: WatchKey): RelativePath? {
         return findDirectoryWatchKeyEntry(takenWatchKey)
-            ?.absoluteDirectory?.resolve(context())
-            ?.toRelativePath()
+            ?.absoluteDirectory?.value
+            ?.resolve(context())
+            ?.let { root.relativize(it) }
+            ?.asRelative()
+    }
+
+    private fun WatchEvent<Path>.contextAsAbsolutePath(takenWatchKey: WatchKey): AbsolutePath? {
+        return findDirectoryWatchKeyEntry(takenWatchKey)?.absoluteDirectory
     }
 
     private fun WatchEvent<Path>.contextIsWatchedDirectory(takenWatchKey: WatchKey): Boolean {
@@ -380,20 +399,20 @@ class WatchEngine(
                 .apply { remove(recordPattern) }
         )
         
-        fun copyAndAddDirectoryWatchKeyEntry(directory: Path, watchKey: WatchKey) = copy(
+        fun copyAndAddDirectoryWatchKeyEntry(entry: DirectoryWatchKeyEntry) = copy(
             directoryWatchKeyEntries = directoryWatchKeyEntries
                 .toMutableList()
-                .apply { add(DirectoryWatchKeyEntry(directory, watchKey, emptyList())) }
+                .apply { add(entry) }
         )
 
-        fun copyAndAddWatchedSubdirectory(watchedSubdirectory: Path, watchKey: WatchKey)
+        fun copyAndAddWatchedSubdirectory(watchedSubdirectory: WatchedSubdirectoryEntry, watchKey: WatchKey)
         = copyAndMutateWatchedSubdirectory(watchedSubdirectory, watchKey) { it.copyAndAddWatchedSubdirectory(watchedSubdirectory) }
 
-        fun copyAndRemoveWatchedSubdirectory(watchedSubdirectory: Path, watchKey: WatchKey)
+        fun copyAndRemoveWatchedSubdirectory(watchedSubdirectory: WatchedSubdirectoryEntry, watchKey: WatchKey)
         = copyAndMutateWatchedSubdirectory(watchedSubdirectory, watchKey) { it.copyAndRemoveWatchedSubdirectory(watchedSubdirectory) }
 
         private fun copyAndMutateWatchedSubdirectory(
-            watchedSubdirectory: Path,
+            watchedSubdirectory: WatchedSubdirectoryEntry,
             watchKey: WatchKey,
             block: (DirectoryWatchKeyEntry) -> DirectoryWatchKeyEntry
         ) = copy(
@@ -417,13 +436,13 @@ class WatchEngine(
             val watchKey: WatchKey,
             val watchedSubdirectories: List<WatchedSubdirectoryEntry>
         ) {
-            fun copyAndAddWatchedSubdirectory(watchedSubdirectory: Path) = copy(
+            fun copyAndAddWatchedSubdirectory(watchedSubdirectory: WatchedSubdirectoryEntry) = copy(
                 watchedSubdirectories = watchedSubdirectories
                     .toMutableList()
                     .apply { add(watchedSubdirectory) }
             )
 
-            fun copyAndRemoveWatchedSubdirectory(watchedSubdirectory: Path) = copy(
+            fun copyAndRemoveWatchedSubdirectory(watchedSubdirectory: WatchedSubdirectoryEntry) = copy(
                 watchedSubdirectories = watchedSubdirectories
                     .toMutableList()
                     .apply { remove(watchedSubdirectory) }
@@ -436,11 +455,21 @@ class WatchEngine(
         )
     }
 
+    private fun directoryWatchKeyEntryFactory(
+        absoluteDirectory: AbsolutePath,
+        watchKey: WatchKey
+    ) = Scope.DirectoryWatchKeyEntry(
+        absoluteDirectory = absoluteDirectory,
+        relativeDirectory = root.relativize(absoluteDirectory.value).asRelative(),
+        watchKey = watchKey,
+        watchedSubdirectories = emptyList()
+    )
+
     data class Token(private val id: Int) {
         val events = MutableSharedFlow<Event>()
     }
 
-    internal sealed class Event {
+    sealed class Event {
         sealed class Record : Event() {
             abstract val record: RelativePath
             data class Exists(override val record: RelativePath) : Record()

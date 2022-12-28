@@ -2,7 +2,7 @@ package tech.coner.snoozle.db
 
 import java.nio.file.Path
 
-internal data class AbsolutePath(val value: Path) {
+data class AbsolutePath(val value: Path) {
     init {
         require(value.isAbsolute) { "$value is not an absolute path" }
     }
