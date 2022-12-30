@@ -90,14 +90,16 @@ class WatchEngine(
         takenWatchKey: WatchKey,
         event: WatchEvent<Path>
     ) {
+        val eventContextAsAbsolutePath = event.contextAsAbsolutePath(takenWatchKey)
+            ?: return // can't process if can't resolve the absolute path
         if (
             event.kind() == StandardWatchEventKinds.ENTRY_CREATE
-            && event.context().isDirectory(LinkOption.NOFOLLOW_LINKS)
+            && eventContextAsAbsolutePath.value.isDirectory(LinkOption.NOFOLLOW_LINKS)
         ) {
             handleDirectoryCreated(takenWatchKey, event)
         } else if (
             event.kind() == StandardWatchEventKinds.ENTRY_DELETE
-            && event.contextIsWatchedDirectory(takenWatchKey)
+            && event.contextIsWatchedDirectory(takenWatchKey, eventContextAsAbsolutePath)
         ) {
             handleDirectoryDeleted(takenWatchKey, event)
         } else if (event.context().isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
@@ -365,14 +367,21 @@ class WatchEngine(
             ?.asRelative()
     }
 
-    private fun WatchEvent<Path>.contextAsAbsolutePath(takenWatchKey: WatchKey): AbsolutePath? {
-        return findDirectoryWatchKeyEntry(takenWatchKey)?.absoluteDirectory
+    private fun WatchEvent<Path>.contextAsAbsolutePath(takenWatchKey: WatchKey ): AbsolutePath? {
+        return findDirectoryWatchKeyEntry(takenWatchKey)
+            ?.absoluteDirectory?.value
+            ?.resolve(context())
+            ?.asAbsolute()
     }
 
-    private fun WatchEvent<Path>.contextIsWatchedDirectory(takenWatchKey: WatchKey): Boolean {
+    private fun WatchEvent<Path>.contextIsWatchedDirectory(
+        takenWatchKey: WatchKey,
+        contextAsAbsolutePath: AbsolutePath
+    ): Boolean {
         val directoryWatchKeyEntry = findDirectoryWatchKeyEntry(takenWatchKey)
-        val relativePath = directoryWatchKeyEntry?.absoluteDirectory?.resolve(context())
-        return directoryWatchKeyEntry?.watchedSubdirectories?.contains(relativePath) == true
+            ?: return false
+        return directoryWatchKeyEntry.watchedSubdirectories
+            .any { it.absolutePath == contextAsAbsolutePath }
     }
 
     private data class Scope(

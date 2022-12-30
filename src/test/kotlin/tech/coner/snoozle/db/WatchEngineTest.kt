@@ -32,12 +32,12 @@ class WatchEngineTest : CoroutineScope {
     override val coroutineContext = Dispatchers.IO + Job()
 
     private val rootTxtPattern by lazy { Pattern.compile("^\\w*.txt$") }
-    private val rootTxtFile by lazy { root.resolve("file.txt") }
-    private val rootJsonFile by lazy { root.resolve("file.json") }
+    private val rootTxtFile by lazy { testPath(root.resolve("file.txt")) }
+    private val rootJsonFile by lazy { testPath(root.resolve("file.json")) }
     private val subfolderTxtPattern by lazy { Pattern.compile("^subfolder/\\w*.txt$") }
     private val subfolder by lazy { root.resolve("subfolder") }
-    private val subfolderTxtFile by lazy { subfolder.resolve("file.txt") }
-    private val subfolderJsonFile by lazy { subfolderTxtFile.resolve("file.json") }
+    private val subfolderTxtFile by lazy { testPath(subfolder.resolve("file.txt")) }
+    private val subfolderJsonFile by lazy { testPath(subfolder.resolve("file.json")) }
 
     @BeforeEach
     fun before() {
@@ -62,14 +62,14 @@ class WatchEngineTest : CoroutineScope {
         watchEngine.registerRecordPattern(token, rootTxtPattern)
         launch {
             delay(500)
-            rootTxtFile.writeText("text")
+            rootTxtFile.absolutePath.value.writeText("text")
         }
         val event = withTimeout(1000000) { channel.receive() }
         assertThat(event)
             .isRecordExistsInstance()
             .record()
             .isEqualTo(
-                WatchEngine.Event.Record.Exists(rootTxtFile)
+                WatchEngine.Event.Record.Exists(rootTxtFile.relative)
             )
     }
 
@@ -96,5 +96,18 @@ class WatchEngineTest : CoroutineScope {
     @Test
     fun `It should not emit when non-matching file deleted`() {
         TODO()
+    }
+
+    private data class TestPath(
+        val absolutePath: AbsolutePath,
+        val relative: RelativePath
+    )
+
+    private fun testPath(path: Path): TestPath {
+        require(path.isAbsolute) { "Must be called with absolute path but was: $path" }
+        return TestPath(
+            absolutePath = path.asAbsolute(),
+            relative = root.relativize(path).asRelative()
+        )
     }
 }
