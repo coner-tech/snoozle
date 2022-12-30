@@ -69,16 +69,18 @@ class WatchEngine(
                 val watchKey = service?.awaitTake()
                 if (!isActive) return@withLock
                 watchKey?.pollEvents()?.forEach { event ->
-                    when (event.kind()) {
-                        StandardWatchEventKinds.ENTRY_CREATE,
-                        StandardWatchEventKinds.ENTRY_MODIFY,
-                        StandardWatchEventKinds.ENTRY_DELETE -> handlePathWatchEvent(
-                            takenWatchKey = watchKey,
-                            event = event as WatchEvent<Path>
-                        )
-                        StandardWatchEventKinds.OVERFLOW -> TODO("need to handle overflow case")
-                        else -> {
-                            TODO("need to handle unknown case")
+                    launch {
+                        when (event.kind()) {
+                            StandardWatchEventKinds.ENTRY_CREATE,
+                            StandardWatchEventKinds.ENTRY_MODIFY,
+                            StandardWatchEventKinds.ENTRY_DELETE -> handlePathWatchEvent(
+                                takenWatchKey = watchKey,
+                                event = event as WatchEvent<Path>
+                            )
+                            StandardWatchEventKinds.OVERFLOW -> TODO("need to handle overflow case")
+                            else -> {
+                                TODO("need to handle unknown case")
+                            }
                         }
                     }
                 }
@@ -90,25 +92,26 @@ class WatchEngine(
         takenWatchKey: WatchKey,
         event: WatchEvent<Path>
     ) {
-        val eventContextAsAbsolutePath = event.contextAsAbsolutePath(takenWatchKey)
-            ?: return // can't process if can't resolve the absolute path
+        val directoryWatchKeyEntry = findDirectoryWatchKeyEntry(takenWatchKey)
+            ?: return // can't process if no directory watch key entry found
+        val eventContextAsAbsolutePath = event.contextAsAbsolutePath(directoryWatchKeyEntry)
         if (
             event.kind() == StandardWatchEventKinds.ENTRY_CREATE
             && eventContextAsAbsolutePath.value.isDirectory(LinkOption.NOFOLLOW_LINKS)
         ) {
-            handleDirectoryCreated(takenWatchKey, event)
+            handleDirectoryCreated(directoryWatchKeyEntry, event)
         } else if (
             event.kind() == StandardWatchEventKinds.ENTRY_DELETE
-            && contextIsWatchedDirectory(takenWatchKey, eventContextAsAbsolutePath)
+            && contextIsWatchedDirectory(directoryWatchKeyEntry, eventContextAsAbsolutePath)
         ) {
             handleDirectoryDeleted(takenWatchKey, event)
         } else if (eventContextAsAbsolutePath.value.isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
-            handleFileEvent(takenWatchKey, event)
+            handleFileEvent(directoryWatchKeyEntry, event)
         }
     }
 
     private suspend fun handleDirectoryCreated(
-        takenWatchKey: WatchKey,
+        directoryWatchKeyEntry: Scope.DirectoryWatchKeyEntry,
         event: WatchEvent<Path>
     ) = coroutineScope {
         if (
@@ -118,8 +121,6 @@ class WatchEngine(
             // handler was called inappropriately
             return@coroutineScope
         }
-        val directoryWatchKeyEntry = findDirectoryWatchKeyEntry(takenWatchKey)
-            ?: return@coroutineScope // directory no longer watched, avoid race condition
         val newDirectoryAbsolutePath =
             directoryWatchKeyEntry.absoluteDirectory.value.resolve(event.context()).asAbsolute()
         newDirectoryAbsolutePath.toString()
@@ -216,7 +217,7 @@ class WatchEngine(
     }
 
     private suspend fun handleFileEvent(
-        takenWatchKey: WatchKey,
+        directoryWatchKeyEntry: Scope.DirectoryWatchKeyEntry,
         event: WatchEvent<Path>
     ) = coroutineScope {
         if (
@@ -227,7 +228,7 @@ class WatchEngine(
             // guard unknown / not handled event kinds
             return@coroutineScope
         }
-        val recordCandidateRelativePath = event.contextAsRelativePath(takenWatchKey)
+        val recordCandidateRelativePath = event.contextAsRelativePath(directoryWatchKeyEntry)
             ?: return@coroutineScope // no watch key in a scope matched taken watch key, ignore
         val recordCandidateRelativePathAsString = recordCandidateRelativePath.value.toString()
         scopes.values.forEach { scope ->
@@ -361,27 +362,23 @@ class WatchEngine(
         }
     }
 
-    private fun WatchEvent<Path>.contextAsRelativePath(takenWatchKey: WatchKey): RelativePath? {
-        return findDirectoryWatchKeyEntry(takenWatchKey)
-            ?.absoluteDirectory?.value
-            ?.resolve(context())
-            ?.let { root.relativize(it) }
-            ?.asRelative()
+    private fun WatchEvent<Path>.contextAsRelativePath(directoryWatchKeyEntry: Scope.DirectoryWatchKeyEntry): RelativePath {
+        return directoryWatchKeyEntry.absoluteDirectory.value
+            .resolve(context())
+            .let { root.relativize(it) }
+            .asRelative()
     }
 
-    private fun WatchEvent<Path>.contextAsAbsolutePath(takenWatchKey: WatchKey ): AbsolutePath? {
-        return findDirectoryWatchKeyEntry(takenWatchKey)
-            ?.absoluteDirectory?.value
-            ?.resolve(context())
-            ?.asAbsolute()
+    private fun WatchEvent<Path>.contextAsAbsolutePath(directoryWatchKeyEntry: Scope.DirectoryWatchKeyEntry): AbsolutePath {
+        return directoryWatchKeyEntry.absoluteDirectory.value
+            .resolve(context())
+            .asAbsolute()
     }
 
     private fun contextIsWatchedDirectory(
-        takenWatchKey: WatchKey,
+        directoryWatchKeyEntry: Scope.DirectoryWatchKeyEntry,
         contextAsAbsolutePath: AbsolutePath
     ): Boolean {
-        val directoryWatchKeyEntry = findDirectoryWatchKeyEntry(takenWatchKey)
-            ?: return false
         return directoryWatchKeyEntry.watchedSubdirectories
             .any { it.absolutePath == contextAsAbsolutePath }
     }
