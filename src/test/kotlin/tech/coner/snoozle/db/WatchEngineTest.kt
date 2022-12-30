@@ -2,25 +2,22 @@ package tech.coner.snoozle.db
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import java.nio.file.Path
+import java.util.regex.Pattern
+import kotlin.io.path.writeText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
-import java.util.regex.Pattern
-import kotlin.io.path.writeText
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WatchEngineTest : CoroutineScope {
@@ -48,29 +45,24 @@ class WatchEngineTest : CoroutineScope {
     }
 
     @AfterEach
-    fun after() = runTest {
-        watchEngine.shutDown()
-        cancel()
+    fun after() {
+        runBlocking { watchEngine.shutDown() }
+        coroutineContext.cancel()
     }
 
     @Test
-    fun `It should emit when matching file created`() = runBlocking {
+    fun `It should emit record exists when matching file created`() = runBlocking {
         val token = watchEngine.createToken()
-        val channel = Channel<WatchEngine.Event>()
-        token.events.onEach { channel.send(it) }
         watchEngine.registerRootDirectory(token)
         watchEngine.registerRecordPattern(token, rootTxtPattern)
-        launch {
-            delay(500)
-            rootTxtFile.absolutePath.value.writeText("text")
-        }
-        val event = withTimeout(1000000) { channel.receive() }
+
+        launch { rootTxtFile.absolute.value.writeText("text") }
+        val event = withTimeout(1000) { token.events.first() }
+
         assertThat(event)
             .isRecordExistsInstance()
             .record()
-            .isEqualTo(
-                WatchEngine.Event.Record.Exists(rootTxtFile.relative)
-            )
+            .isEqualTo(rootTxtFile.relative)
     }
 
     @Test
@@ -99,14 +91,14 @@ class WatchEngineTest : CoroutineScope {
     }
 
     private data class TestPath(
-        val absolutePath: AbsolutePath,
+        val absolute: AbsolutePath,
         val relative: RelativePath
     )
 
     private fun testPath(path: Path): TestPath {
         require(path.isAbsolute) { "Must be called with absolute path but was: $path" }
         return TestPath(
-            absolutePath = path.asAbsolute(),
+            absolute = path.asAbsolute(),
             relative = root.relativize(path).asRelative()
         )
     }

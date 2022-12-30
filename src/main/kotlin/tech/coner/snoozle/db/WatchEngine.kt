@@ -99,10 +99,10 @@ class WatchEngine(
             handleDirectoryCreated(takenWatchKey, event)
         } else if (
             event.kind() == StandardWatchEventKinds.ENTRY_DELETE
-            && event.contextIsWatchedDirectory(takenWatchKey, eventContextAsAbsolutePath)
+            && contextIsWatchedDirectory(takenWatchKey, eventContextAsAbsolutePath)
         ) {
             handleDirectoryDeleted(takenWatchKey, event)
-        } else if (event.context().isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
+        } else if (eventContextAsAbsolutePath.value.isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
             handleFileEvent(takenWatchKey, event)
         }
     }
@@ -229,7 +229,7 @@ class WatchEngine(
         }
         val recordCandidateRelativePath = event.contextAsRelativePath(takenWatchKey)
             ?: return@coroutineScope // no watch key in a scope matched taken watch key, ignore
-        val recordCandidateRelativePathAsString = recordCandidateRelativePath.toString()
+        val recordCandidateRelativePathAsString = recordCandidateRelativePath.value.toString()
         scopes.values.forEach { scope ->
             scope.recordPatterns.forEach { recordPattern ->
                 if (recordPattern.matcher(recordCandidateRelativePathAsString).matches()) {
@@ -334,17 +334,19 @@ class WatchEngine(
         }
     }
 
-    suspend fun shutDown() = coroutineScope {
-        mutex.withLock {
-            scopes.values.forEach { scope ->
-                scope.directoryWatchKeyEntries.forEach { entry ->
-                    entry.watchKey.cancel()
+    suspend fun shutDown() {
+        coroutineScope {
+            mutex.withLock {
+                scopes.values.forEach { scope ->
+                    scope.directoryWatchKeyEntries.forEach { entry ->
+                        entry.watchKey.cancel()
+                    }
                 }
+                scopes.clear()
+                processScopesForClose()
             }
-            scopes.clear()
-            processScopesForClose()
         }
-        cancel()
+        coroutineContext.cancel()
     }
 
     private fun findDirectoryWatchKeyEntry(takenWatchKey: WatchKey): Scope.DirectoryWatchKeyEntry? {
@@ -374,7 +376,7 @@ class WatchEngine(
             ?.asAbsolute()
     }
 
-    private fun WatchEvent<Path>.contextIsWatchedDirectory(
+    private fun contextIsWatchedDirectory(
         takenWatchKey: WatchKey,
         contextAsAbsolutePath: AbsolutePath
     ): Boolean {
