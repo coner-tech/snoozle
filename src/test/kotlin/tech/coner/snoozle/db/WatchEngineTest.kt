@@ -2,22 +2,24 @@ package tech.coner.snoozle.db
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import java.nio.file.Path
-import java.util.regex.Pattern
-import kotlin.io.path.writeText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Path
+import java.util.regex.Pattern
+import kotlin.io.path.writeText
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WatchEngineTest : CoroutineScope {
@@ -28,13 +30,14 @@ class WatchEngineTest : CoroutineScope {
 
     override val coroutineContext = Dispatchers.IO + Job()
 
-    private val rootTxtPattern by lazy { Pattern.compile("^\\w*.txt$") }
-    private val rootTxtFile by lazy { testPath(root.resolve("file.txt")) }
-    private val rootJsonFile by lazy { testPath(root.resolve("file.json")) }
-    private val subfolderTxtPattern by lazy { Pattern.compile("^subfolder/\\w*.txt$") }
+    private val rootAnyTxtPattern by lazy { Pattern.compile("^\\w*.txt$") }
+    private val rootFileDotTxt by lazy { testPath(root.resolve("file.txt")) }
+    private val rootNotFileDotTxt by lazy { testPath(root.resolve("notfile.txt")) }
+    private val rootFileDotJson by lazy { testPath(root.resolve("file.json")) }
+    private val subfolderAnyTxtPattern by lazy { Pattern.compile("^subfolder/\\w*.txt$") }
     private val subfolder by lazy { root.resolve("subfolder") }
-    private val subfolderTxtFile by lazy { testPath(subfolder.resolve("file.txt")) }
-    private val subfolderJsonFile by lazy { testPath(subfolder.resolve("file.json")) }
+    private val subfolderFileDotTxt by lazy { testPath(subfolder.resolve("file.txt")) }
+    private val subfolderFileDotJson by lazy { testPath(subfolder.resolve("file.json")) }
 
     @BeforeEach
     fun before() {
@@ -54,20 +57,27 @@ class WatchEngineTest : CoroutineScope {
     fun `It should emit record exists when matching file created`() = runBlocking {
         val token = watchEngine.createToken()
         watchEngine.registerRootDirectory(token)
-        watchEngine.registerRecordPattern(token, rootTxtPattern)
+        watchEngine.registerRecordPattern(token, rootAnyTxtPattern)
 
-        launch { rootTxtFile.absolute.value.writeText("text") }
+        launch { rootFileDotTxt.absolute.value.writeText("text") }
         val event = withTimeout(1000) { token.events.first() }
 
         assertThat(event)
             .isRecordExistsInstance()
             .record()
-            .isEqualTo(rootTxtFile.relative)
+            .isEqualTo(rootFileDotTxt.relative)
     }
 
     @Test
-    fun `It should not emit when non-matching file created`() {
-        TODO()
+    fun `It should not emit when non matching file created`() = runBlocking {
+        val token = watchEngine.createToken()
+        watchEngine.registerRootDirectory(token)
+        watchEngine.registerRecordPattern(token, rootAnyTxtPattern)
+
+        launch { rootFileDotJson.absolute.value.writeText("""{ "json": "object" }""") }
+        val event = withTimeoutOrNull(1000) { token.events.firstOrNull() }
+
+        
     }
 
     @Test
