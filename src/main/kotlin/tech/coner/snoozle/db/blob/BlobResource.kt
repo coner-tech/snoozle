@@ -8,15 +8,18 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.stream.Stream
 import kotlin.io.path.readText
+import tech.coner.snoozle.db.AbsolutePath
+import tech.coner.snoozle.db.RelativePath
+import tech.coner.snoozle.db.asAbsolute
 
-class BlobResource<B : Blob> constructor(
-    private val root: Path,
+class BlobResource<B : Blob>(
+    private val root: AbsolutePath,
     private val definition: BlobDefinition<B>,
     private val pathfinder: Pathfinder<B, Record<B>>,
     private val keyMapper: KeyMapper<B, Record<B>>
 ) {
     fun getAsText(blob: B): String {
-        val file = getAbsolutePathTo(blob)
+        val file = getAbsolutePathTo(blob).value
         return if (Files.exists(file)) {
             try {
                 file.readText()
@@ -29,7 +32,7 @@ class BlobResource<B : Blob> constructor(
     }
 
     fun getAsInputStream(blob: B): InputStream {
-        val file = getAbsolutePathTo(blob)
+        val file = getAbsolutePathTo(blob).value
         return if (Files.exists(file)) {
             try {
                 file.toFile().inputStream().buffered()
@@ -41,21 +44,21 @@ class BlobResource<B : Blob> constructor(
         }
     }
 
-    fun getAbsolutePathTo(blob: B): Path {
+    fun getAbsolutePathTo(blob: B): AbsolutePath {
         val blobPath = pathfinder.findRecord(blob)
-        return root.resolve(blobPath)
+        return root.value.resolve(blobPath.value).asAbsolute()
     }
 
     fun put(blob: B, text: String) {
         val blobPath = pathfinder.findRecord(blob)
-        val file = root.resolve(blobPath)
+        val file = root.value.resolve(blobPath.value)
         Files.createDirectories(file.parent)
         file.toFile().writeText(text)
     }
 
     fun put(blob: B, bytes: ByteArray) {
         val blobPath = pathfinder.findRecord(blob)
-        val file = root.resolve(blobPath)
+        val file = root.value.resolve(blobPath.value)
         Files.createDirectories(file.parent)
         file.toFile().outputStream().buffered().use {
             it.write(bytes)
@@ -64,7 +67,7 @@ class BlobResource<B : Blob> constructor(
 
     fun stream(): Stream<B> {
         return pathfinder.streamAll()
-                .map { recordPath: Path -> keyMapper.fromRelativeRecord(recordPath) }
+                .map { recordPath: RelativePath -> keyMapper.fromRelativeRecord(recordPath) }
     }
 
 }

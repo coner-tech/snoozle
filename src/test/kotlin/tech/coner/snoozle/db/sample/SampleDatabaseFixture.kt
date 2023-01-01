@@ -6,6 +6,7 @@ import tech.coner.snoozle.util.uuid
 import java.nio.file.Path
 import java.time.format.DateTimeFormatter
 import java.util.*
+import tech.coner.snoozle.db.asAbsolute
 
 object SampleDatabaseFixture {
 
@@ -14,7 +15,7 @@ object SampleDatabaseFixture {
     fun factory(root: Path, version: Int?): SampleDatabase {
         javaClass.requireResourceAsFile("/sample-db/v$version")
             .copyRecursively(root.toFile())
-        return SampleDatabase(root)
+        return SampleDatabase(root.asAbsolute())
     }
 
     object Widgets : SampleEntity<Widget.Key, Widget> {

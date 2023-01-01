@@ -9,11 +9,11 @@ import java.util.regex.Pattern
 import java.util.stream.Stream
 
 open class Pathfinder<K : tech.coner.snoozle.db.Key, R : Record<K>>(
-        protected val root: Path,
-        protected val pathParts: List<PathPart<K, R, *>>
+    protected val root: AbsolutePath,
+    protected val pathParts: List<PathPart<K, R, *>>
 ) {
 
-    fun findRecord(key: K): Path {
+    fun findRecord(key: K): RelativePath {
         val relativePath = pathParts.joinToString(separator = "") { pathPart ->
             when (pathPart) {
                 is PathPart.StaticExtractor<*> -> pathPart.value
@@ -21,7 +21,7 @@ open class Pathfinder<K : tech.coner.snoozle.db.Key, R : Record<K>>(
                 else -> throw IllegalStateException("Unhandled pathPart type: $pathPart")
             }
         }
-        return Paths.get(relativePath)
+        return Paths.get(relativePath).asRelative()
     }
 
     private val recordCandidatePath: Pattern by lazy {
@@ -47,11 +47,11 @@ open class Pathfinder<K : tech.coner.snoozle.db.Key, R : Record<K>>(
         return recordCandidatePath.matcher(candidate.toString()).matches()
     }
 
-    private val listingStart: Path by lazy {
+    private val listingStart: AbsolutePath by lazy {
         val relativeListingStart = pathParts
                 .takeWhile { it is PathPart.StaticExtractor<*> }
                 .joinToString("") { (it as PathPart.StaticExtractor<*>).value }
-        root.resolve(relativeListingStart)
+        root.value.resolve(relativeListingStart).asAbsolute()
     }
 
     private val listingMaxDepth: Int by lazy {
@@ -61,25 +61,25 @@ open class Pathfinder<K : tech.coner.snoozle.db.Key, R : Record<K>>(
         1 + (trueDepth - depthOfListingStart)
     }
 
-    fun streamAll(): Stream<Path> {
+    fun streamAll(): Stream<RelativePath> {
         val start = listingStart
         val maxDepth = listingMaxDepth
         return try {
             Files.find(
-                    start,
+                    start.value,
                     maxDepth,
                     { candidate: Path, attrs: BasicFileAttributes ->
-                        attrs.isRegularFile && isRecord(root.relativize(candidate))
+                        attrs.isRegularFile && isRecord(root.value.relativize(candidate))
                     }
             )
-                    .map { root.relativize(it) }
+                    .map { root.value.relativize(it).asRelative() }
         } catch (noSuchFileException: NoSuchFileException) {
             Stream.empty()
         }
     }
 
-    fun findVariableStringParts(relativeRecordPath: Path): Array<String> {
-        var remainingPathParts = relativeRecordPath.toString()
+    fun findVariableStringParts(relativeRecordPath: RelativePath): Array<String> {
+        var remainingPathParts = relativeRecordPath.value.toString()
         val extractedVariables = mutableListOf<Any>()
         pathParts.forEach { pathPart ->
             val matcher = pathPart.regex.matcher(remainingPathParts)

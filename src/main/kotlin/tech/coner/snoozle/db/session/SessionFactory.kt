@@ -3,20 +3,27 @@ package tech.coner.snoozle.db.session
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import tech.coner.snoozle.db.AbsolutePath
 import tech.coner.snoozle.db.MigrationsRegistry
 import tech.coner.snoozle.db.TypesRegistry
 import tech.coner.snoozle.db.blob.BlobIoException
 import tech.coner.snoozle.db.entity.EntityIoException
-import tech.coner.snoozle.db.metadata.*
+import tech.coner.snoozle.db.metadata.DatabaseVersionBlob
+import tech.coner.snoozle.db.metadata.DatabaseVersionResource
+import tech.coner.snoozle.db.metadata.MetadataException
+import tech.coner.snoozle.db.metadata.MetadataRepository
+import tech.coner.snoozle.db.metadata.SessionMetadataEntity
+import tech.coner.snoozle.db.metadata.SessionMetadataResource
+import tech.coner.snoozle.db.metadata.toSessionMetadataEntity
+import tech.coner.snoozle.db.metadata.toSessionMetadataKey
 import tech.coner.snoozle.db.session.administrative.AdministrativeSession
 import tech.coner.snoozle.db.session.administrative.AdministrativeSessionException
 import tech.coner.snoozle.db.session.data.DataSession
 import tech.coner.snoozle.db.session.data.DataSessionException
-import java.nio.file.Path
 
 class SessionFactory(
     private val version: Int,
-    private val root: Path,
+    private val root: AbsolutePath,
     private val types: TypesRegistry,
     private val migrations: MigrationsRegistry,
     metadataRepository: MetadataRepository? = null

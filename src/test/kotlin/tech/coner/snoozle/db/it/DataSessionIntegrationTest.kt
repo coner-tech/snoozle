@@ -35,6 +35,7 @@ import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteExisting
 import kotlin.io.path.readText
+import tech.coner.snoozle.db.asAbsolute
 
 class DataSessionIntegrationTest {
 
@@ -146,7 +147,7 @@ class DataSessionIntegrationTest {
     @Disabled
     fun `It should watch records in an empty newly created database`() {
 //        val database = SampleDatabaseFixture.factory(root, SampleDatabaseFixture.VERSION_HIGHEST)
-        val database = SampleDatabase(root)
+        val database = SampleDatabase(root.asAbsolute())
         database.useAdministrativeSession { it.initializeDatabase() }
         database.useDataSession {
             val widgets = it.widgets()

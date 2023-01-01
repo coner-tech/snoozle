@@ -3,6 +3,8 @@ package tech.coner.snoozle.db.it
 import assertk.all
 import assertk.assertThat
 import assertk.assertions.*
+import java.nio.file.Files.isReadable
+import java.nio.file.Files.isRegularFile
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -73,7 +75,7 @@ class GadgetPhotoIntegrationTest {
         }
 
         val actualGadgetPhotoZeroPath = resource.getAbsolutePathTo(actualGadgetPhotos[0])
-        assertThat(actualGadgetPhotoZeroPath).all {
+        assertThat(actualGadgetPhotoZeroPath.value).all {
             toStringFun().all {
                 startsWith(root.toString())
                 endsWith("/gadgets/${actualGadgetPhotos[0].gadgetId}/photos/${actualGadgetPhotos[0].id}.${actualGadgetPhotos[0].extension}")
@@ -83,7 +85,7 @@ class GadgetPhotoIntegrationTest {
         }
 
         val actualGadgetPhotoOnePath = resource.getAbsolutePathTo(actualGadgetPhotos[1])
-        assertThat(actualGadgetPhotoOnePath).all {
+        assertThat(actualGadgetPhotoOnePath.value).all {
             toStringFun().all {
                 startsWith(root.toString())
                 endsWith("/gadgets/${actualGadgetPhotos[1].gadgetId}/photos/${actualGadgetPhotos[1].id}.${actualGadgetPhotos[1].extension}")

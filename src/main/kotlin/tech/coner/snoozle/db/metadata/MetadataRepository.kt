@@ -4,19 +4,19 @@ import tech.coner.snoozle.db.blob.BlobIoException
 import tech.coner.snoozle.db.entity.EntityIoException
 import tech.coner.snoozle.util.resolve
 import java.nio.file.Files
-import java.nio.file.Path
 import java.util.*
+import tech.coner.snoozle.db.AbsolutePath
 
 class MetadataRepository(
-    private val root: Path,
+    private val root: AbsolutePath,
     private val databaseVersionResource: DatabaseVersionResource,
     private val sessionMetadataResource: SessionMetadataResource
 ) {
 
     fun rootContainsAnythingOtherThanCurrentSessionMetadata(id: UUID): Boolean {
-        val expectedCurrentSessionMetadata = root.resolve(".snoozle", "sessions", "$id.json")
+        val expectedCurrentSessionMetadata = root.value.resolve(".snoozle", "sessions", "$id.json")
         return Files
-            .find(root, 3, { _, attrs -> attrs.isRegularFile })
+            .find(root.value, 3, { _, attrs -> attrs.isRegularFile })
             .anyMatch { it != expectedCurrentSessionMetadata }
     }
 

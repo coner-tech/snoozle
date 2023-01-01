@@ -31,6 +31,7 @@ import java.util.*
 import kotlin.io.path.bufferedReader
 import kotlin.io.path.bufferedWriter
 import kotlin.io.path.readText
+import tech.coner.snoozle.db.asAbsolute
 
 class MigrationIntegrationTest {
 
@@ -365,7 +366,7 @@ class MigrationIntegrationTest {
 
         @Test
         fun `It should fail to auto migrate when already on version 3`() {
-            val session = SampleDatabase(rootV3)
+            val session = SampleDatabase(rootV3.asAbsolute())
                 .openAdministrativeSession()
                 .getOrThrow()
             try {

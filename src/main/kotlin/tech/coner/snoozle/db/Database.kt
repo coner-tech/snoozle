@@ -7,10 +7,9 @@ import tech.coner.snoozle.db.session.SessionFactory
 import tech.coner.snoozle.db.session.administrative.AdministrativeSession
 import tech.coner.snoozle.db.session.data.DataSession
 import tech.coner.snoozle.util.snoozleJacksonObjectMapper
-import java.nio.file.Path
 
 abstract class Database(
-    protected val root: Path,
+    protected val root: AbsolutePath,
     private val objectMapper: ObjectMapper = snoozleJacksonObjectMapper(),
     sessionFactory: SessionFactory? = null,
     private val fileWatchEngine: FileWatchEngine = FileWatchEngine(

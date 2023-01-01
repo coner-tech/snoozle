@@ -1,18 +1,5 @@
 package tech.coner.snoozle.db
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runInterruptible
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -29,24 +16,37 @@ import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 
-class FileWatchEngine(
+open class FileWatchEngine(
     override val coroutineContext: CoroutineContext,
-    private val root: Path
+    private val root: AbsolutePath
 ) : CoroutineScope {
 
     private val mutex = Mutex()
-    private var nextScopeId = Int.MIN_VALUE
-    private val scopes = mutableMapOf<TokenImpl, Scope>()
-    private var service: WatchService? = null
-    private var pollLoopScope: CoroutineContext? = null
-    private var pollLoopJob: Job? = null
+    protected var nextScopeId = Int.MIN_VALUE
+    protected val scopes = mutableMapOf<TokenImpl, ScopeImpl>()
+    protected var service: WatchService? = null
+    protected var pollLoopScope: CoroutineContext? = null
+    protected var pollLoopJob: Job? = null
 
     suspend fun createToken(): Token = mutex.withLock {
         val token = TokenImpl(nextScopeId++)
             .apply { engine = this@FileWatchEngine }
-        scopes[token] = Scope(
+        scopes[token] = ScopeImpl(
             token = token,
             directoryPatterns = emptyList(),
             filePatterns = emptyList(),
@@ -58,7 +58,7 @@ class FileWatchEngine(
 
     private suspend fun startService() = coroutineScope {
         if (service == null) {
-            service = runInterruptible { root.fileSystem.newWatchService() }
+            service = runInterruptible { root.value.fileSystem.newWatchService() }
             pollLoopJob = launch((Dispatchers.IO + Job()).also { pollLoopScope = it }) {
                 pollLoop()
             }
@@ -180,7 +180,7 @@ class FileWatchEngine(
                         val newFileCandidateRelative: RelativePath = newDirectory.value.resolve(newDirectoryEntryCandidate).asRelative()
                         val newFileCandidateRelativeAsString = newFileCandidateRelative.toString()
                         if (newFileCandidateRelative.value.isDirectory(LinkOption.NOFOLLOW_LINKS)) {
-                            val newDirectoryWatchKeyEntriesToAdd = mutableMapOf<TokenImpl, MutableList<Scope.DirectoryWatchKeyEntry>>()
+                            val newDirectoryWatchKeyEntriesToAdd = mutableMapOf<TokenImpl, MutableList<ScopeImpl.DirectoryWatchKeyEntryImpl>>()
                             scopes.values.forEach { scope ->
                                 if (scope.directoryPatterns.any { it.matcher(newFileCandidateRelativeAsString).matches() }) {
                                     newFileCandidateRelative.value.register(service, watchEventKinds)
@@ -269,10 +269,10 @@ class FileWatchEngine(
             scopes[token]
                 ?.copyAndAddDirectoryPattern(directoryPattern)
                 ?.also { newScope -> scopes[token] = newScope }
-            Files.walkFileTree(root, object : SimpleFileVisitor<Path>() {
+            Files.walkFileTree(root.value, object : SimpleFileVisitor<Path>() {
                 override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
                     val dirAsAbsolute = dir.asAbsolute()
-                    val dirAsRelative = root.relativize(dir).asRelative()
+                    val dirAsRelative = root.value.relativize(dir).asRelative()
                     if (directoryPattern.matcher(dirAsRelative.value.toString()).matches()) {
                         val watchKey = dir.register(service, watchEventKinds)
                         scopes[token]
@@ -369,7 +369,7 @@ class FileWatchEngine(
     private fun WatchEvent<Path>.contextAsRelativePath(directoryWatchKeyEntry: Scope.DirectoryWatchKeyEntry): RelativePath {
         return directoryWatchKeyEntry.absoluteDirectory.value
             .resolve(context())
-            .let { root.relativize(it) }
+            .let { root.value.relativize(it) }
             .asRelative()
     }
 
@@ -387,46 +387,73 @@ class FileWatchEngine(
             .any { it.absolutePath == contextAsAbsolutePath }
     }
 
-    private data class Scope(
-        val token: TokenImpl,
-        val directoryPatterns: List<Pattern>,
-        val filePatterns: List<Pattern>,
-        val directoryWatchKeyEntries: List<DirectoryWatchKeyEntry>
-    ) {
-        fun copyAndAddDirectoryPattern(directoryPattern: Pattern) = copy(
+    interface Scope<DWKE : Scope.DirectoryWatchKeyEntry> {
+        val token: Token
+        val directoryPatterns: List<Pattern>
+        val filePatterns: List<Pattern>
+        val directoryWatchKeyEntries: List<DWKE>
+
+        fun copyAndAddDirectoryPattern(directoryPattern: Pattern): Scope<DWKE>
+        fun copyAndAddFilePattern(filePattern: Pattern): Scope<DWKE>
+        fun copyAndRemoveFilePattern(filePattern: Pattern): Scope<DWKE>
+        fun copyAndAddDirectoryWatchKeyEntry(entry: DWKE): Scope<DWKE>
+
+        interface DirectoryWatchKeyEntry {
+            val absoluteDirectory: AbsolutePath
+            val relativeDirectory: RelativePath
+            val watchKey: WatchKey
+            val watchedSubdirectories: List<WatchedSubdirectoryEntry>
+
+            fun copyAndAddWatchedSubdirectory(watchedSubdirectory: WatchedSubdirectoryEntry): DirectoryWatchKeyEntry
+            fun copyAndRemoveWatchedSubdirectory(watchedSubdirectory: WatchedSubdirectoryEntry): DirectoryWatchKeyEntry
+        }
+
+        data class WatchedSubdirectoryEntry(
+            val absolutePath: AbsolutePath,
+            val relativePath: RelativePath
+        )
+    }
+
+    protected data class ScopeImpl(
+        override val token: TokenImpl,
+        override val directoryPatterns: List<Pattern>,
+        override val filePatterns: List<Pattern>,
+        override val directoryWatchKeyEntries: List<DirectoryWatchKeyEntryImpl>
+    ) : Scope<ScopeImpl.DirectoryWatchKeyEntryImpl> {
+        override fun copyAndAddDirectoryPattern(directoryPattern: Pattern) = copy(
             directoryPatterns = directoryPatterns
                 .toMutableList()
                 .apply { add(directoryPattern) }
         )
 
-        fun copyAndAddFilePattern(filePattern: Pattern) = copy(
+        override fun copyAndAddFilePattern(filePattern: Pattern) = copy(
             filePatterns = filePatterns
                 .toMutableList()
                 .apply { add(filePattern) }
         )
 
-        fun copyAndRemoveFilePattern(filePattern: Pattern) = copy(
+        override fun copyAndRemoveFilePattern(filePattern: Pattern) = copy(
             filePatterns = filePatterns
                 .toMutableList()
                 .apply { remove(filePattern) }
         )
         
-        fun copyAndAddDirectoryWatchKeyEntry(entry: DirectoryWatchKeyEntry) = copy(
+        override fun copyAndAddDirectoryWatchKeyEntry(entry: DirectoryWatchKeyEntryImpl) = copy(
             directoryWatchKeyEntries = directoryWatchKeyEntries
                 .toMutableList()
                 .apply { add(entry) }
         )
 
-        fun copyAndAddWatchedSubdirectory(watchedSubdirectory: WatchedSubdirectoryEntry, watchKey: WatchKey)
+        fun copyAndAddWatchedSubdirectory(watchedSubdirectory: Scope.WatchedSubdirectoryEntry, watchKey: WatchKey)
         = copyAndMutateWatchedSubdirectory(watchedSubdirectory, watchKey) { it.copyAndAddWatchedSubdirectory(watchedSubdirectory) }
 
-        fun copyAndRemoveWatchedSubdirectory(watchedSubdirectory: WatchedSubdirectoryEntry, watchKey: WatchKey)
+        fun copyAndRemoveWatchedSubdirectory(watchedSubdirectory: Scope.WatchedSubdirectoryEntry, watchKey: WatchKey)
         = copyAndMutateWatchedSubdirectory(watchedSubdirectory, watchKey) { it.copyAndRemoveWatchedSubdirectory(watchedSubdirectory) }
 
         private fun copyAndMutateWatchedSubdirectory(
-            watchedSubdirectory: WatchedSubdirectoryEntry,
+            watchedSubdirectory: Scope.WatchedSubdirectoryEntry,
             watchKey: WatchKey,
-            block: (DirectoryWatchKeyEntry) -> DirectoryWatchKeyEntry
+            block: (DirectoryWatchKeyEntryImpl) -> DirectoryWatchKeyEntryImpl
         ) = copy(
             directoryWatchKeyEntries = directoryWatchKeyEntries
                 .toMutableList()
@@ -442,37 +469,33 @@ class FileWatchEngine(
                 }
         )
 
-        data class DirectoryWatchKeyEntry(
-            val absoluteDirectory: AbsolutePath,
-            val relativeDirectory: RelativePath,
-            val watchKey: WatchKey,
-            val watchedSubdirectories: List<WatchedSubdirectoryEntry>
-        ) {
-            fun copyAndAddWatchedSubdirectory(watchedSubdirectory: WatchedSubdirectoryEntry) = copy(
+        data class DirectoryWatchKeyEntryImpl(
+            override val absoluteDirectory: AbsolutePath,
+            override val relativeDirectory: RelativePath,
+            override val watchKey: WatchKey,
+            override val watchedSubdirectories: List<Scope.WatchedSubdirectoryEntry>
+        ) : Scope.DirectoryWatchKeyEntry {
+
+            override fun copyAndAddWatchedSubdirectory(watchedSubdirectory: Scope.WatchedSubdirectoryEntry): DirectoryWatchKeyEntryImpl = copy(
                 watchedSubdirectories = watchedSubdirectories
                     .toMutableList()
                     .apply { add(watchedSubdirectory) }
             )
 
-            fun copyAndRemoveWatchedSubdirectory(watchedSubdirectory: WatchedSubdirectoryEntry) = copy(
+            override fun copyAndRemoveWatchedSubdirectory(watchedSubdirectory: Scope.WatchedSubdirectoryEntry): DirectoryWatchKeyEntryImpl = copy(
                 watchedSubdirectories = watchedSubdirectories
                     .toMutableList()
                     .apply { remove(watchedSubdirectory) }
             )
         }
-
-        data class WatchedSubdirectoryEntry(
-            val absolutePath: AbsolutePath,
-            val relativePath: RelativePath
-        )
     }
 
     private fun directoryWatchKeyEntryFactory(
         absoluteDirectory: AbsolutePath,
         watchKey: WatchKey
-    ) = Scope.DirectoryWatchKeyEntry(
+    ) = ScopeImpl.DirectoryWatchKeyEntryImpl(
         absoluteDirectory = absoluteDirectory,
-        relativeDirectory = root.relativize(absoluteDirectory.value).asRelative(),
+        relativeDirectory = root.value.relativize(absoluteDirectory.value).asRelative(),
         watchKey = watchKey,
         watchedSubdirectories = emptyList()
     )
@@ -489,7 +512,7 @@ class FileWatchEngine(
         suspend fun unregisterFilePattern(pattern: Pattern)
     }
 
-    private data class TokenImpl(private val id: Int) : Token {
+    protected data class TokenImpl(private val id: Int) : Token {
         lateinit var engine: FileWatchEngine
         override val events = MutableSharedFlow<Event>()
 

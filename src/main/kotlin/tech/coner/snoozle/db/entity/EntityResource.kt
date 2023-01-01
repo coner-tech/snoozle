@@ -17,9 +17,13 @@ import java.nio.file.StandardWatchEventKinds
 import java.util.function.Predicate
 import java.util.stream.Stream
 import kotlin.io.path.notExists
+import tech.coner.snoozle.db.AbsolutePath
+import tech.coner.snoozle.db.RelativePath
+import tech.coner.snoozle.db.asAbsolute
+import tech.coner.snoozle.db.asRelative
 
-class EntityResource<K : Key, E : Entity<K>> constructor(
-    private val root: Path,
+class EntityResource<K : Key, E : Entity<K>>(
+    private val root: AbsolutePath,
     internal val definition: EntityDefinition<K, E>,
     private val reader: ObjectReader,
     private val writer: ObjectWriter,
@@ -35,7 +39,7 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
     fun create(entity: E) {
         val key = keyMapper.fromInstance(entity)
         val relativeRecord = pathfinder.findRecord(key)
-        val destination = root.resolve(relativeRecord)
+        val destination = root.value.resolve(relativeRecord.value)
         if (Files.exists(destination)) {
             throw EntityIoException.AlreadyExists("Entity already exists with key: $key")
         }
@@ -54,7 +58,7 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
     fun deleteOnExit(entity: E) {
         val key = keyMapper.fromInstance(entity)
         val relativeRecord = pathfinder.findRecord(key)
-        val destination = root.resolve(relativeRecord)
+        val destination = root.value.resolve(relativeRecord.value)
         if (destination.notExists()) {
             throw EntityIoException.NotFound(key)
         }
@@ -67,7 +71,7 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
 
     fun read(key: K): E {
         val entityPath = pathfinder.findRecord(key)
-        val file = root.resolve(entityPath)
+        val file = root.value.resolve(entityPath.value).asAbsolute()
         return read(file)
     }
 
@@ -90,7 +94,7 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
     fun update(entity: E) {
         val key = keyMapper.fromInstance(entity)
         val relativeRecord = pathfinder.findRecord(key)
-        val destination = root.resolve(relativeRecord)
+        val destination = root.value.resolve(relativeRecord.value)
         if (Files.notExists(destination)) {
             throw EntityIoException.NotFound(key)
         }
@@ -102,22 +106,22 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
         Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }
 
-    private fun read(file: Path): E {
-        return if (Files.exists(file)) {
-            Files.newInputStream(file).use { inputStream ->
+    private fun read(file: AbsolutePath): E {
+        return if (Files.exists(file.value)) {
+            Files.newInputStream(file.value).use { inputStream ->
                 try {
                     reader.readValue<E>(inputStream)
                 } catch (t: Throwable) {
-                    throw EntityIoException.ReadFailure("Failed to read entity: ${file.relativize(root)}", t)
+                    throw EntityIoException.ReadFailure("Failed to read entity: ${root.value.relativize(file.value)}", t)
                 }
             }
         } else {
-            throw EntityIoException.NotFound("Entity not found: ${root.relativize(file)}")
+            throw EntityIoException.NotFound("Entity not found: ${root.value.relativize(file.value)}")
         }
     }
 
     fun delete(key: K) {
-        val file = root.resolve(pathfinder.findRecord(key))
+        val file = root.value.resolve(pathfinder.findRecord(key).value)
         if (Files.notExists(file)) {
             throw EntityIoException.NotFound(key)
         }
@@ -130,18 +134,18 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
 
     fun stream(keyFilter: Predicate<K>? = null): Stream<E> {
         val allPathsMappedToKeys = pathfinder.streamAll()
-                .map { recordPath: Path -> keyMapper.fromRelativeRecord(recordPath) }
+                .map { recordPath: RelativePath -> keyMapper.fromRelativeRecord(recordPath) }
         val allKeysForRead = keyFilter?.let { allPathsMappedToKeys.filter(it) } ?: allPathsMappedToKeys
-        return allKeysForRead.map { read(root.resolve(pathfinder.findRecord(it))) }
+        return allKeysForRead.map { read(root.value.resolve(pathfinder.findRecord(it).value).asAbsolute()) }
     }
 
     fun watch(keyFilter: Predicate<K>? = null): Observable<EntityEvent<K, E>> {
-        return root.watch(recursive = true)
-                .filter { pathfinder.isRecord(root.relativize(it.file)) }
+        return root.value.watch(recursive = true)
+                .filter { pathfinder.isRecord(root.value.relativize(it.file)) }
                 .map { event: PathWatchEvent ->
                     PreReadWatchEventPayload(
                             event = event,
-                            key = keyMapper.fromRelativeRecord(root.relativize(event.file))
+                            key = keyMapper.fromRelativeRecord(root.value.relativize(event.file).asRelative())
                     )
                 }
                 .filter { keyFilter?.test(it.key) != false }
@@ -151,7 +155,7 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
                             && Files.size(it.event.file) > 0
                     ) {
                         try {
-                            read(it.event.file)
+                            read(it.event.file.asAbsolute())
                         } catch (t: Throwable) {
                             null
                         }

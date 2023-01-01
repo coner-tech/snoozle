@@ -9,11 +9,10 @@ import tech.coner.snoozle.db.entity.EntityDefinition
 import tech.coner.snoozle.db.entity.EntityResource
 import tech.coner.snoozle.db.metadata.DatabaseVersionBlob
 import tech.coner.snoozle.db.metadata.SessionMetadataEntity
-import java.nio.file.Path
 import kotlin.reflect.KClass
 
 class TypesRegistry(
-    val root: Path,
+    val root: AbsolutePath,
     val fileWatchEngine: FileWatchEngine,
     val objectMapper: ObjectMapper
 ) {

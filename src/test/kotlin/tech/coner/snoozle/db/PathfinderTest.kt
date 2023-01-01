@@ -24,7 +24,7 @@ class PathfinderTest {
     @BeforeEach
     fun before() {
         widgetPathfinder = Pathfinder(
-                root = root,
+                root = root.asAbsolute(),
                 pathParts = listOf(
                         PathPart.StringValue("widgets"),
                         PathPart.DirectorySeparator(),
@@ -33,7 +33,7 @@ class PathfinderTest {
                 )
         )
         subwidgetPathfinder = Pathfinder(
-                root = root,
+                root = root.asAbsolute(),
                 pathParts = listOf(
                         PathPart.StringValue("widgets"),
                         PathPart.DirectorySeparator(),
@@ -55,9 +55,7 @@ class PathfinderTest {
         val actual = widgetPathfinder.findRecord(key)
 
         val expected = Paths.get("widgets", "${widget.id}.json")
-        Assertions.assertThat(actual)
-                .isRelative()
-                .isEqualTo(expected)
+        assertThat(actual.value).isEqualTo(expected)
     }
 
     @Test
@@ -68,9 +66,7 @@ class PathfinderTest {
         val actual = subwidgetPathfinder.findRecord(key)
 
         val expected = Paths.get("widgets", subwidget.widgetId.toString(), "subwidgets", "${subwidget.id}.json")
-        Assertions.assertThat(actual)
-                .isRelative()
-                .isEqualTo(expected)
+        assertThat(actual.value).isEqualTo(expected)
     }
 
     @Test
@@ -112,7 +108,7 @@ class PathfinderTest {
     @Test
     fun `It should find variable string parts from Widget path`() {
         val widgetOne = SampleDatabaseFixture.Widgets.One
-        val relativeRecordPath = Paths.get("widgets", "${widgetOne.id}.json")
+        val relativeRecordPath = Paths.get("widgets", "${widgetOne.id}.json").asRelative()
         val expected = arrayOf(widgetOne.id.toString())
 
         val actual = widgetPathfinder.findVariableStringParts(relativeRecordPath)
@@ -123,7 +119,7 @@ class PathfinderTest {
     @Test
     fun `It should find variable string parts from Subwidget path`() {
         val subwidget = SampleDatabaseFixture.Subwidgets.WidgetOneSubwidgetOne
-        val relativeRecordPath = Paths.get("widgets", "${subwidget.widgetId}", "subwidgets", "${subwidget.id}.json")
+        val relativeRecordPath = Paths.get("widgets", "${subwidget.widgetId}", "subwidgets", "${subwidget.id}.json").asRelative()
         val expected = arrayOf(
                 "${subwidget.widgetId}",
                 "${subwidget.id}"

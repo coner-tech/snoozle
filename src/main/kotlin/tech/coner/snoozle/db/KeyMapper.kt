@@ -10,7 +10,7 @@ class KeyMapper<K : tech.coner.snoozle.db.Key, R : tech.coner.snoozle.db.Record<
     private val instanceFn: R.() -> K
 ) {
 
-    fun fromRelativeRecord(relativeRecord: Path): K {
+    fun fromRelativeRecord(relativeRecord: RelativePath): K {
         val rawStringParts = pathfinder.findVariableStringParts(relativeRecord)
         return relativeRecordFn.invoke(RelativeRecordContext(rawStringParts))
     }

@@ -22,6 +22,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.readText
+import tech.coner.snoozle.db.asAbsolute
 
 class InitializationIntegrationTest {
 
@@ -31,7 +32,7 @@ class InitializationIntegrationTest {
 
     @BeforeEach
     fun before() {
-        session = SampleDatabase(root)
+        session = SampleDatabase(root.asAbsolute())
             .openAdministrativeSession()
             .getOrThrow()
     }

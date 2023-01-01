@@ -7,11 +7,11 @@ import tech.coner.snoozle.db.metadata.MetadataRepository
 import tech.coner.snoozle.db.migration.MigrationException
 import tech.coner.snoozle.db.migration.Segment
 import tech.coner.snoozle.db.session.Session
-import java.nio.file.Path
 import java.util.*
+import tech.coner.snoozle.db.AbsolutePath
 
 class AdministrativeSession(
-    private val root: Path,
+    private val root: AbsolutePath,
     private val version: Int,
     private val migrationsRegistry: MigrationsRegistry,
     metadataRepository: MetadataRepository,

@@ -13,6 +13,7 @@ import tech.coner.snoozle.db.migration.MigrationTask
 import tech.coner.snoozle.util.doesNotExist
 import java.nio.file.Path
 import java.nio.file.Paths
+import tech.coner.snoozle.db.asAbsolute
 
 class MigrationTaskTest {
 
@@ -46,7 +47,7 @@ class MigrationTaskTest {
             val vNullWidgetOne = Paths.get("widget/${widgetOne.id}.json")
             val vNullWidgetTwo = Paths.get("widget/${widgetTwo.id}.json")
 
-            subject.migrate(root = vNullRoot)
+            subject.migrate(root = vNullRoot.asAbsolute())
 
             val movedWidgetOne = Paths.get("widgets/${widgetOne.id}.json")
             val movedWidgetTwo = Paths.get("widgets/${widgetTwo.id}.json")
@@ -86,7 +87,7 @@ class MigrationTaskTest {
             val vNullWidgetOneSubwidgetOne = Paths.get("widget/${widgetOneSubwidgetOne.widgetId}/subwidget/${widgetOneSubwidgetOne.id}.json")
             val vNullWidgetTwoSubwidgetOne = Paths.get("widget/${widgetTwoSubwidgetOne.widgetId}/subwidget/${widgetTwoSubwidgetOne.id}.json")
 
-            subject.migrate(root = vNullRoot)
+            subject.migrate(root = vNullRoot.asAbsolute())
 
             val movedWidgetOneSubwidgetOne = Paths.get("widgets/${widgetOneSubwidgetOne.widgetId}/subwidgets/${widgetOneSubwidgetOne.id}.json")
             val movedWidgetTwoSubwidgetOne = Paths.get("widgets/${widgetTwoSubwidgetOne.widgetId}/subwidgets/${widgetTwoSubwidgetOne.id}.json")

@@ -8,10 +8,11 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.util.regex.Pattern
 import java.util.stream.Stream
 import kotlin.io.path.*
+import tech.coner.snoozle.db.AbsolutePath
 
 sealed class MigrationTask {
 
-    abstract fun migrate(root: Path)
+    abstract fun migrate(root: AbsolutePath)
 
     protected fun Path.find(matchers: List<MigrationPathMatcher>): Stream<Path> {
         val root = this
@@ -39,9 +40,9 @@ sealed class MigrationTask {
             }
         }
 
-        override fun migrate(root: Path) {
-            val fromPaths = root.find(from)
-                .map { root.relativize(it) }
+        override fun migrate(root: AbsolutePath) {
+            val fromPaths = root.value.find(from)
+                .map { root.value.relativize(it) }
             for (fromPath in fromPaths) {
                 val fromPathAsString = fromPath.toString()
                 val toPathAsString = buildString {
@@ -57,8 +58,8 @@ sealed class MigrationTask {
                     }
                 }
                 val toPath = Paths.get(toPathAsString)
-                val fromPathAbsolute = root.resolve(fromPath)
-                val toPathAbsolute = root.resolve(toPath)
+                val fromPathAbsolute = root.value.resolve(fromPath)
+                val toPathAbsolute = root.value.resolve(toPath)
                 toPathAbsolute.parent.also {
                     if (it.notExists()) {
                         it.createDirectories()
@@ -73,8 +74,8 @@ sealed class MigrationTask {
         private val matching: List<MigrationPathMatcher>
     ) : MigrationTask() {
 
-        override fun migrate(root: Path) {
-            val onDirectories = root.find(matching)
+        override fun migrate(root: AbsolutePath) {
+            val onDirectories = root.value.find(matching)
             for (onDirectory in onDirectories) {
                 if (!onDirectory.isDirectory()) {
                     throw MigrationException("Matched path must be a directory")
@@ -110,8 +111,8 @@ sealed class MigrationTask {
         val tasks: MutableList<MutateObjectTask>
     ) : MigrationTask() {
 
-        override fun migrate(root: Path) {
-            val onEntityPaths = root.find(on)
+        override fun migrate(root: AbsolutePath) {
+            val onEntityPaths = root.value.find(on)
             for (onEntityPath in onEntityPaths) {
                 val jsonNode = onEntityPath
                     .bufferedReader()
