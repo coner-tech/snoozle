@@ -29,6 +29,7 @@ import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
+import kotlinx.coroutines.flow.Flow
 
 class FileWatchEngine(
     override val coroutineContext: CoroutineContext,
@@ -37,17 +38,18 @@ class FileWatchEngine(
 
     private val mutex = Mutex()
     private var nextScopeId = Int.MIN_VALUE
-    private val scopes = mutableMapOf<Token, Scope>()
+    private val scopes = mutableMapOf<TokenImpl, Scope>()
     private var service: WatchService? = null
     private var pollLoopScope: CoroutineContext? = null
     private var pollLoopJob: Job? = null
 
     suspend fun createToken(): Token = mutex.withLock {
-        val token = Token(nextScopeId++)
+        val token = TokenImpl(nextScopeId++)
+            .apply { engine = this@FileWatchEngine }
         scopes[token] = Scope(
             token = token,
             directoryPatterns = emptyList(),
-            recordPatterns = emptyList(),
+            filePatterns = emptyList(),
             directoryWatchKeyEntries = emptyList()
         )
         startService()
@@ -160,9 +162,9 @@ class FileWatchEngine(
         launch {
             /*
             new directories might have new files. by the time we register to watch the new directory,
-            it's likely too late for any new watches to receive events about records created
+            it's likely too late for any new watches to receive events about files created
             within the new directory. therefore we intentionally wait for things to settle and
-            list/emit events for records that match registered patterns.
+            list/emit events for files that match registered patterns.
             */
 
             delay(250)
@@ -174,20 +176,20 @@ class FileWatchEngine(
                 newDirectory.value
                     .listDirectoryEntries()
                     .forEach { newDirectoryEntryCandidate ->
-                        val newRecordCandidateAbsolute: AbsolutePath = newDirectory.value.resolve(newDirectoryEntryCandidate).asAbsolute()
-                        val newRecordCandidateRelative: RelativePath = newDirectory.value.resolve(newDirectoryEntryCandidate).asRelative()
-                        val newRecordCandidateRelativeAsString = newRecordCandidateRelative.toString()
-                        if (newRecordCandidateRelative.value.isDirectory(LinkOption.NOFOLLOW_LINKS)) {
-                            val newDirectoryWatchKeyEntriesToAdd = mutableMapOf<Token, MutableList<Scope.DirectoryWatchKeyEntry>>()
+                        val newFileCandidateAbsolute: AbsolutePath = newDirectory.value.resolve(newDirectoryEntryCandidate).asAbsolute()
+                        val newFileCandidateRelative: RelativePath = newDirectory.value.resolve(newDirectoryEntryCandidate).asRelative()
+                        val newFileCandidateRelativeAsString = newFileCandidateRelative.toString()
+                        if (newFileCandidateRelative.value.isDirectory(LinkOption.NOFOLLOW_LINKS)) {
+                            val newDirectoryWatchKeyEntriesToAdd = mutableMapOf<TokenImpl, MutableList<Scope.DirectoryWatchKeyEntry>>()
                             scopes.values.forEach { scope ->
-                                if (scope.directoryPatterns.any { it.matcher(newRecordCandidateRelativeAsString).matches() }) {
-                                    newRecordCandidateRelative.value.register(service, watchEventKinds)
+                                if (scope.directoryPatterns.any { it.matcher(newFileCandidateRelativeAsString).matches() }) {
+                                    newFileCandidateRelative.value.register(service, watchEventKinds)
                                         .also { watchKey ->
                                             newDirectoryWatchKeyEntriesToAdd[scope.token] = (newDirectoryWatchKeyEntriesToAdd[scope.token] ?: mutableListOf())
                                                 .apply {
                                                     add(
                                                         directoryWatchKeyEntryFactory(
-                                                            absoluteDirectory = newRecordCandidateAbsolute,
+                                                            absoluteDirectory = newFileCandidateAbsolute,
                                                             watchKey = watchKey
                                                         )
                                                     )
@@ -203,10 +205,10 @@ class FileWatchEngine(
                                         ?.also { scanNewWatchedDirectory(entryToAdd.absoluteDirectory) }
                                 }
                             }
-                        } else if (newRecordCandidateRelative.value.isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
+                        } else if (newFileCandidateRelative.value.isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
                             scopes.values.forEach { scope ->
-                                if (scope.recordPatterns.any { it.matcher(newRecordCandidateRelativeAsString).matches() }) {
-                                    scope.token.events.emit(Event.Record.Exists(newRecordCandidateRelative))
+                                if (scope.filePatterns.any { it.matcher(newFileCandidateRelativeAsString).matches() }) {
+                                    scope.token.events.emit(Event.File.Exists(newFileCandidateRelative))
                                 }
                             }
                         }
@@ -228,16 +230,16 @@ class FileWatchEngine(
             // guard unknown / not handled event kinds
             return@coroutineScope
         }
-        val recordCandidateRelativePath = event.contextAsRelativePath(directoryWatchKeyEntry)
+        val fileCandidateRelativePath = event.contextAsRelativePath(directoryWatchKeyEntry)
             ?: return@coroutineScope // no watch key in a scope matched taken watch key, ignore
-        val recordCandidateRelativePathAsString = recordCandidateRelativePath.value.toString()
+        val fileCandidateRelativePathAsString = fileCandidateRelativePath.value.toString()
         scopes.values.forEach { scope ->
-            scope.recordPatterns.forEach { recordPattern ->
-                if (recordPattern.matcher(recordCandidateRelativePathAsString).matches()) {
+            scope.filePatterns.forEach { filePattern ->
+                if (filePattern.matcher(fileCandidateRelativePathAsString).matches()) {
                     when (event.kind()) {
                         StandardWatchEventKinds.ENTRY_CREATE,
-                            StandardWatchEventKinds.ENTRY_MODIFY -> Event.Record.Exists(recordCandidateRelativePath)
-                        StandardWatchEventKinds.ENTRY_DELETE -> Event.Record.DoesNotExist(recordCandidateRelativePath)
+                            StandardWatchEventKinds.ENTRY_MODIFY -> Event.File.Exists(fileCandidateRelativePath)
+                        StandardWatchEventKinds.ENTRY_DELETE -> Event.File.DoesNotExist(fileCandidateRelativePath)
                         else -> null
                     }
                         ?.also { scope.token.events.emit(it) }
@@ -258,8 +260,8 @@ class FileWatchEngine(
         StandardWatchEventKinds.ENTRY_MODIFY
     )
 
-    suspend fun registerDirectoryPattern(
-        token: Token,
+    private suspend fun registerDirectoryPattern(
+        token: TokenImpl,
         directoryPattern: Pattern
     ) {
         mutex.withLock {
@@ -284,10 +286,12 @@ class FileWatchEngine(
         }
     }
 
-    suspend fun registerRootDirectory(token: Token) = registerDirectoryPattern(token, StandardPatterns.root)
+    private suspend fun registerRootDirectory(token: TokenImpl) = registerDirectoryPattern(token, StandardPatterns.root)
 
-    suspend fun unregisterDirectoryPattern(
-        token: Token,
+    private suspend fun unregisterRootDirectory(token: TokenImpl) = unregisterDirectoryPattern(token, StandardPatterns.root)
+
+    private suspend fun unregisterDirectoryPattern(
+        token: TokenImpl,
         directoryPattern: Pattern
     ) {
         mutex.withLock {
@@ -295,28 +299,28 @@ class FileWatchEngine(
         }
     }
 
-    suspend fun registerRecordPattern(
-        token: Token,
-        recordPattern: Pattern
+    private suspend fun registerFilePattern(
+        token: TokenImpl,
+        filePattern: Pattern
     ) {
         mutex.withLock {
             scopes[token]
-                ?.copyAndAddRecordPattern(recordPattern)
+                ?.copyAndAddFilePattern(filePattern)
                 ?.also { newScope -> scopes[token] = newScope }
         }
     }
 
-    suspend fun unregisterRecordPattern(
-        token: Token,
-        recordPattern: Pattern
+    private suspend fun unregisterFilePattern(
+        token: TokenImpl,
+        filePattern: Pattern
     ) {
         mutex.withLock {
             scopes[token]
-                ?.copyAndRemoveRecordPattern(recordPattern)
+                ?.copyAndRemoveFilePattern(filePattern)
         }
     }
 
-    suspend fun destroyToken(token: Token) = mutex.withLock {
+    private suspend fun destroyToken(token: TokenImpl) = mutex.withLock {
         val scope = scopes[token]
         scope?.directoryWatchKeyEntries?.forEach { it.watchKey.cancel() }
         scopes.remove(token)
@@ -384,9 +388,9 @@ class FileWatchEngine(
     }
 
     private data class Scope(
-        val token: Token,
+        val token: TokenImpl,
         val directoryPatterns: List<Pattern>,
-        val recordPatterns: List<Pattern>,
+        val filePatterns: List<Pattern>,
         val directoryWatchKeyEntries: List<DirectoryWatchKeyEntry>
     ) {
         fun copyAndAddDirectoryPattern(directoryPattern: Pattern) = copy(
@@ -395,16 +399,16 @@ class FileWatchEngine(
                 .apply { add(directoryPattern) }
         )
 
-        fun copyAndAddRecordPattern(recordPattern: Pattern) = copy(
-            recordPatterns = recordPatterns
+        fun copyAndAddFilePattern(filePattern: Pattern) = copy(
+            filePatterns = filePatterns
                 .toMutableList()
-                .apply { add(recordPattern) }
+                .apply { add(filePattern) }
         )
 
-        fun copyAndRemoveRecordPattern(recordPattern: Pattern) = copy(
-            recordPatterns = recordPatterns
+        fun copyAndRemoveFilePattern(filePattern: Pattern) = copy(
+            filePatterns = filePatterns
                 .toMutableList()
-                .apply { remove(recordPattern) }
+                .apply { remove(filePattern) }
         )
         
         fun copyAndAddDirectoryWatchKeyEntry(entry: DirectoryWatchKeyEntry) = copy(
@@ -473,15 +477,52 @@ class FileWatchEngine(
         watchedSubdirectories = emptyList()
     )
 
-    data class Token(private val id: Int) {
-        val events = MutableSharedFlow<Event>()
+    interface Token {
+        val events: Flow<Event>
+
+        suspend fun registerDirectoryPattern(pattern: Pattern)
+        suspend fun registerRootDirectory()
+        suspend fun unregisterRootDirectory()
+        suspend fun unregisterDirectoryPattern(pattern: Pattern)
+
+        suspend fun registerFilePattern(pattern: Pattern)
+        suspend fun unregisterFilePattern(pattern: Pattern)
+    }
+
+    private data class TokenImpl(private val id: Int) : Token {
+        lateinit var engine: FileWatchEngine
+        override val events = MutableSharedFlow<Event>()
+
+        override suspend fun registerDirectoryPattern(pattern: Pattern) {
+            engine.registerDirectoryPattern(this, pattern)
+        }
+
+        override suspend fun registerRootDirectory() {
+            engine.registerRootDirectory(this)
+        }
+
+        override suspend fun unregisterRootDirectory() {
+            engine.unregisterRootDirectory(this)
+        }
+
+        override suspend fun unregisterDirectoryPattern(pattern: Pattern) {
+            engine.unregisterDirectoryPattern(this, pattern)
+        }
+
+        override suspend fun registerFilePattern(pattern: Pattern) {
+            engine.registerFilePattern(this, pattern)
+        }
+
+        override suspend fun unregisterFilePattern(pattern: Pattern) {
+            engine.unregisterFilePattern(this, pattern)
+        }
     }
 
     sealed class Event {
-        sealed class Record : Event() {
-            abstract val record: RelativePath
-            data class Exists(override val record: RelativePath) : Record()
-            data class DoesNotExist(override val record: RelativePath) : Record()
+        sealed class File : Event() {
+            abstract val file: RelativePath
+            data class Exists(override val file: RelativePath) : File()
+            data class DoesNotExist(override val file: RelativePath) : File()
         }
         object Overflow : Event()
     }

@@ -60,8 +60,8 @@ class FileWatchEngineTest : CoroutineScope {
     @Test
     fun `It should emit record exists when matching file created`() = runBlocking {
         val token = fileWatchEngine.createToken()
-        fileWatchEngine.registerRootDirectory(token)
-        fileWatchEngine.registerRecordPattern(token, rootAnyTxtPattern)
+        token.registerRootDirectory()
+        token.registerFilePattern(rootAnyTxtPattern)
 
         launch { rootFileDotTxt.absolute.value.writeText("text") }
         val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
@@ -75,8 +75,8 @@ class FileWatchEngineTest : CoroutineScope {
     @Test
     fun `It should not emit when non matching file created`() = runBlocking {
         val token = fileWatchEngine.createToken()
-        fileWatchEngine.registerRootDirectory(token)
-        fileWatchEngine.registerRecordPattern(token, rootAnyTxtPattern)
+        token.registerRootDirectory()
+        token.registerFilePattern(rootAnyTxtPattern)
 
         launch { rootFileDotJson.absolute.value.writeText("""{ "json": "string" }""") }
         val event = withTimeoutOrNull(defaultTimeoutMillis) { token.events.first() }
@@ -88,8 +88,8 @@ class FileWatchEngineTest : CoroutineScope {
     fun `It should emit when matching file modified`() = runBlocking {
         rootFileDotTxt.absolute.value.writeText("text")
         val token = fileWatchEngine.createToken()
-        fileWatchEngine.registerRootDirectory(token)
-        fileWatchEngine.registerRecordPattern(token, rootAnyTxtPattern)
+        token.registerRootDirectory()
+        token.registerFilePattern(rootAnyTxtPattern)
 
         launch { rootFileDotTxt.absolute.value.writeText("changed content") }
         val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
@@ -104,8 +104,8 @@ class FileWatchEngineTest : CoroutineScope {
     fun `It should not emit when non-matching file modified`() = runBlocking {
         rootFileDotJson.absolute.value.writeText("""{ "json": "string" }""")
         val token = fileWatchEngine.createToken()
-        fileWatchEngine.registerRootDirectory(token)
-        fileWatchEngine.registerRecordPattern(token, rootAnyTxtPattern)
+        token.registerRootDirectory()
+        token.registerFilePattern(rootAnyTxtPattern)
 
         launch { rootFileDotJson.absolute.value.writeText("""{ "json": null }""") }
         val event = withTimeoutOrNull(defaultTimeoutMillis) { token.events.first() }
@@ -117,8 +117,8 @@ class FileWatchEngineTest : CoroutineScope {
     fun `It should emit when matching file deleted`() = runBlocking {
         rootFileDotTxt.absolute.value.writeText("text")
         val token = fileWatchEngine.createToken()
-        fileWatchEngine.registerRootDirectory(token)
-        fileWatchEngine.registerRecordPattern(token, rootAnyTxtPattern)
+        token.registerRootDirectory()
+        token.registerFilePattern(rootAnyTxtPattern)
 
         launch {
             withContext(Dispatchers.IO) {
@@ -137,8 +137,8 @@ class FileWatchEngineTest : CoroutineScope {
     fun `It should not emit when non-matching file deleted`() = runBlocking {
         rootFileDotJson.absolute.value.writeText("""{ "json": "string" }""")
         val token = fileWatchEngine.createToken()
-        fileWatchEngine.registerRootDirectory(token)
-        fileWatchEngine.registerRecordPattern(token, rootAnyTxtPattern)
+        token.registerRootDirectory()
+        token.registerFilePattern(rootAnyTxtPattern)
 
         launch {
             withContext(Dispatchers.IO) {
