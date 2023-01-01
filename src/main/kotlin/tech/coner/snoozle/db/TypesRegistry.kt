@@ -13,9 +13,9 @@ import java.nio.file.Path
 import kotlin.reflect.KClass
 
 class TypesRegistry(
-        val root: Path,
-        val watchEngine: WatchEngine,
-        val objectMapper: ObjectMapper
+    val root: Path,
+    val fileWatchEngine: FileWatchEngine,
+    val objectMapper: ObjectMapper
 ) {
     val entityResources = mutableMapOf<KClass<*>, EntityResource<*, *>>()
     val blobResources = mutableMapOf<KClass<*>, BlobResource<*>>()
@@ -64,7 +64,7 @@ class TypesRegistry(
                 relativeRecordFn = requireNotNull(entityDefinition.keyFromPath),
                 instanceFn = requireNotNull(entityDefinition.keyFromEntity)
             ),
-            watchEngine = watchEngine
+            fileWatchEngine = fileWatchEngine
         )
     }
 

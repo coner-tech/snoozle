@@ -30,7 +30,7 @@ import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
 
-class WatchEngine(
+class FileWatchEngine(
     override val coroutineContext: CoroutineContext,
     private val root: Path
 ) : CoroutineScope {
@@ -263,7 +263,7 @@ class WatchEngine(
         directoryPattern: Pattern
     ) {
         mutex.withLock {
-            val service = this@WatchEngine.service ?: return@withLock Unit
+            val service = this@FileWatchEngine.service ?: return@withLock Unit
             scopes[token]
                 ?.copyAndAddDirectoryPattern(directoryPattern)
                 ?.also { newScope -> scopes[token] = newScope }

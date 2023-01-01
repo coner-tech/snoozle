@@ -13,7 +13,7 @@ abstract class Database(
     protected val root: Path,
     private val objectMapper: ObjectMapper = snoozleJacksonObjectMapper(),
     sessionFactory: SessionFactory? = null,
-    private val watchEngine: WatchEngine = WatchEngine(
+    private val fileWatchEngine: FileWatchEngine = FileWatchEngine(
         coroutineContext = Dispatchers.IO + Job(),
         root = root
     )
@@ -32,7 +32,7 @@ abstract class Database(
     }
 
     protected fun registerTypes(op: TypesRegistry.() -> Unit): TypesRegistry {
-        return TypesRegistry(root, watchEngine, objectMapper)
+        return TypesRegistry(root, fileWatchEngine, objectMapper)
             .apply(op)
     }
 

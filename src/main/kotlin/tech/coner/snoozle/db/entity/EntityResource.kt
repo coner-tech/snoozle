@@ -6,7 +6,7 @@ import io.reactivex.Observable
 import tech.coner.snoozle.db.Key
 import tech.coner.snoozle.db.KeyMapper
 import tech.coner.snoozle.db.Pathfinder
-import tech.coner.snoozle.db.WatchEngine
+import tech.coner.snoozle.db.FileWatchEngine
 import tech.coner.snoozle.util.PathWatchEvent
 import tech.coner.snoozle.util.watch
 import java.nio.file.Files
@@ -25,7 +25,7 @@ class EntityResource<K : Key, E : Entity<K>> constructor(
     private val writer: ObjectWriter,
     private val pathfinder: Pathfinder<K, E>,
     private val keyMapper: KeyMapper<K, E>,
-    private val watchEngine: WatchEngine
+    private val fileWatchEngine: FileWatchEngine
 ) {
 
     fun key(entity: E): K {
