@@ -105,7 +105,7 @@ class WatchEngine(
             && contextIsWatchedDirectory(directoryWatchKeyEntry, eventContextAsAbsolutePath)
         ) {
             handleDirectoryDeleted(takenWatchKey, event)
-        } else if (eventContextAsAbsolutePath.value.isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
+        } else {
             handleFileEvent(directoryWatchKeyEntry, event)
         }
     }

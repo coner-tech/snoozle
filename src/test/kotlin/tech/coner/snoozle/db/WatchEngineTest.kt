@@ -2,24 +2,28 @@ package tech.coner.snoozle.db
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isNull
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.regex.Pattern
+import kotlin.io.path.writeText
+import kotlin.time.Duration
+import kotlin.time.milliseconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
-import java.util.regex.Pattern
-import kotlin.io.path.writeText
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WatchEngineTest : CoroutineScope {
@@ -38,6 +42,8 @@ class WatchEngineTest : CoroutineScope {
     private val subfolder by lazy { root.resolve("subfolder") }
     private val subfolderFileDotTxt by lazy { testPath(subfolder.resolve("file.txt")) }
     private val subfolderFileDotJson by lazy { testPath(subfolder.resolve("file.json")) }
+
+    private val defaultTimeoutMillis = 250L
 
     @BeforeEach
     fun before() {
@@ -60,7 +66,7 @@ class WatchEngineTest : CoroutineScope {
         watchEngine.registerRecordPattern(token, rootAnyTxtPattern)
 
         launch { rootFileDotTxt.absolute.value.writeText("text") }
-        val event = withTimeout(1000) { token.events.first() }
+        val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
         assertThat(event)
             .isRecordExistsInstance()
@@ -74,30 +80,76 @@ class WatchEngineTest : CoroutineScope {
         watchEngine.registerRootDirectory(token)
         watchEngine.registerRecordPattern(token, rootAnyTxtPattern)
 
-        launch { rootFileDotJson.absolute.value.writeText("""{ "json": "object" }""") }
-        val event = withTimeoutOrNull(1000) { token.events.firstOrNull() }
+        launch { rootFileDotJson.absolute.value.writeText("""{ "json": "string" }""") }
+        val event = withTimeoutOrNull(defaultTimeoutMillis) { token.events.first() }
 
-        
+        assertThat(event).isNull()
     }
 
     @Test
-    fun `It should emit when matching file modified`() {
-        TODO()
+    fun `It should emit when matching file modified`() = runBlocking {
+        rootFileDotTxt.absolute.value.writeText("text")
+        val token = watchEngine.createToken()
+        watchEngine.registerRootDirectory(token)
+        watchEngine.registerRecordPattern(token, rootAnyTxtPattern)
+
+        launch { rootFileDotTxt.absolute.value.writeText("changed content") }
+        val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
+
+        assertThat(event)
+            .isRecordExistsInstance()
+            .record()
+            .isEqualTo(rootFileDotTxt.relative)
     }
 
     @Test
-    fun `It should not emit when non-matching file modified`() {
-        TODO()
+    fun `It should not emit when non-matching file modified`() = runBlocking {
+        rootFileDotJson.absolute.value.writeText("""{ "json": "string" }""")
+        val token = watchEngine.createToken()
+        watchEngine.registerRootDirectory(token)
+        watchEngine.registerRecordPattern(token, rootAnyTxtPattern)
+
+        launch { rootFileDotJson.absolute.value.writeText("""{ "json": null }""") }
+        val event = withTimeoutOrNull(defaultTimeoutMillis) { token.events.first() }
+
+        assertThat(event).isNull()
     }
 
     @Test
-    fun `It should emit when matching file deleted`() {
-        TODO()
+    fun `It should emit when matching file deleted`() = runBlocking {
+        rootFileDotTxt.absolute.value.writeText("text")
+        val token = watchEngine.createToken()
+        watchEngine.registerRootDirectory(token)
+        watchEngine.registerRecordPattern(token, rootAnyTxtPattern)
+
+        launch {
+            withContext(Dispatchers.IO) {
+                Files.delete(rootFileDotTxt.absolute.value)
+            }
+        }
+        val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
+
+        assertThat(event)
+            .isRecordDoesNotExistsInstance()
+            .record()
+            .isEqualTo(rootFileDotTxt.relative)
     }
 
     @Test
-    fun `It should not emit when non-matching file deleted`() {
-        TODO()
+    fun `It should not emit when non-matching file deleted`() = runBlocking {
+        rootFileDotJson.absolute.value.writeText("""{ "json": "string" }""")
+        val token = watchEngine.createToken()
+        watchEngine.registerRootDirectory(token)
+        watchEngine.registerRecordPattern(token, rootAnyTxtPattern)
+
+        launch {
+            withContext(Dispatchers.IO) {
+                Files.delete(rootFileDotJson.absolute.value)
+            }
+        }
+        val event = withTimeoutOrNull(defaultTimeoutMillis) { token.events.first() }
+
+        assertThat(event).isNull()
     }
 
     private data class TestPath(
