@@ -4,6 +4,7 @@ import assertk.Assert
 import assertk.all
 import assertk.assertThat
 import assertk.assertions.containsExactly
+import assertk.assertions.hasMessage
 import assertk.assertions.hasSize
 import assertk.assertions.index
 import assertk.assertions.isEmpty
@@ -34,6 +35,7 @@ import java.util.regex.Pattern
 import kotlin.coroutines.CoroutineContext
 import kotlin.io.path.createDirectory
 import kotlin.io.path.writeText
+import org.junit.jupiter.api.assertThrows
 
 class FileWatchEngineTest : CoroutineScope {
 
@@ -278,18 +280,59 @@ class FileWatchEngineTest : CoroutineScope {
     inner class RegisterFilePattern {
 
         @Test
-        fun `It should register file pattern`() {
-            TODO()
+        fun `It should register file pattern`() = runBlocking {
+            val token = fileWatchEngine.createToken()
+            token.registerRootDirectory()
+
+            token.registerFilePattern(rootAnyTxtPattern)
+
+            assertThat(fileWatchEngine)
+                .scopes()
+                .key(token)
+                .filePatterns().isEqualTo(listOf(rootAnyTxtPattern))
         }
 
         @Test
-        fun `It should unregister file pattern`() {
-            TODO()
+        fun `It should throw when registering duplicate file pattern`() = runBlocking {
+            val token = fileWatchEngine.createToken()
+            token.registerRootDirectory()
+            token.registerFilePattern(rootAnyTxtPattern) // first invocation ok
+
+            val actual = assertThrows<IllegalArgumentException> { token.registerFilePattern(rootAnyTxtPattern) }
+
+            assertThat(actual).hasMessage("Scope already has file pattern: $rootAnyTxtPattern")
         }
 
         @Test
-        fun `When no directory pattern registered it should not permit to register file pattern`() {
-            TODO()
+        fun `When no directory pattern registered it should not permit to register file pattern`() = runBlocking {
+            val token = fileWatchEngine.createToken()
+
+            val actual = assertThrows<IllegalStateException> { token.registerFilePattern(rootAnyTxtPattern) }
+
+            assertThat(actual).hasMessage("Scope must have a directory pattern registered")
+        }
+
+        @Test
+        fun `It should unregister file pattern`() = runBlocking {
+            val token = fileWatchEngine.createToken()
+            token.registerRootDirectory()
+            token.registerFilePattern(rootAnyTxtPattern)
+
+            token.unregisterFilePattern(rootAnyTxtPattern)
+
+            assertThat(fileWatchEngine)
+                .scopes()
+                .key(token)
+                .filePatterns().isEmpty()
+        }
+
+        @Test
+        fun `When no directory pattern registered it should not permit to unregister file pattern`() = runBlocking {
+            val token = fileWatchEngine.createToken()
+
+            val actual = assertThrows<IllegalStateException> { token.unregisterFilePattern(rootAnyTxtPattern) }
+
+            assertThat(actual).hasMessage("Scope must have a directory pattern registered")
         }
     }
 
@@ -321,11 +364,6 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeoutOrNull(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event).isNull()
-        }
-
-        @Test
-        fun `When no directory pattern registered it should not emit when file created`() {
-            TODO()
         }
     }
 

@@ -337,6 +337,8 @@ open class FileWatchEngine(
     ) {
         mutex.withLock {
             scopes[token]
+                ?.also { it.checkDirectoryPatternsNotEmpty() }
+                ?.also { require(!it.filePatterns.contains(filePattern)) { "Scope already has file pattern: $filePattern" } }
                 ?.copyAndAddFilePattern(filePattern)
                 ?.also { scopes[token] = it }
         }
@@ -348,9 +350,14 @@ open class FileWatchEngine(
     ) {
         mutex.withLock {
             scopes[token]
+                ?.also { it.checkDirectoryPatternsNotEmpty() }
+                ?.also { require(it.filePatterns.contains(filePattern)) { "Scope does not contain file pattern: $filePattern" } }
                 ?.copyAndRemoveFilePattern(filePattern)
+                ?.also { scopes[token] = it }
         }
     }
+
+    private fun Scope<*>.checkDirectoryPatternsNotEmpty() = check(directoryPatterns.isNotEmpty()) { "Scope must have a directory pattern registered" }
 
     private suspend fun destroyToken(token: TokenImpl) = mutex.withLock {
         val scope = scopes[token]
