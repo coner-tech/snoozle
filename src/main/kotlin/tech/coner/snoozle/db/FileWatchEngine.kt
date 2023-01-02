@@ -1,5 +1,19 @@
 package tech.coner.snoozle.db
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -16,20 +30,6 @@ import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runInterruptible
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withTimeoutOrNull
 
 open class FileWatchEngine(
     override val coroutineContext: CoroutineContext,
@@ -268,7 +268,7 @@ open class FileWatchEngine(
             val service = this@FileWatchEngine.service ?: return@withLock Unit
             scopes[token]
                 ?.copyAndAddDirectoryPattern(directoryPattern)
-                ?.also { newScope -> scopes[token] = newScope }
+                ?.also { scopes[token] = it }
             Files.walkFileTree(root.value, object : SimpleFileVisitor<Path>() {
                 override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
                     val dirAsAbsolute = dir.asAbsolute()
@@ -277,9 +277,32 @@ open class FileWatchEngine(
                         val watchKey = dir.register(service, watchEventKinds)
                         scopes[token]
                             ?.copyAndAddDirectoryWatchKeyEntry(directoryWatchKeyEntryFactory(dirAsAbsolute, watchKey))
-                            ?.also { newScope -> scopes[token] = newScope }
+                            ?.also { scopes[token] = it }
                     }
-                    // TODO register subdirectories
+                    return FileVisitResult.CONTINUE
+                }
+            })
+            Files.walkFileTree(root.value, object : SimpleFileVisitor<Path>() {
+                override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
+                    val dirAsAbsolute = dir.asAbsolute()
+                    val dirAsRelative = root.value.relativize(dir).asRelative()
+                    if (dirAsAbsolute != root) {
+                        val parentDirAsAbsolute = dirAsAbsolute.value.parent.asAbsolute()
+                        val entryToMutate = scopes[token]
+                            ?.directoryWatchKeyEntries
+                            ?.firstOrNull { it.absoluteDirectory == parentDirAsAbsolute }
+                        if (entryToMutate != null) {
+                            scopes[token]
+                                ?.copyAndAddWatchedSubdirectory(
+                                    watchedSubdirectory = Scope.WatchedSubdirectoryEntry(
+                                        absolutePath = dirAsAbsolute,
+                                        relativePath = dirAsRelative
+                                    ),
+                                    watchKey = entryToMutate.watchKey
+                                )
+                                ?.also { scopes[token] = it }
+                        }
+                    }
                     return FileVisitResult.CONTINUE
                 }
             })
@@ -295,7 +318,16 @@ open class FileWatchEngine(
         directoryPattern: Pattern
     ) {
         mutex.withLock {
-            TODO()
+            service ?: return@withLock
+            scopes[token]
+                ?.let { scope ->
+                    scope.directoryWatchKeyEntries
+                    .filter { directoryPattern.matcher(it.relativeDirectory.value.toString()).matches() }
+                    .onEach { it.watchKey.cancel() }
+                    .let { scope.copyAndRemoveDirectoryWatchKeyEntries(it) }
+                        .copyAndRemoveDirectoryPattern(directoryPattern)
+                }
+                ?.also { scopes[token] = it }
         }
     }
 
@@ -306,7 +338,7 @@ open class FileWatchEngine(
         mutex.withLock {
             scopes[token]
                 ?.copyAndAddFilePattern(filePattern)
-                ?.also { newScope -> scopes[token] = newScope }
+                ?.also { scopes[token] = it }
         }
     }
 
@@ -394,16 +426,20 @@ open class FileWatchEngine(
         val directoryWatchKeyEntries: List<DWKE>
 
         fun copyAndAddDirectoryPattern(directoryPattern: Pattern): Scope<DWKE>
+        fun copyAndRemoveDirectoryPattern(directoryPattern: Pattern): Scope<DWKE>
         fun copyAndAddFilePattern(filePattern: Pattern): Scope<DWKE>
         fun copyAndRemoveFilePattern(filePattern: Pattern): Scope<DWKE>
+
         fun copyAndAddDirectoryWatchKeyEntry(entry: DWKE): Scope<DWKE>
+        fun copyAndRemoveDirectoryWatchKeyEntry(entry: DWKE): Scope<DWKE>
+        fun copyAndRemoveDirectoryWatchKeyEntries(entries: Collection<DWKE>): Scope<DWKE>
 
         interface DirectoryWatchKeyEntry {
             val absoluteDirectory: AbsolutePath
+
             val relativeDirectory: RelativePath
             val watchKey: WatchKey
             val watchedSubdirectories: List<WatchedSubdirectoryEntry>
-
             fun copyAndAddWatchedSubdirectory(watchedSubdirectory: WatchedSubdirectoryEntry): DirectoryWatchKeyEntry
             fun copyAndRemoveWatchedSubdirectory(watchedSubdirectory: WatchedSubdirectoryEntry): DirectoryWatchKeyEntry
         }
@@ -426,6 +462,12 @@ open class FileWatchEngine(
                 .apply { add(directoryPattern) }
         )
 
+        override fun copyAndRemoveDirectoryPattern(directoryPattern: Pattern) = copy(
+            directoryPatterns = directoryPatterns
+                .toMutableList()
+                .apply { remove(directoryPattern) }
+        )
+
         override fun copyAndAddFilePattern(filePattern: Pattern) = copy(
             filePatterns = filePatterns
                 .toMutableList()
@@ -442,6 +484,18 @@ open class FileWatchEngine(
             directoryWatchKeyEntries = directoryWatchKeyEntries
                 .toMutableList()
                 .apply { add(entry) }
+        )
+
+        override fun copyAndRemoveDirectoryWatchKeyEntry(entry: DirectoryWatchKeyEntryImpl) = copy(
+            directoryWatchKeyEntries = directoryWatchKeyEntries
+                .toMutableList()
+                .apply { remove(entry) }
+        )
+
+        override fun copyAndRemoveDirectoryWatchKeyEntries(entries: Collection<DirectoryWatchKeyEntryImpl>) = copy(
+            directoryWatchKeyEntries = directoryWatchKeyEntries
+                .toMutableList()
+                .apply { removeAll(entries) }
         )
 
         fun copyAndAddWatchedSubdirectory(watchedSubdirectory: Scope.WatchedSubdirectoryEntry, watchKey: WatchKey)
@@ -461,7 +515,6 @@ open class FileWatchEngine(
                     val indexToChange = directoryWatchKeyEntries.indexOfFirst { it.watchKey == watchKey }
                     val directoryWatchKeyEntryToChange = directoryWatchKeyEntries[indexToChange]
                     block(directoryWatchKeyEntryToChange)
-                    directoryWatchKeyEntryToChange.copyAndRemoveWatchedSubdirectory(watchedSubdirectory)
                         .let {
                             directoryWatchKeyEntries[indexToChange] = it
                             directoryWatchKeyEntries

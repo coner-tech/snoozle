@@ -3,7 +3,6 @@ package tech.coner.snoozle.db
 import assertk.Assert
 import assertk.all
 import assertk.assertThat
-import assertk.assertions.contains
 import assertk.assertions.containsExactly
 import assertk.assertions.hasSize
 import assertk.assertions.index
@@ -11,15 +10,8 @@ import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
-import assertk.assertions.isSameAs
 import assertk.assertions.key
 import assertk.assertions.prop
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.WatchService
-import java.util.regex.Pattern
-import kotlin.coroutines.CoroutineContext
-import kotlin.io.path.writeText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -35,6 +27,13 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.WatchService
+import java.util.regex.Pattern
+import kotlin.coroutines.CoroutineContext
+import kotlin.io.path.createDirectory
+import kotlin.io.path.writeText
 
 class FileWatchEngineTest : CoroutineScope {
 
@@ -48,8 +47,9 @@ class FileWatchEngineTest : CoroutineScope {
     private val rootFileDotTxt by lazy { testPath(root.resolve("file.txt")) }
     private val rootNotFileDotTxt by lazy { testPath(root.resolve("notfile.txt")) }
     private val rootFileDotJson by lazy { testPath(root.resolve("file.json")) }
-    private val subfolderAnyTxtPattern by lazy { Pattern.compile("^subfolder/\\w*.txt$") }
     private val subfolder by lazy { root.resolve("subfolder") }
+    private val subfolderDirectoryPattern by lazy { Pattern.compile("^subfolder$") }
+    private val subfolderAnyTxtPattern by lazy { Pattern.compile("^subfolder/\\w*.txt$") }
     private val subfolderFileDotTxt by lazy { testPath(subfolder.resolve("file.txt")) }
     private val subfolderFileDotJson by lazy { testPath(subfolder.resolve("file.json")) }
 
@@ -148,8 +148,129 @@ class FileWatchEngineTest : CoroutineScope {
         }
 
         @Test
-        fun `It should unregister root directory`() {
-            TODO()
+        fun `It should unregister root directory`() = runBlocking {
+            val token = fileWatchEngine.createToken()
+            token.registerRootDirectory()
+
+            token.unregisterRootDirectory()
+
+            assertThat(fileWatchEngine).scopes().all {
+                hasSize(1)
+                key(token).all {
+                    directoryPatterns().isEmpty()
+                    filePatterns().isEmpty()
+                    directoryWatchKeyEntries().isEmpty()
+                }
+            }
+        }
+
+        @Test
+        fun `It should register arbitrary directory pattern when no matching directories exist`() = runBlocking {
+            val token = fileWatchEngine.createToken()
+            token.registerDirectoryPattern(subfolderDirectoryPattern)
+
+            assertThat(fileWatchEngine).scopes().all {
+                hasSize(1)
+                key(token).all {
+                    directoryPatterns().containsExactly(subfolderDirectoryPattern)
+                    filePatterns().isEmpty()
+                    directoryWatchKeyEntries().isEmpty()
+                }
+            }
+        }
+
+        @Test
+        fun `It should register arbitrary directory pattern when matching subdirectories exist`() = runBlocking {
+            subfolder.createDirectory()
+            val token = fileWatchEngine.createToken()
+            token.registerDirectoryPattern(subfolderDirectoryPattern)
+
+            assertThat(fileWatchEngine).scopes().all {
+                hasSize(1)
+                key(token).all {
+                    directoryPatterns().containsExactly(subfolderDirectoryPattern)
+                    filePatterns().isEmpty()
+                    directoryWatchKeyEntries().all {
+                        hasSize(1)
+                        index(0).all {
+                            absoluteDirectory().isEqualTo(subfolder.asAbsolute())
+                            relativeDirectory().isEqualTo(root.relativize(subfolder).asRelative())
+                            watchKey().isNotNull()
+                            watchedSubdirectories().isEmpty()
+                        }
+                    }
+                }
+            }
+        }
+
+        @Test
+        fun `It should unregister arbitrary directory pattern for matching directory does not exist`() = runBlocking {
+            val token = fileWatchEngine.createToken()
+            token.registerDirectoryPattern(subfolderDirectoryPattern)
+
+            token.unregisterDirectoryPattern(subfolderDirectoryPattern)
+
+            assertThat(fileWatchEngine).scopes().all {
+                hasSize(1)
+                key(token).all {
+                    directoryPatterns().isEmpty()
+                    filePatterns().isEmpty()
+                    directoryWatchKeyEntries().isEmpty()
+                }
+            }
+        }
+
+        @Test
+        fun `It should unregister arbitrary directory pattern with matching directory exists`() = runBlocking {
+            subfolder.createDirectory()
+            val token = fileWatchEngine.createToken()
+            token.registerDirectoryPattern(subfolderDirectoryPattern)
+            token.unregisterDirectoryPattern(subfolderDirectoryPattern)
+
+            assertThat(fileWatchEngine).scopes().all {
+                hasSize(1)
+                key(token).all {
+                    directoryPatterns().isEmpty()
+                    filePatterns().isEmpty()
+                    directoryWatchKeyEntries().isEmpty()
+                }
+            }
+        }
+
+        @Test
+        fun `When it registers a directory pattern matching a subdirectory of another registered directory it should add watched subdirectory to parent entry`() = runBlocking {
+            subfolder.createDirectory()
+            val token = fileWatchEngine.createToken()
+            token.registerDirectoryPattern(subfolderDirectoryPattern)
+            token.registerRootDirectory()
+
+            assertThat(fileWatchEngine).scopes().all {
+                hasSize(1)
+                key(token).all {
+                    directoryPatterns().all {
+                        hasSize(2)
+                        index(0).isEqualTo(subfolderDirectoryPattern)
+                        index(1).isEqualTo(FileWatchEngine.StandardPatterns.root)
+                    }
+                    filePatterns().isEmpty()
+                    directoryWatchKeyEntries().all {
+                        hasSize(2)
+                        index(0).all {
+                            absoluteDirectory().isEqualTo(subfolder.asAbsolute())
+                            watchKey().isNotNull()
+                            watchedSubdirectories().isEmpty()
+                        }
+                        index(1).all {
+                            absoluteDirectory().isEqualTo(root.asAbsolute())
+                            watchKey().isNotNull()
+                            watchedSubdirectories().all {
+                                hasSize(1)
+                                index(0).absolutePath().isEqualTo(subfolder.asAbsolute())
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -329,3 +450,6 @@ private fun Assert<FileWatchEngine.Scope.DirectoryWatchKeyEntry>.absoluteDirecto
 private fun Assert<FileWatchEngine.Scope.DirectoryWatchKeyEntry>.relativeDirectory() = prop(FileWatchEngine.Scope.DirectoryWatchKeyEntry::relativeDirectory)
 private fun Assert<FileWatchEngine.Scope.DirectoryWatchKeyEntry>.watchKey() = prop(FileWatchEngine.Scope.DirectoryWatchKeyEntry::watchKey)
 private fun Assert<FileWatchEngine.Scope.DirectoryWatchKeyEntry>.watchedSubdirectories() = prop(FileWatchEngine.Scope.DirectoryWatchKeyEntry::watchedSubdirectories)
+
+private fun Assert<FileWatchEngine.Scope.WatchedSubdirectoryEntry>.absolutePath() = prop(FileWatchEngine.Scope.WatchedSubdirectoryEntry::absolutePath)
+private fun Assert<FileWatchEngine.Scope.WatchedSubdirectoryEntry>.relativePath() = prop(FileWatchEngine.Scope.WatchedSubdirectoryEntry::relativePath)
