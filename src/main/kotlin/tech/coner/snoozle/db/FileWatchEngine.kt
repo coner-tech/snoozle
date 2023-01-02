@@ -150,7 +150,11 @@ open class FileWatchEngine(
         takenWatchKey: WatchKey,
         event: WatchEvent<Path>
     ): Unit = coroutineScope {
-        TODO("unregister watchkey")
+        mutex.withLock {
+            val service = service ?: return@withLock
+            takenWatchKey.cancel()
+            val directoryWatchKeyEntry = findDirectoryWatchKeyEntry(takenWatchKey)
+        }
         TODO("remove directory watch key entry")
         TODO("remove directory watch key entries for subdirectories")
     }
