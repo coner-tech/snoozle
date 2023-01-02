@@ -9,6 +9,7 @@ import assertk.assertions.hasSize
 import assertk.assertions.index
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
+import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.key
@@ -35,6 +36,7 @@ import java.util.regex.Pattern
 import kotlin.coroutines.CoroutineContext
 import kotlin.io.path.createDirectory
 import kotlin.io.path.writeText
+import kotlinx.coroutines.delay
 import org.junit.jupiter.api.assertThrows
 
 class FileWatchEngineTest : CoroutineScope {
@@ -55,7 +57,7 @@ class FileWatchEngineTest : CoroutineScope {
     private val subfolderFileDotTxt by lazy { testPath(subfolder.resolve("file.txt")) }
     private val subfolderFileDotJson by lazy { testPath(subfolder.resolve("file.json")) }
 
-    private val defaultTimeoutMillis = 250L
+    private val defaultTimeoutMillis: Long = 250
 
     @BeforeEach
     fun before() {
@@ -349,9 +351,11 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isRecordExistsInstance()
-                .record()
-                .isEqualTo(rootFileDotTxt.relative)
+                .isFileExistsInstance()
+                .all {
+                    file().isEqualTo(rootFileDotTxt.relative)
+                    origin().isEqualTo(FileWatchEngine.Event.File.Origin.WATCH)
+                }
         }
 
         @Test
@@ -364,6 +368,25 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeoutOrNull(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event).isNull()
+        }
+
+        @Test
+        fun `When new watched directory created it should scan and emit files created`() = runBlocking {
+            val token = fileWatchEngine.createToken()
+            token.registerRootDirectory()
+            token.registerDirectoryPattern(subfolderDirectoryPattern)
+            token.registerFilePattern(subfolderAnyTxtPattern)
+
+            subfolder.createDirectory()
+            subfolderFileDotTxt.absolute.value.writeText("text")
+            val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
+
+            assertThat(event)
+                .isFileExistsInstance()
+                .all {
+                    file().isEqualTo(subfolderFileDotTxt.relative)
+                    origin().isEqualTo(FileWatchEngine.Event.File.Origin.NEW_DIRECTORY_SCAN)
+                }
         }
     }
 
@@ -381,9 +404,11 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isRecordExistsInstance()
-                .record()
-                .isEqualTo(rootFileDotTxt.relative)
+                .isFileExistsInstance()
+                .all {
+                    file().isEqualTo(rootFileDotTxt.relative)
+                    origin().isEqualTo(FileWatchEngine.Event.File.Origin.WATCH)
+                }
         }
 
         @Test
@@ -419,9 +444,11 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isRecordDoesNotExistsInstance()
-                .record()
-                .isEqualTo(rootFileDotTxt.relative)
+                .isFileDoesNotExistInstance()
+                .all {
+                    file().isEqualTo(rootFileDotTxt.relative)
+                    origin().isEqualTo(FileWatchEngine.Event.File.Origin.WATCH)
+                }
         }
 
         @Test
@@ -491,3 +518,10 @@ private fun Assert<FileWatchEngine.Scope.DirectoryWatchKeyEntry>.watchedSubdirec
 
 private fun Assert<FileWatchEngine.Scope.WatchedSubdirectoryEntry>.absolutePath() = prop(FileWatchEngine.Scope.WatchedSubdirectoryEntry::absolutePath)
 private fun Assert<FileWatchEngine.Scope.WatchedSubdirectoryEntry>.relativePath() = prop(FileWatchEngine.Scope.WatchedSubdirectoryEntry::relativePath)
+
+
+private fun Assert<FileWatchEngine.Event>.isFileExistsInstance() = isInstanceOf(FileWatchEngine.Event.File.Exists::class)
+private fun Assert<FileWatchEngine.Event>.isFileDoesNotExistInstance() = isInstanceOf(FileWatchEngine.Event.File.DoesNotExist::class)
+private fun Assert<FileWatchEngine.Event>.isOverflowInstance() = isInstanceOf(FileWatchEngine.Event.Overflow::class)
+private fun Assert<FileWatchEngine.Event.File>.file() = prop(FileWatchEngine.Event.File::file)
+private fun Assert<FileWatchEngine.Event.File>.origin() = prop(FileWatchEngine.Event.File::origin)

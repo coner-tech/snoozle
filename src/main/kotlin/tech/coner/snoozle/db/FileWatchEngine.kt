@@ -123,30 +123,27 @@ open class FileWatchEngine(
             // handler was called inappropriately
             return@coroutineScope
         }
+        val service = service ?: return@coroutineScope
         val newDirectoryAbsolutePath =
             directoryWatchKeyEntry.absoluteDirectory.value.resolve(event.context()).asAbsolute()
-        newDirectoryAbsolutePath.toString()
+        val newDirectoryRelativePath = root.value.relativize(newDirectoryAbsolutePath.value).asRelative()
+        newDirectoryRelativePath.value.toString()
             .let { pathAsString ->
-                scopes.values.firstOrNull { scope ->
-                    scope.directoryPatterns.any { directoryPattern ->
-                        directoryPattern.matcher(pathAsString).matches()
-                    }
+                scopes.values.filter { scope ->
+                    scope.directoryPatterns.any { it.matcher(pathAsString).matches() }
                 }
             }
-            ?.let { scope ->
-                service
-                    ?.let { newDirectoryAbsolutePath.value.register(it, watchEventKinds) }
-                    ?.let {
-                        scope.copyAndAddDirectoryWatchKeyEntry(
-                            directoryWatchKeyEntryFactory(
-                                absoluteDirectory = newDirectoryAbsolutePath,
-                                watchKey = it
-                            )
-                        )
-                    }
+            .map { scope ->
+                val watchKey = newDirectoryAbsolutePath.value.register(service, watchEventKinds)
+                scope.copyAndAddDirectoryWatchKeyEntry(
+                    directoryWatchKeyEntryFactory(
+                        absoluteDirectory = newDirectoryAbsolutePath,
+                        watchKey = watchKey
+                    )
+                )
             }
-            ?.also { newScope -> scopes[newScope.token] = newScope }
-            ?.also { scanNewWatchedDirectory(newDirectoryAbsolutePath) }
+            .onEach { newScope -> scopes[newScope.token] = newScope }
+            .also { scanNewWatchedDirectory(newDirectoryAbsolutePath) }
     }
 
     private suspend fun handleDirectoryDeleted(
@@ -167,7 +164,7 @@ open class FileWatchEngine(
             list/emit events for files that match registered patterns.
             */
 
-            delay(250)
+            delay(100)
             mutex.withLock {
                 val service = service
                 if (!isActive || service == null || scopes.isEmpty()) {
@@ -177,9 +174,9 @@ open class FileWatchEngine(
                     .listDirectoryEntries()
                     .forEach { newDirectoryEntryCandidate ->
                         val newFileCandidateAbsolute: AbsolutePath = newDirectory.value.resolve(newDirectoryEntryCandidate).asAbsolute()
-                        val newFileCandidateRelative: RelativePath = newDirectory.value.resolve(newDirectoryEntryCandidate).asRelative()
-                        val newFileCandidateRelativeAsString = newFileCandidateRelative.toString()
-                        if (newFileCandidateRelative.value.isDirectory(LinkOption.NOFOLLOW_LINKS)) {
+                        val newFileCandidateRelative: RelativePath = root.value.relativize(newFileCandidateAbsolute.value).asRelative()
+                        val newFileCandidateRelativeAsString = newFileCandidateRelative.value.toString()
+                        if (newFileCandidateAbsolute.value.isDirectory(LinkOption.NOFOLLOW_LINKS)) {
                             val newDirectoryWatchKeyEntriesToAdd = mutableMapOf<TokenImpl, MutableList<ScopeImpl.DirectoryWatchKeyEntryImpl>>()
                             scopes.values.forEach { scope ->
                                 if (scope.directoryPatterns.any { it.matcher(newFileCandidateRelativeAsString).matches() }) {
@@ -205,10 +202,10 @@ open class FileWatchEngine(
                                         ?.also { scanNewWatchedDirectory(entryToAdd.absoluteDirectory) }
                                 }
                             }
-                        } else if (newFileCandidateRelative.value.isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
+                        } else if (newFileCandidateAbsolute.value.isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
                             scopes.values.forEach { scope ->
                                 if (scope.filePatterns.any { it.matcher(newFileCandidateRelativeAsString).matches() }) {
-                                    scope.token.events.emit(Event.File.Exists(newFileCandidateRelative))
+                                    scope.token.events.emit(Event.File.Exists(newFileCandidateRelative, Event.File.Origin.NEW_DIRECTORY_SCAN))
                                 }
                             }
                         }
@@ -238,8 +235,8 @@ open class FileWatchEngine(
                 if (filePattern.matcher(fileCandidateRelativePathAsString).matches()) {
                     when (event.kind()) {
                         StandardWatchEventKinds.ENTRY_CREATE,
-                            StandardWatchEventKinds.ENTRY_MODIFY -> Event.File.Exists(fileCandidateRelativePath)
-                        StandardWatchEventKinds.ENTRY_DELETE -> Event.File.DoesNotExist(fileCandidateRelativePath)
+                            StandardWatchEventKinds.ENTRY_MODIFY -> Event.File.Exists(fileCandidateRelativePath, Event.File.Origin.WATCH)
+                        StandardWatchEventKinds.ENTRY_DELETE -> Event.File.DoesNotExist(fileCandidateRelativePath, Event.File.Origin.WATCH)
                         else -> null
                     }
                         ?.also { scope.token.events.emit(it) }
@@ -604,8 +601,22 @@ open class FileWatchEngine(
     sealed class Event {
         sealed class File : Event() {
             abstract val file: RelativePath
-            data class Exists(override val file: RelativePath) : File()
-            data class DoesNotExist(override val file: RelativePath) : File()
+            abstract val origin: Origin
+
+            data class Exists(
+                override val file: RelativePath,
+                override val origin: Origin
+            ) : File()
+
+            data class DoesNotExist(
+                override val file: RelativePath,
+                override val origin: Origin
+            ) : File()
+
+            enum class Origin {
+                WATCH,
+                NEW_DIRECTORY_SCAN
+            }
         }
         object Overflow : Event()
     }
