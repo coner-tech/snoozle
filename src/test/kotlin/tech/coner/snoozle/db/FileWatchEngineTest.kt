@@ -14,6 +14,14 @@ import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.key
 import assertk.assertions.prop
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.WatchService
+import java.util.regex.Pattern
+import kotlin.coroutines.CoroutineContext
+import kotlin.io.path.createDirectory
+import kotlin.io.path.deleteExisting
+import kotlin.io.path.writeText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -28,16 +36,8 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.WatchService
-import java.util.regex.Pattern
-import kotlin.coroutines.CoroutineContext
-import kotlin.io.path.createDirectory
-import kotlin.io.path.writeText
-import kotlinx.coroutines.delay
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.io.TempDir
 
 class FileWatchEngineTest : CoroutineScope {
 
@@ -339,6 +339,47 @@ class FileWatchEngineTest : CoroutineScope {
     }
 
     @Nested
+    inner class DirectoryCreated {
+
+        @Test
+        fun `When new watched directory created it should scan and emit files created`() = runBlocking {
+            val token = fileWatchEngine.createToken()
+            token.registerRootDirectory()
+            token.registerDirectoryPattern(subfolderDirectoryPattern)
+            token.registerFilePattern(subfolderAnyTxtPattern)
+
+            subfolder.createDirectory()
+            subfolderFileDotTxt.absolute.value.writeText("text")
+            val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
+
+            assertThat(event)
+                .isFileExistsInstance()
+                .all {
+                    file().isEqualTo(subfolderFileDotTxt.relative)
+                    origin().isEqualTo(FileWatchEngine.Event.File.Origin.NEW_DIRECTORY_SCAN)
+                }
+        }
+    }
+
+    @Nested
+    inner class DirectoryDeleted {
+
+        @Test
+        fun `When watched directory deleted it should remove watch`() = runBlocking {
+            subfolder.createDirectory()
+            val token = fileWatchEngine.createToken()
+            token.registerRootDirectory()
+            token.registerDirectoryPattern(subfolderDirectoryPattern)
+
+            subfolder.deleteExisting()
+
+            assertThat(fileWatchEngine).scopes()
+                .key(token)
+                .directoryWatchKeyEntries().isEmpty()
+        }
+    }
+
+    @Nested
     inner class EventFileCreatedEmissions {
 
         @Test
@@ -368,25 +409,6 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeoutOrNull(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event).isNull()
-        }
-
-        @Test
-        fun `When new watched directory created it should scan and emit files created`() = runBlocking {
-            val token = fileWatchEngine.createToken()
-            token.registerRootDirectory()
-            token.registerDirectoryPattern(subfolderDirectoryPattern)
-            token.registerFilePattern(subfolderAnyTxtPattern)
-
-            subfolder.createDirectory()
-            subfolderFileDotTxt.absolute.value.writeText("text")
-            val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
-
-            assertThat(event)
-                .isFileExistsInstance()
-                .all {
-                    file().isEqualTo(subfolderFileDotTxt.relative)
-                    origin().isEqualTo(FileWatchEngine.Event.File.Origin.NEW_DIRECTORY_SCAN)
-                }
         }
     }
 
