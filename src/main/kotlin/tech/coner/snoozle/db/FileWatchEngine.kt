@@ -94,38 +94,40 @@ open class FileWatchEngine(
         takenWatchKey: WatchKey,
         event: WatchEvent<Path>
     ) {
-        val directoryWatchKeyEntry = findDirectoryWatchKeyEntry(takenWatchKey)
+        val directoryWatchKeyEntries = findDirectoryWatchKeyEntries(takenWatchKey)
+        val firstDirectoryWatchKeyEntry = directoryWatchKeyEntries.firstOrNull()
             ?: return // can't process if no directory watch key entry found
-        val eventContextAsAbsolutePath = event.contextAsAbsolutePath(directoryWatchKeyEntry)
+        val eventContextAsAbsolutePath = event.contextAsAbsolutePath(firstDirectoryWatchKeyEntry)
         if (
             event.kind() == StandardWatchEventKinds.ENTRY_CREATE
             && eventContextAsAbsolutePath.value.isDirectory(LinkOption.NOFOLLOW_LINKS)
         ) {
-            handleDirectoryCreated(directoryWatchKeyEntry, event)
+            handleDirectoryCreated(firstDirectoryWatchKeyEntry, event)
         } else if (
             event.kind() == StandardWatchEventKinds.ENTRY_DELETE
             && contextIsWatchedDirectory(directoryWatchKeyEntry, eventContextAsAbsolutePath)
         ) {
-            handleDirectoryDeleted(takenWatchKey, event)
+            handleDirectoryDeleted(directoryWatchKeyEntry, event)
         } else {
             handleFileEvent(directoryWatchKeyEntry, event)
         }
     }
 
     private suspend fun handleDirectoryCreated(
-        directoryWatchKeyEntry: Scope.DirectoryWatchKeyEntry,
+        firstDirectoryWatchKeyEntry: Scope.DirectoryWatchKeyEntry,
         event: WatchEvent<Path>
     ) = coroutineScope {
         if (
             event.kind() != StandardWatchEventKinds.ENTRY_CREATE
             && !event.context().exists(LinkOption.NOFOLLOW_LINKS)
         ) {
-            // handler was called inappropriately
-            return@coroutineScope
+            return@coroutineScope // handler was called inappropriately
         }
-        val service = service ?: return@coroutineScope
-        val newDirectoryAbsolutePath =
-            directoryWatchKeyEntry.absoluteDirectory.value.resolve(event.context()).asAbsolute()
+        val service = service
+            ?: return@coroutineScope // handler was called inappropriately
+        val newDirectoryAbsolutePath = firstDirectoryWatchKeyEntry.absoluteDirectory.value
+            .resolve(event.context())
+            .asAbsolute()
         val newDirectoryRelativePath = root.value.relativize(newDirectoryAbsolutePath.value).asRelative()
         newDirectoryRelativePath.value.toString()
             .let { pathAsString ->
@@ -137,6 +139,7 @@ open class FileWatchEngine(
                 val watchKey = newDirectoryAbsolutePath.value.register(service, watchEventKinds)
                 scope.copyAndAddDirectoryWatchKeyEntry(
                     directoryWatchKeyEntryFactory(
+                        token = scope.token,
                         absoluteDirectory = newDirectoryAbsolutePath,
                         watchKey = watchKey
                     )
@@ -147,16 +150,32 @@ open class FileWatchEngine(
     }
 
     private suspend fun handleDirectoryDeleted(
-        takenWatchKey: WatchKey,
+        firstDirectoryWatchKeyEntry: Scope.DirectoryWatchKeyEntry,
         event: WatchEvent<Path>
     ): Unit = coroutineScope {
         mutex.withLock {
             val service = service ?: return@withLock
-            takenWatchKey.cancel()
-            val directoryWatchKeyEntry = findDirectoryWatchKeyEntry(takenWatchKey)
+            scopes.values
+                .mapNotNull { scope ->
+                    val directoryWatchKeyEntriesToCancel = scope.directoryWatchKeyEntries
+                        .filter { it.absoluteDirectory == firstDirectoryWatchKeyEntry.absoluteDirectory }
+                    if (directoryWatchKeyEntriesToCancel.isNotEmpty()) {
+                        directoryWatchKeyEntriesToCancel.forEach { it.watchKey.cancel() }
+                        scope
+                            .let {
+                                TODO("remove directory watch key entries for subdirectories")
+                                directoryWatchKeyEntriesToCancel
+
+                            }
+                            .copyAndRemoveDirectoryWatchKeyEntries(directoryWatchKeyEntriesToCancel)
+                    } else {
+                        null
+                    }
+                }
+                .onEach {  }
+            directoryWatchKeyEntry.watchKey.cancel()
+            scopes[directoryWatchKeyEntry.token]
         }
-        TODO("remove directory watch key entry")
-        TODO("remove directory watch key entries for subdirectories")
     }
 
     private suspend fun scanNewWatchedDirectory(newDirectory: AbsolutePath): Unit = coroutineScope {
@@ -190,6 +209,7 @@ open class FileWatchEngine(
                                                 .apply {
                                                     add(
                                                         directoryWatchKeyEntryFactory(
+                                                            token = scope.token,
                                                             absoluteDirectory = newFileCandidateAbsolute,
                                                             watchKey = watchKey
                                                         )
@@ -277,7 +297,9 @@ open class FileWatchEngine(
                     if (directoryPattern.matcher(dirAsRelative.value.toString()).matches()) {
                         val watchKey = dir.register(service, watchEventKinds)
                         scopes[token]
-                            ?.copyAndAddDirectoryWatchKeyEntry(directoryWatchKeyEntryFactory(dirAsAbsolute, watchKey))
+                            ?.copyAndAddDirectoryWatchKeyEntry(
+                                directoryWatchKeyEntryFactory(token, dirAsAbsolute, watchKey)
+                            )
                             ?.also { scopes[token] = it }
                     }
                     return FileVisitResult.CONTINUE
@@ -394,8 +416,8 @@ open class FileWatchEngine(
         coroutineContext.cancel()
     }
 
-    private fun findDirectoryWatchKeyEntry(takenWatchKey: WatchKey): Scope.DirectoryWatchKeyEntry? {
-        return scopes.values.firstNotNullOfOrNull { scope ->
+    private fun findDirectoryWatchKeyEntries(takenWatchKey: WatchKey): Collection<Scope.DirectoryWatchKeyEntry> {
+        return scopes.values.mapNotNull { scope ->
             scope.directoryWatchKeyEntries.firstNotNullOfOrNull { directoryWatchKeyEntry ->
                 if (directoryWatchKeyEntry.watchKey == takenWatchKey) {
                     directoryWatchKeyEntry
@@ -443,8 +465,9 @@ open class FileWatchEngine(
         fun copyAndRemoveDirectoryWatchKeyEntries(entries: Collection<DWKE>): Scope<DWKE>
 
         interface DirectoryWatchKeyEntry {
-            val absoluteDirectory: AbsolutePath
+            val token: Token
 
+            val absoluteDirectory: AbsolutePath
             val relativeDirectory: RelativePath
             val watchKey: WatchKey
             val watchedSubdirectories: List<WatchedSubdirectoryEntry>
@@ -531,6 +554,7 @@ open class FileWatchEngine(
         )
 
         data class DirectoryWatchKeyEntryImpl(
+            override val token: Token,
             override val absoluteDirectory: AbsolutePath,
             override val relativeDirectory: RelativePath,
             override val watchKey: WatchKey,
@@ -552,9 +576,11 @@ open class FileWatchEngine(
     }
 
     private fun directoryWatchKeyEntryFactory(
+        token: Token,
         absoluteDirectory: AbsolutePath,
         watchKey: WatchKey
     ) = ScopeImpl.DirectoryWatchKeyEntryImpl(
+        token = token,
         absoluteDirectory = absoluteDirectory,
         relativeDirectory = root.value.relativize(absoluteDirectory.value).asRelative(),
         watchKey = watchKey,
