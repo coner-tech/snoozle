@@ -14,18 +14,11 @@ import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.key
 import assertk.assertions.prop
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.WatchService
-import java.util.regex.Pattern
-import kotlin.coroutines.CoroutineContext
-import kotlin.io.path.createDirectory
-import kotlin.io.path.deleteExisting
-import kotlin.io.path.writeText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -38,6 +31,14 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.WatchService
+import java.util.regex.Pattern
+import kotlin.coroutines.CoroutineContext
+import kotlin.io.path.createDirectory
+import kotlin.io.path.deleteExisting
+import kotlin.io.path.writeText
 
 class FileWatchEngineTest : CoroutineScope {
 
@@ -370,8 +371,10 @@ class FileWatchEngineTest : CoroutineScope {
             val token = fileWatchEngine.createToken()
             token.registerRootDirectory()
             token.registerDirectoryPattern(subfolderDirectoryPattern)
+            delay(defaultTimeoutMillis)
 
             subfolder.deleteExisting()
+            delay(100000)
 
             assertThat(fileWatchEngine).scopes()
                 .key(token)

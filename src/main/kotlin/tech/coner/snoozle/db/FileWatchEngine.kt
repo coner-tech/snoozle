@@ -105,11 +105,11 @@ open class FileWatchEngine(
             handleDirectoryCreated(firstDirectoryWatchKeyEntry, event)
         } else if (
             event.kind() == StandardWatchEventKinds.ENTRY_DELETE
-            && contextIsWatchedDirectory(directoryWatchKeyEntry, eventContextAsAbsolutePath)
+            && contextIsWatchedDirectory(firstDirectoryWatchKeyEntry, eventContextAsAbsolutePath)
         ) {
-            handleDirectoryDeleted(directoryWatchKeyEntry, event)
+            handleDirectoryDeleted(firstDirectoryWatchKeyEntry, event)
         } else {
-            handleFileEvent(directoryWatchKeyEntry, event)
+            handleFileEvent(firstDirectoryWatchKeyEntry, event)
         }
     }
 
@@ -153,29 +153,32 @@ open class FileWatchEngine(
         firstDirectoryWatchKeyEntry: Scope.DirectoryWatchKeyEntry,
         event: WatchEvent<Path>
     ): Unit = coroutineScope {
-        mutex.withLock {
-            val service = service ?: return@withLock
-            scopes.values
-                .mapNotNull { scope ->
-                    val directoryWatchKeyEntriesToCancel = scope.directoryWatchKeyEntries
-                        .filter { it.absoluteDirectory == firstDirectoryWatchKeyEntry.absoluteDirectory }
-                    if (directoryWatchKeyEntriesToCancel.isNotEmpty()) {
-                        directoryWatchKeyEntriesToCancel.forEach { it.watchKey.cancel() }
-                        scope
-                            .let {
-                                TODO("remove directory watch key entries for subdirectories")
-                                directoryWatchKeyEntriesToCancel
-
+        val service = service ?: return@coroutineScope
+        fun Scope<*>.findDirectoryWatchKeyEntriesToCancel() = directoryWatchKeyEntries
+            .filter { it.absoluteDirectory == firstDirectoryWatchKeyEntry.absoluteDirectory }
+        scopes.values
+            .mapNotNull { scope ->
+                val directoryWatchKeyEntriesToCancel = scope.findDirectoryWatchKeyEntriesToCancel()
+                if (directoryWatchKeyEntriesToCancel.isNotEmpty()) {
+                    directoryWatchKeyEntriesToCancel.forEach { it.watchKey.cancel() }
+                    scope
+                        .let {
+                            directoryWatchKeyEntriesToCancel.fold(it) { _, directoryWatchKeyEntry ->
+                                directoryWatchKeyEntry.watchedSubdirectories.fold(scope) { scope, watchedSubdirectory ->
+                                    scope.copyAndRemoveWatchedSubdirectory(watchedSubdirectory, directoryWatchKeyEntry.watchKey)
+                                }
                             }
-                            .copyAndRemoveDirectoryWatchKeyEntries(directoryWatchKeyEntriesToCancel)
-                    } else {
-                        null
-                    }
+                        }
+                        .let { removedSubdirectoriesScope ->
+                            removedSubdirectoriesScope
+                                .findDirectoryWatchKeyEntriesToCancel()
+                                .fold(removedSubdirectoriesScope) { accScope, directoryWatchKeyEntry -> }
+                        }
+                } else {
+                    null
                 }
-                .onEach {  }
-            directoryWatchKeyEntry.watchKey.cancel()
-            scopes[directoryWatchKeyEntry.token]
-        }
+            }
+            .onEach { scopes[it.token] = it }
     }
 
     private suspend fun scanNewWatchedDirectory(newDirectory: AbsolutePath): Unit = coroutineScope {
@@ -240,7 +243,7 @@ open class FileWatchEngine(
     }
 
     private suspend fun handleFileEvent(
-        directoryWatchKeyEntry: Scope.DirectoryWatchKeyEntry,
+        firstDirectoryWatchKeyEntry: Scope.DirectoryWatchKeyEntry,
         event: WatchEvent<Path>
     ) = coroutineScope {
         if (
@@ -251,7 +254,7 @@ open class FileWatchEngine(
             // guard unknown / not handled event kinds
             return@coroutineScope
         }
-        val fileCandidateRelativePath = event.contextAsRelativePath(directoryWatchKeyEntry)
+        val fileCandidateRelativePath = event.contextAsRelativePath(firstDirectoryWatchKeyEntry)
             ?: return@coroutineScope // no watch key in a scope matched taken watch key, ignore
         val fileCandidateRelativePathAsString = fileCandidateRelativePath.value.toString()
         scopes.values.forEach { scope ->
