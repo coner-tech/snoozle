@@ -119,7 +119,7 @@ open class FileWatchEngine(
     ) = coroutineScope {
         if (
             event.kind() != StandardWatchEventKinds.ENTRY_CREATE
-            && !event.context().exists(LinkOption.NOFOLLOW_LINKS)
+            || !firstDirectoryWatchKeyEntry.absoluteDirectory.value.exists(LinkOption.NOFOLLOW_LINKS)
         ) {
             return@coroutineScope // handler was called inappropriately
         }
@@ -153,7 +153,13 @@ open class FileWatchEngine(
         firstDirectoryWatchKeyEntry: Scope.DirectoryWatchKeyEntry,
         event: WatchEvent<Path>
     ): Unit = coroutineScope {
-        val service = service ?: return@coroutineScope
+        if (
+            event.kind() != StandardWatchEventKinds.ENTRY_DELETE
+            || firstDirectoryWatchKeyEntry.absoluteDirectory.value.exists()
+        ) {
+            return@coroutineScope // handler was called inappropriately
+        }
+        val service = service ?: return@coroutineScope // handler was called inappropriately
         fun Scope<*>.findDirectoryWatchKeyEntriesToCancel() = directoryWatchKeyEntries
             .filter { it.absoluteDirectory == firstDirectoryWatchKeyEntry.absoluteDirectory }
         scopes.values
@@ -172,7 +178,9 @@ open class FileWatchEngine(
                         .let { removedSubdirectoriesScope ->
                             removedSubdirectoriesScope
                                 .findDirectoryWatchKeyEntriesToCancel()
-                                .fold(removedSubdirectoriesScope) { accScope, directoryWatchKeyEntry -> }
+                                .fold(removedSubdirectoriesScope) { accScope, directoryWatchKeyEntry ->
+                                    accScope.copyAndRemoveDirectoryWatchKeyEntry()
+                                }
                         }
                 } else {
                     null
