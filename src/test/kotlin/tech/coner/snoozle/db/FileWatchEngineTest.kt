@@ -369,7 +369,7 @@ class FileWatchEngineTest : CoroutineScope {
     inner class DirectoryDeleted {
 
         @Test
-        fun `When watched directory deleted it should remove watch`() = runBlocking {
+        fun `When watched directory deleted it should remove watch entry`() = runBlocking {
             subfolder.createDirectory()
             val token = fileWatchEngine.createToken()
             token.registerRootDirectory()

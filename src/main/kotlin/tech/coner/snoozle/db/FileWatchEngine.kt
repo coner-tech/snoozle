@@ -1,19 +1,5 @@
 package tech.coner.snoozle.db
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runInterruptible
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -30,6 +16,20 @@ import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 
 open class FileWatchEngine(
     override val coroutineContext: CoroutineContext,
@@ -153,34 +153,32 @@ open class FileWatchEngine(
         firstDirectoryWatchKeyEntry: Scope.DirectoryWatchKeyEntry,
         event: WatchEvent<Path>
     ): Unit = coroutineScope {
-        if (
-            event.kind() != StandardWatchEventKinds.ENTRY_DELETE
-            || firstDirectoryWatchKeyEntry.absoluteDirectory.value.exists()
-        ) {
+        if (event.kind() != StandardWatchEventKinds.ENTRY_DELETE) {
             return@coroutineScope // handler was called inappropriately
         }
         val service = service ?: return@coroutineScope // handler was called inappropriately
         val deletedDirectoryAbsolute = event.contextAsAbsolutePath(firstDirectoryWatchKeyEntry)
         fun Scope<*>.findDirectoryWatchKeyEntriesToCancel() = directoryWatchKeyEntries
             .filter { it.absoluteDirectory == deletedDirectoryAbsolute }
+        fun Scope<*>.findDirectoryWatchKeysToRemoveWatchedSubdirectory() = directoryWatchKeyEntries
+            .filter { deletedDirectoryAbsolute.value.parent == it.absoluteDirectory.value }
         scopes.values
             .mapNotNull { scope ->
                 val directoryWatchKeyEntriesToCancel = scope.findDirectoryWatchKeyEntriesToCancel()
                 if (directoryWatchKeyEntriesToCancel.isNotEmpty()) {
                     directoryWatchKeyEntriesToCancel.forEach { it.watchKey.cancel() }
-                    scope
-                        .let {
-                            directoryWatchKeyEntriesToCancel.fold(it) { _, directoryWatchKeyEntry ->
-                                directoryWatchKeyEntry.watchedSubdirectories.fold(scope) { scope, watchedSubdirectory ->
-                                    scope.copyAndRemoveWatchedSubdirectory(watchedSubdirectory, directoryWatchKeyEntry.watchKey)
-                                }
-                            }
-                        }
-                        .let { removedSubdirectoriesScope ->
-                            removedSubdirectoriesScope
-                                .findDirectoryWatchKeyEntriesToCancel()
-                                .fold(removedSubdirectoriesScope) { accScope, directoryWatchKeyEntry ->
-                                    accScope.copyAndRemoveDirectoryWatchKeyEntry()
+                    directoryWatchKeyEntriesToCancel.fold(scope) { accScope, directoryWatchKeyEntry ->
+                        accScope.copyAndRemoveDirectoryWatchKeyEntry(directoryWatchKeyEntry)
+                    }
+                        .let { watchKeyCanceledScope ->
+                            watchKeyCanceledScope.findDirectoryWatchKeysToRemoveWatchedSubdirectory()
+                                .fold(watchKeyCanceledScope) { accScope, directoryWatchKeyEntry ->
+                                    accScope.copyAndRemoveWatchedSubdirectory(
+                                        watchedSubdirectory = directoryWatchKeyEntry.watchedSubdirectories.single {
+                                            it.absolutePath.value == deletedDirectoryAbsolute.value
+                                        },
+                                        watchKey = directoryWatchKeyEntry.watchKey
+                                    )
                                 }
                         }
                 } else {
