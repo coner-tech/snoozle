@@ -4,6 +4,7 @@ import assertk.Assert
 import assertk.all
 import assertk.assertThat
 import assertk.assertions.containsExactly
+import assertk.assertions.exactly
 import assertk.assertions.hasMessage
 import assertk.assertions.hasSize
 import assertk.assertions.index
@@ -270,7 +271,9 @@ class FileWatchEngineTest : CoroutineScope {
                             watchKey().isNotNull()
                             watchedSubdirectories().all {
                                 hasSize(1)
-                                index(0).absolutePath().isEqualTo(subfolder.asAbsolute())
+                                exactly(1) {
+                                    it.absolutePath().isEqualTo(subfolder.asAbsolute())
+                                }
                             }
                         }
                     }
@@ -374,11 +377,18 @@ class FileWatchEngineTest : CoroutineScope {
             delay(defaultTimeoutMillis)
 
             subfolder.deleteExisting()
-            delay(100000)
+            delay(defaultTimeoutMillis)
 
             assertThat(fileWatchEngine).scopes()
                 .key(token)
-                .directoryWatchKeyEntries().isEmpty()
+                .directoryWatchKeyEntries().all {
+                    hasSize(1)
+                    index(0).all {
+                        absoluteDirectory().isEqualTo(root.asAbsolute())
+                        watchedSubdirectories().isEmpty()
+                        watchKey().isNotNull()
+                    }
+                }
         }
     }
 
