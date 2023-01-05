@@ -334,7 +334,6 @@ open class FileWatchEngine(
         takenWatchKey: WatchKey,
         event: WatchEvent<Any>
     ) {
-        println(event)
         scopes.values
             .filter { scope -> scope.directoryWatchKeyEntries.any { it.watchKey === takenWatchKey } }
             .forEach { scope -> scope.token.events.emit(Event.Overflow) }
