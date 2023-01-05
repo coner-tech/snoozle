@@ -37,14 +37,18 @@ open class FileWatchEngine(
 ) : CoroutineScope {
 
     private val mutex = Mutex()
-    protected var nextScopeId = Int.MIN_VALUE
+    protected var nextTokenId = Int.MIN_VALUE
+    protected val destroyedTokenIdRanges: MutableSet<ClosedRange<Int>> = mutableSetOf()
     protected val scopes = mutableMapOf<TokenImpl, ScopeImpl>()
     protected var service: WatchService? = null
     protected var pollLoopScope: CoroutineContext? = null
     protected var pollLoopJob: Job? = null
 
     suspend fun createToken(): Token = mutex.withLock {
-        val token = TokenImpl(nextScopeId++)
+        val token = TokenImpl(
+            chooseNextTokenId()
+                ?: throw TokenCapacityLimitException("Too many tokens created and not destroyed")
+        )
             .apply { engine = this@FileWatchEngine }
         scopes[token] = ScopeImpl(
             token = token,
@@ -54,6 +58,21 @@ open class FileWatchEngine(
         )
         startService()
         token
+    }
+
+    private fun chooseNextTokenId(): Int? {
+        val takeRange = destroyedTokenIdRanges.minByOrNull { it.start }
+        return when {
+            takeRange != null -> {
+                destroyedTokenIdRanges.remove(takeRange)
+                if (takeRange.start < takeRange.endInclusive) {
+                    destroyedTokenIdRanges.add((takeRange.start + 1)..takeRange.endInclusive)
+                }
+                takeRange.start
+            }
+            nextTokenId < Int.MAX_VALUE -> nextTokenId++
+            else -> null
+        }
     }
 
     private suspend fun startService() = coroutineScope {
@@ -392,11 +411,39 @@ open class FileWatchEngine(
 
     private fun Scope<*>.checkDirectoryPatternsNotEmpty() = check(directoryPatterns.isNotEmpty()) { "Scope must have a directory pattern registered" }
 
-    private suspend fun destroyToken(token: TokenImpl) = mutex.withLock {
+    suspend fun destroyToken(token: Token) = mutex.withLock {
         val scope = scopes[token]
-        scope?.directoryWatchKeyEntries?.forEach { it.watchKey.cancel() }
+        if (scope == null || scope.token.destroyed) {
+            return@withLock // already destroyed, ignore
+        }
+        scope.directoryWatchKeyEntries.forEach { it.watchKey.cancel() }
         scopes.remove(token)
         processScopesForClose()
+
+        // record the scope id as destroyed
+        val relevantRanges = destroyedTokenIdRanges.filter { candidate ->
+            candidate.endInclusive + 1 == scope.token.id
+                    || candidate.start - 1 == scope.token.id
+        }
+        if (relevantRanges.isEmpty()) {
+            destroyedTokenIdRanges += scope.token.id..scope.token.id
+        } else if (relevantRanges.size == 1) {
+            val relevantRange = relevantRanges.single()
+            destroyedTokenIdRanges.remove(relevantRange)
+            if (relevantRange.endInclusive + 1 == scope.token.id) {
+                // replace with appended range
+                destroyedTokenIdRanges.add(relevantRange.start..scope.token.id)
+            } else {
+                // replace with preprended range
+                destroyedTokenIdRanges.add(scope.token.id..relevantRange.endInclusive)
+            }
+        } else if (relevantRanges.size == 2) {
+            val sorted = relevantRanges.sortedBy { it.start }
+            relevantRanges.forEach { destroyedTokenIdRanges.remove(it) }
+            destroyedTokenIdRanges.add(sorted[0].start..sorted[1].endInclusive)
+        } else {
+            // something went wrong
+        }
     }
 
     private fun processScopesForClose() {
@@ -608,9 +655,10 @@ open class FileWatchEngine(
         suspend fun unregisterFilePattern(pattern: Pattern)
     }
 
-    protected data class TokenImpl(private val id: Int) : Token {
+    protected data class TokenImpl(val id: Int) : Token {
         lateinit var engine: FileWatchEngine
         override val events = MutableSharedFlow<Event>()
+        var destroyed: Boolean = false
 
         override suspend fun registerDirectoryPattern(pattern: Pattern) {
             engine.registerDirectoryPattern(this, pattern)
@@ -663,4 +711,6 @@ open class FileWatchEngine(
     object StandardPatterns {
         val root: Pattern by lazy { Pattern.compile("^$") }
     }
+
+    class TokenCapacityLimitException(message: String) : Exception(message)
 }
