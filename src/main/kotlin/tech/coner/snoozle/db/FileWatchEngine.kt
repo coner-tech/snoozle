@@ -1,5 +1,19 @@
 package tech.coner.snoozle.db
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -16,27 +30,19 @@ import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runInterruptible
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withTimeoutOrNull
 
 open class FileWatchEngine(
     override val coroutineContext: CoroutineContext,
-    private val root: AbsolutePath
+    private val root: AbsolutePath,
 ) : CoroutineScope {
 
     private val mutex = Mutex()
+    protected var watchServiceFactoryFn: (AbsolutePath) -> WatchService = {
+        it.value.fileSystem.newWatchService()
+    }
+    protected var watchKeyFactoryFn: (AbsolutePath, WatchService) -> WatchKey = { dir, watchService ->
+        dir.value.register(watchService, watchEventKinds)
+    }
     protected var nextTokenId = Int.MIN_VALUE
     protected val destroyedTokenIdRanges: MutableSet<ClosedRange<Int>> = mutableSetOf()
     protected val scopes = mutableMapOf<TokenImpl, ScopeImpl>()
@@ -70,6 +76,7 @@ open class FileWatchEngine(
                 }
                 takeRange.start
             }
+
             nextTokenId < Int.MAX_VALUE -> nextTokenId++
             else -> null
         }
@@ -77,7 +84,7 @@ open class FileWatchEngine(
 
     private suspend fun startService() = coroutineScope {
         if (service == null) {
-            service = runInterruptible { root.value.fileSystem.newWatchService() }
+            service = runInterruptible { watchServiceFactoryFn(root) /*root.value.fileSystem.newWatchService() */ }
             pollLoopJob = launch((Dispatchers.IO + Job()).also { pollLoopScope = it }) {
                 pollLoop()
             }
@@ -98,7 +105,12 @@ open class FileWatchEngine(
                                 takenWatchKey = watchKey,
                                 event = event as WatchEvent<Path>
                             )
-                            StandardWatchEventKinds.OVERFLOW -> TODO("need to handle overflow case")
+
+                            StandardWatchEventKinds.OVERFLOW -> handleOverflowEvent(
+                                takenWatchKey = watchKey,
+                                event = event as WatchEvent<Any>
+                            )
+
                             else -> {
                                 TODO("need to handle unknown case")
                             }
@@ -155,7 +167,7 @@ open class FileWatchEngine(
                 }
             }
             .map { scope ->
-                val watchKey = newDirectoryAbsolutePath.value.register(service, watchEventKinds)
+                val watchKey = watchKeyFactoryFn(newDirectoryAbsolutePath, service)
                 scope.copyAndAddDirectoryWatchKeyEntry(
                     directoryWatchKeyEntryFactory(
                         token = scope.token,
@@ -179,6 +191,7 @@ open class FileWatchEngine(
         val deletedDirectoryAbsolute = event.contextAsAbsolutePath(firstDirectoryWatchKeyEntry)
         fun Scope<*>.findDirectoryWatchKeyEntriesToCancel() = directoryWatchKeyEntries
             .filter { it.absoluteDirectory == deletedDirectoryAbsolute }
+
         fun Scope<*>.findDirectoryWatchKeysToRemoveWatchedSubdirectory() = directoryWatchKeyEntries
             .filter { deletedDirectoryAbsolute.value.parent == it.absoluteDirectory.value }
         scopes.values
@@ -225,25 +238,31 @@ open class FileWatchEngine(
                 newDirectory.value
                     .listDirectoryEntries()
                     .forEach { newDirectoryEntryCandidate ->
-                        val newFileCandidateAbsolute: AbsolutePath = newDirectory.value.resolve(newDirectoryEntryCandidate).asAbsolute()
-                        val newFileCandidateRelative: RelativePath = root.value.relativize(newFileCandidateAbsolute.value).asRelative()
+                        val newFileCandidateAbsolute: AbsolutePath =
+                            newDirectory.value.resolve(newDirectoryEntryCandidate).asAbsolute()
+                        val newFileCandidateRelative: RelativePath =
+                            root.value.relativize(newFileCandidateAbsolute.value).asRelative()
                         val newFileCandidateRelativeAsString = newFileCandidateRelative.value.toString()
                         if (newFileCandidateAbsolute.value.isDirectory(LinkOption.NOFOLLOW_LINKS)) {
-                            val newDirectoryWatchKeyEntriesToAdd = mutableMapOf<TokenImpl, MutableList<ScopeImpl.DirectoryWatchKeyEntryImpl>>()
+                            val newDirectoryWatchKeyEntriesToAdd =
+                                mutableMapOf<TokenImpl, MutableList<ScopeImpl.DirectoryWatchKeyEntryImpl>>()
                             scopes.values.forEach { scope ->
-                                if (scope.directoryPatterns.any { it.matcher(newFileCandidateRelativeAsString).matches() }) {
-                                    newFileCandidateRelative.value.register(service, watchEventKinds)
+                                if (scope.directoryPatterns.any {
+                                        it.matcher(newFileCandidateRelativeAsString).matches()
+                                    }) {
+                                    watchKeyFactoryFn(newFileCandidateAbsolute, service)
                                         .also { watchKey ->
-                                            newDirectoryWatchKeyEntriesToAdd[scope.token] = (newDirectoryWatchKeyEntriesToAdd[scope.token] ?: mutableListOf())
-                                                .apply {
-                                                    add(
-                                                        directoryWatchKeyEntryFactory(
-                                                            token = scope.token,
-                                                            absoluteDirectory = newFileCandidateAbsolute,
-                                                            watchKey = watchKey
+                                            newDirectoryWatchKeyEntriesToAdd[scope.token] =
+                                                (newDirectoryWatchKeyEntriesToAdd[scope.token] ?: mutableListOf())
+                                                    .apply {
+                                                        add(
+                                                            directoryWatchKeyEntryFactory(
+                                                                token = scope.token,
+                                                                absoluteDirectory = newFileCandidateAbsolute,
+                                                                watchKey = watchKey
+                                                            )
                                                         )
-                                                    )
-                                                }
+                                                    }
                                         }
                                 }
                             }
@@ -258,7 +277,12 @@ open class FileWatchEngine(
                         } else if (newFileCandidateAbsolute.value.isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
                             scopes.values.forEach { scope ->
                                 if (scope.filePatterns.any { it.matcher(newFileCandidateRelativeAsString).matches() }) {
-                                    scope.token.events.emit(Event.File.Exists(newFileCandidateRelative, Event.File.Origin.NEW_DIRECTORY_SCAN))
+                                    scope.token.events.emit(
+                                        Event.File.Exists(
+                                            newFileCandidateRelative,
+                                            Event.File.Origin.NEW_DIRECTORY_SCAN
+                                        )
+                                    )
                                 }
                             }
                         }
@@ -288,8 +312,16 @@ open class FileWatchEngine(
                 if (filePattern.matcher(fileCandidateRelativePathAsString).matches()) {
                     when (event.kind()) {
                         StandardWatchEventKinds.ENTRY_CREATE,
-                            StandardWatchEventKinds.ENTRY_MODIFY -> Event.File.Exists(fileCandidateRelativePath, Event.File.Origin.WATCH)
-                        StandardWatchEventKinds.ENTRY_DELETE -> Event.File.DoesNotExist(fileCandidateRelativePath, Event.File.Origin.WATCH)
+                        StandardWatchEventKinds.ENTRY_MODIFY -> Event.File.Exists(
+                            fileCandidateRelativePath,
+                            Event.File.Origin.WATCH
+                        )
+
+                        StandardWatchEventKinds.ENTRY_DELETE -> Event.File.DoesNotExist(
+                            fileCandidateRelativePath,
+                            Event.File.Origin.WATCH
+                        )
+
                         else -> null
                     }
                         ?.also { scope.token.events.emit(it) }
@@ -298,12 +330,22 @@ open class FileWatchEngine(
         }
     }
 
+    private suspend fun handleOverflowEvent(
+        takenWatchKey: WatchKey,
+        event: WatchEvent<Any>
+    ) {
+        println(event)
+        scopes.values
+            .filter { scope -> scope.directoryWatchKeyEntries.any { it.watchKey === takenWatchKey } }
+            .forEach { scope -> scope.token.events.emit(Event.Overflow) }
+    }
+
     private suspend fun WatchService.awaitTake(timeoutMillis: Long = 10) = coroutineScope {
         withTimeoutOrNull(timeoutMillis) {
             runInterruptible { take() }
         }
     }
-    
+
     private val watchEventKinds = arrayOf(
         StandardWatchEventKinds.ENTRY_CREATE,
         StandardWatchEventKinds.ENTRY_DELETE,
@@ -324,7 +366,7 @@ open class FileWatchEngine(
                     val dirAsAbsolute = dir.asAbsolute()
                     val dirAsRelative = root.value.relativize(dir).asRelative()
                     if (directoryPattern.matcher(dirAsRelative.value.toString()).matches()) {
-                        val watchKey = dir.register(service, watchEventKinds)
+                        val watchKey = watchKeyFactoryFn(dirAsAbsolute, service)
                         scopes[token]
                             ?.copyAndAddDirectoryWatchKeyEntry(
                                 directoryWatchKeyEntryFactory(token, dirAsAbsolute, watchKey)
@@ -363,7 +405,8 @@ open class FileWatchEngine(
 
     private suspend fun registerRootDirectory(token: TokenImpl) = registerDirectoryPattern(token, StandardPatterns.root)
 
-    private suspend fun unregisterRootDirectory(token: TokenImpl) = unregisterDirectoryPattern(token, StandardPatterns.root)
+    private suspend fun unregisterRootDirectory(token: TokenImpl) =
+        unregisterDirectoryPattern(token, StandardPatterns.root)
 
     private suspend fun unregisterDirectoryPattern(
         token: TokenImpl,
@@ -374,9 +417,9 @@ open class FileWatchEngine(
             scopes[token]
                 ?.let { scope ->
                     scope.directoryWatchKeyEntries
-                    .filter { directoryPattern.matcher(it.relativeDirectory.value.toString()).matches() }
-                    .onEach { it.watchKey.cancel() }
-                    .let { scope.copyAndRemoveDirectoryWatchKeyEntries(it) }
+                        .filter { directoryPattern.matcher(it.relativeDirectory.value.toString()).matches() }
+                        .onEach { it.watchKey.cancel() }
+                        .let { scope.copyAndRemoveDirectoryWatchKeyEntries(it) }
                         .copyAndRemoveDirectoryPattern(directoryPattern)
                 }
                 ?.also { scopes[token] = it }
@@ -409,7 +452,8 @@ open class FileWatchEngine(
         }
     }
 
-    private fun Scope<*>.checkDirectoryPatternsNotEmpty() = check(directoryPatterns.isNotEmpty()) { "Scope must have a directory pattern registered" }
+    private fun Scope<*>.checkDirectoryPatternsNotEmpty() =
+        check(directoryPatterns.isNotEmpty()) { "Scope must have a directory pattern registered" }
 
     suspend fun destroyToken(token: Token) = mutex.withLock {
         val scope = scopes[token]
@@ -567,7 +611,7 @@ open class FileWatchEngine(
                 .toMutableList()
                 .apply { remove(filePattern) }
         )
-        
+
         override fun copyAndAddDirectoryWatchKeyEntry(entry: Scope.DirectoryWatchKeyEntry) = copy(
             directoryWatchKeyEntries = directoryWatchKeyEntries
                 .toMutableList()
@@ -586,11 +630,11 @@ open class FileWatchEngine(
                 .apply { removeAll(entries) }
         )
 
-        fun copyAndAddWatchedSubdirectory(watchedSubdirectory: Scope.WatchedSubdirectoryEntry, watchKey: WatchKey)
-        = copyAndMutateWatchedSubdirectory(watchKey) { it.copyAndAddWatchedSubdirectory(watchedSubdirectory) }
+        fun copyAndAddWatchedSubdirectory(watchedSubdirectory: Scope.WatchedSubdirectoryEntry, watchKey: WatchKey) =
+            copyAndMutateWatchedSubdirectory(watchKey) { it.copyAndAddWatchedSubdirectory(watchedSubdirectory) }
 
-        fun copyAndRemoveWatchedSubdirectory(watchedSubdirectory: Scope.WatchedSubdirectoryEntry, watchKey: WatchKey)
-        = copyAndMutateWatchedSubdirectory(watchKey) { it.copyAndRemoveWatchedSubdirectory(watchedSubdirectory) }
+        fun copyAndRemoveWatchedSubdirectory(watchedSubdirectory: Scope.WatchedSubdirectoryEntry, watchKey: WatchKey) =
+            copyAndMutateWatchedSubdirectory(watchKey) { it.copyAndRemoveWatchedSubdirectory(watchedSubdirectory) }
 
         private fun copyAndMutateWatchedSubdirectory(
             watchKey: WatchKey,
@@ -617,17 +661,19 @@ open class FileWatchEngine(
             override val watchedSubdirectories: Set<Scope.WatchedSubdirectoryEntry>
         ) : Scope.DirectoryWatchKeyEntry {
 
-            override fun copyAndAddWatchedSubdirectory(watchedSubdirectory: Scope.WatchedSubdirectoryEntry): DirectoryWatchKeyEntryImpl = copy(
-                watchedSubdirectories = watchedSubdirectories
-                    .toMutableSet()
-                    .apply { add(watchedSubdirectory) }
-            )
+            override fun copyAndAddWatchedSubdirectory(watchedSubdirectory: Scope.WatchedSubdirectoryEntry): DirectoryWatchKeyEntryImpl =
+                copy(
+                    watchedSubdirectories = watchedSubdirectories
+                        .toMutableSet()
+                        .apply { add(watchedSubdirectory) }
+                )
 
-            override fun copyAndRemoveWatchedSubdirectory(watchedSubdirectory: Scope.WatchedSubdirectoryEntry): DirectoryWatchKeyEntryImpl = copy(
-                watchedSubdirectories = watchedSubdirectories
-                    .toMutableSet()
-                    .apply { remove(watchedSubdirectory) }
-            )
+            override fun copyAndRemoveWatchedSubdirectory(watchedSubdirectory: Scope.WatchedSubdirectoryEntry): DirectoryWatchKeyEntryImpl =
+                copy(
+                    watchedSubdirectories = watchedSubdirectories
+                        .toMutableSet()
+                        .apply { remove(watchedSubdirectory) }
+                )
         }
     }
 
@@ -705,6 +751,7 @@ open class FileWatchEngine(
                 NEW_DIRECTORY_SCAN
             }
         }
+
         object Overflow : Event()
     }
 

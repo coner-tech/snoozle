@@ -2,6 +2,7 @@ package tech.coner.snoozle.db
 
 import assertk.Assert
 import assertk.all
+import assertk.assertAll
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.exactly
@@ -15,9 +16,14 @@ import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.key
 import assertk.assertions.prop
+import io.mockk.every
+import io.mockk.impl.annotations.MockK
+import io.mockk.junit5.MockKExtension
+import io.mockk.justRun
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -31,9 +37,13 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardWatchEventKinds
+import java.nio.file.WatchEvent
+import java.nio.file.WatchKey
 import java.nio.file.WatchService
 import java.util.regex.Pattern
 import kotlin.coroutines.CoroutineContext
@@ -713,6 +723,85 @@ class FileWatchEngineTest : CoroutineScope {
         }
     }
 
+    @Nested
+    @ExtendWith(MockKExtension::class)
+    inner class Overflow {
+
+        @MockK lateinit var watchService: WatchService
+        @MockK lateinit var rootWatchKey: WatchKey
+        @MockK lateinit var subfolder1WatchKey: WatchKey
+        @MockK lateinit var subfolder2WatchKey: WatchKey
+        @MockK lateinit var rootOverflowEvent: WatchEvent<Any>
+        @MockK lateinit var subfolder1OverflowEvent: WatchEvent<Any>
+        @MockK lateinit var subfolder2OverflowEvent: WatchEvent<Any>
+
+        @BeforeEach
+        fun before (): Unit = runBlocking {
+            subfolder1.createDirectory()
+            subfolder2.createDirectory()
+            fileWatchEngine.testWatchServiceFactoryFn = { watchService }
+            fileWatchEngine.testWatchKeyFactoryFn = { absolutePath, _ ->
+                when (absolutePath) {
+                    root.asAbsolute() -> rootWatchKey
+                    subfolder1.asAbsolute() -> subfolder1WatchKey
+                    subfolder2.asAbsolute() -> subfolder2WatchKey
+                    else -> throw IllegalArgumentException()
+                }
+            }
+
+            every { rootOverflowEvent.kind() } returns StandardWatchEventKinds.OVERFLOW
+            every { subfolder1OverflowEvent.kind() } returns  StandardWatchEventKinds.OVERFLOW
+            every { subfolder2OverflowEvent.kind() } returns StandardWatchEventKinds.OVERFLOW
+            justRun { rootWatchKey.cancel() }
+            justRun { subfolder1WatchKey.cancel() }
+            justRun { subfolder2WatchKey.cancel() }
+            justRun { watchService.close() }
+        }
+
+        @Test
+        fun `It should emit overflow to sole token`(): Unit = runBlocking {
+            every { watchService.take() } returns rootWatchKey
+            every { rootWatchKey.pollEvents() } returns listOf(rootOverflowEvent)
+            val token = fileWatchEngine.createToken()
+            token.registerRootDirectory()
+            token.registerFilePattern(rootAnyTxtPattern)
+
+            val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
+            assertThat(event)
+                .isOverflowInstance()
+        }
+
+        @Test
+        fun `It should emit overflow to relevant token`(): Unit = runBlocking {
+            every { watchService.take() } returnsMany listOf(
+                rootWatchKey,
+                subfolder1WatchKey,
+                subfolder2WatchKey
+            )
+            every { rootWatchKey.pollEvents() } returns listOf(rootOverflowEvent)
+            every { subfolder1WatchKey.pollEvents() } returns listOf(subfolder1OverflowEvent)
+            every { subfolder2WatchKey.pollEvents() } returns listOf(subfolder2OverflowEvent)
+            val rootToken = fileWatchEngine.createToken()
+            rootToken.registerRootDirectory()
+            val subfolder1Token = fileWatchEngine.createToken()
+            subfolder1Token.registerDirectoryPattern(Pattern.compile("^subfolder1$"))
+            val subfolder2Token = fileWatchEngine.createToken()
+            subfolder2Token.registerDirectoryPattern(Pattern.compile("^subfolder2$"))
+
+            val rootEvent = async { withTimeoutOrNull(defaultTimeoutMillis) { rootToken.events.first() } }
+            val subfolder1Event = async { withTimeoutOrNull(defaultTimeoutMillis) { subfolder1Token.events.first() } }
+            val subfolder2Event = async { withTimeoutOrNull(defaultTimeoutMillis) { subfolder2Token.events.first() } }
+
+            assertAll {
+                assertThat(rootEvent.await()).isNull()
+                assertThat(subfolder1Event.await()).isNull()
+                assertThat(subfolder2Event.await())
+                    .isNotNull()
+                    .isOverflowInstance()
+            }
+        }
+    }
+
     private data class TestPath(
         val absolute: AbsolutePath,
         val relative: RelativePath
@@ -732,6 +821,18 @@ private class TestFileWatchEngine(
     coroutineContext: CoroutineContext,
     root: AbsolutePath
 ) : FileWatchEngine(coroutineContext, root) {
+    var testWatchServiceFactoryFn: (AbsolutePath) -> WatchService = watchServiceFactoryFn
+        get() = watchServiceFactoryFn
+        set(value) {
+            watchServiceFactoryFn = value
+            field = value
+        }
+    var testWatchKeyFactoryFn: (AbsolutePath, WatchService) -> WatchKey = watchKeyFactoryFn
+        get() = watchKeyFactoryFn
+        set(value) {
+            watchKeyFactoryFn = value
+            field = value
+        }
     val testNextTokenId: Int
         get() = nextTokenId
     val testDestroyedTokenIdRanges: Set<ClosedRange<Int>>
