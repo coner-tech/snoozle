@@ -14,6 +14,7 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
+import assertk.assertions.isSameAs
 import assertk.assertions.key
 import assertk.assertions.prop
 import io.mockk.every
@@ -462,6 +463,29 @@ class FileWatchEngineTest : CoroutineScope {
                             }
                         }
                     }
+                }
+            }
+        }
+
+        @Test
+        fun `When multiple tokens match the same directory it should reuse the watchToken`() = runBlocking {
+            subfolder1.createDirectory()
+            val token1 = fileWatchEngine.createToken()
+            val token2 = fileWatchEngine.createToken()
+
+            token1.registerDirectoryPattern(subfolderDirectoryPattern)
+            token2.registerDirectoryPattern(subfolderDirectoryPattern)
+
+            assertThat(fileWatchEngine).all {
+                scopes().all {
+                    hasSize(2)
+                    transform("scopes distinct watchKeys") { scopes ->
+                        scopes.values
+                            .flatMap { it.directoryWatchKeyEntries }
+                            .map { it.watchKey }
+                            .distinct()
+                    }
+                        .hasSize(1)
                 }
             }
         }
