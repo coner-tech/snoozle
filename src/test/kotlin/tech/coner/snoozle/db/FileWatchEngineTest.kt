@@ -14,7 +14,6 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
-import assertk.assertions.isSameAs
 import assertk.assertions.key
 import assertk.assertions.prop
 import io.mockk.every
@@ -838,7 +837,6 @@ class FileWatchEngineTest : CoroutineScope {
             relative = root.relativize(path).asRelative()
         )
     }
-
 }
 
 private class TestFileWatchEngine(
@@ -861,8 +859,8 @@ private class TestFileWatchEngine(
         get() = nextTokenId
     val testDestroyedTokenIdRanges: Set<ClosedRange<Int>>
         get() = destroyedTokenIdRanges
-    val testScopes: Map<TokenImpl, ScopeImpl>
-        get() = scopes
+    val testScopes: Map<Token, Scope>
+        get() = scopes as Map<Token, Scope>
     val testService: WatchService?
         get() = service
     val testPollLoopScope: CoroutineContext?
@@ -873,15 +871,15 @@ private class TestFileWatchEngine(
 
 private fun Assert<TestFileWatchEngine>.nextTokenId() = prop("nextTokenId") { it.testNextTokenId }
 private fun Assert<TestFileWatchEngine>.destroyedTokenIdRanges() = prop("destroyedTokendRanges") { it.testDestroyedTokenIdRanges }
-private fun Assert<TestFileWatchEngine>.scopes() = prop("scopes") { it.testScopes as Map<FileWatchEngine.Token, FileWatchEngine.Scope<FileWatchEngine.Scope.DirectoryWatchKeyEntry>> }
+private fun Assert<TestFileWatchEngine>.scopes() = prop("scopes") { it.testScopes }
 private fun Assert<TestFileWatchEngine>.service() = prop("service") { it.testService }
 private fun Assert<TestFileWatchEngine>.pollLoopScope() = prop("pollLoopScope") { it.testPollLoopScope }
 private fun Assert<TestFileWatchEngine>.pollLoopJob() = prop("pollLoopJob") { it.testPollLoopJob}
 
-private fun Assert<FileWatchEngine.Scope<*>>.token() = prop(FileWatchEngine.Scope<*>::token)
-private fun Assert<FileWatchEngine.Scope<*>>.directoryPatterns() = prop(FileWatchEngine.Scope<*>::directoryPatterns)
-private fun Assert<FileWatchEngine.Scope<*>>.filePatterns() = prop(FileWatchEngine.Scope<*>::filePatterns)
-private fun Assert<FileWatchEngine.Scope<*>>.directoryWatchKeyEntries() = prop(FileWatchEngine.Scope<*>::directoryWatchKeyEntries)
+private fun Assert<FileWatchEngine.Scope>.token() = prop(FileWatchEngine.Scope::token)
+private fun Assert<FileWatchEngine.Scope>.directoryPatterns() = prop(FileWatchEngine.Scope::directoryPatterns)
+private fun Assert<FileWatchEngine.Scope>.filePatterns() = prop(FileWatchEngine.Scope::filePatterns)
+private fun Assert<FileWatchEngine.Scope>.directoryWatchKeyEntries() = prop(FileWatchEngine.Scope::directoryWatchKeyEntries)
 
 private fun Assert<FileWatchEngine.Scope.DirectoryWatchKeyEntry>.absoluteDirectory() = prop(FileWatchEngine.Scope.DirectoryWatchKeyEntry::absoluteDirectory)
 private fun Assert<FileWatchEngine.Scope.DirectoryWatchKeyEntry>.relativeDirectory() = prop(FileWatchEngine.Scope.DirectoryWatchKeyEntry::relativeDirectory)
