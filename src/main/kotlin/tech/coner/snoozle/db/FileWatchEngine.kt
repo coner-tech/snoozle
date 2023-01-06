@@ -458,7 +458,17 @@ open class FileWatchEngine(
         if (scope == null || scope.token.destroyed) {
             return@withLock // already destroyed, ignore
         }
-        scope.directoryWatchKeyEntries.forEach { it.watchKey.cancel() }
+
+        val otherScopes = scopes.values.filter { it.token != token }
+        scope.directoryWatchKeyEntries.forEach { destroyingDirectoryWatchKeyEntry ->
+            if (otherScopes.none { otherScope ->
+                    otherScope.directoryWatchKeyEntries.any {
+                        it.watchKey == destroyingDirectoryWatchKeyEntry.watchKey
+                    }
+            }) {
+                destroyingDirectoryWatchKeyEntry.watchKey.cancel()
+            }
+        }
         scopes.remove(token)
         processScopesForClose()
 

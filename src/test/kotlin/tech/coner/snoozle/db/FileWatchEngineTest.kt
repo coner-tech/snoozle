@@ -5,6 +5,7 @@ import assertk.all
 import assertk.assertAll
 import assertk.assertThat
 import assertk.assertions.containsExactly
+import assertk.assertions.each
 import assertk.assertions.exactly
 import assertk.assertions.hasMessage
 import assertk.assertions.hasSize
@@ -50,6 +51,7 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.io.path.createDirectory
 import kotlin.io.path.deleteExisting
 import kotlin.io.path.writeText
+import tech.coner.snoozle.util.isValid
 
 class FileWatchEngineTest : CoroutineScope {
 
@@ -306,6 +308,33 @@ class FileWatchEngineTest : CoroutineScope {
                 destroyedTokenIdRanges().all {
                     hasSize(1)
                     exactly(1) { it.isEqualTo(Int.MIN_VALUE..(Int.MIN_VALUE + 1)) }
+                }
+            }
+        }
+
+        @Test
+        fun `When multiple tokens watch the same directory and one is closed the other watch key should remain valid`() = runBlocking {
+            subfolder1.createDirectory()
+            val token1 = fileWatchEngine.createToken()
+            val token2 = fileWatchEngine.createToken()
+            arrayOf(token1, token2)
+                .forEach { token ->
+                    token.registerRootDirectory()
+                    token.registerDirectoryPattern(subfolderDirectoryPattern)
+                    token.registerFilePattern(subfolderAnyTxtPattern)
+                }
+
+            fileWatchEngine.destroyToken(token1)
+
+            assertThat(fileWatchEngine).isNotNull().all {
+                scopes().all {
+                    hasSize(1)
+                    key(token2).all {
+                        directoryWatchKeyEntries().all {
+                            hasSize(2)
+                            each { it.watchKey().isValid() }
+                        }
+                    }
                 }
             }
         }
