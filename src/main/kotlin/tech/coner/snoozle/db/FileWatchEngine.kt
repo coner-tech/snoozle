@@ -277,7 +277,7 @@ open class FileWatchEngine(
                             scopes.values.forEach { scope ->
                                 if (scope.filePatterns.any { it.matcher(newFileCandidateRelativeAsString).matches() }) {
                                     scope.token.events.emit(
-                                        Event.File.Exists(
+                                        Event.File.Created(
                                             newFileCandidateRelative,
                                             Event.File.Origin.NEW_DIRECTORY_SCAN
                                         )
@@ -304,23 +304,23 @@ open class FileWatchEngine(
             return@coroutineScope
         }
         val fileCandidateRelativePath = event.contextAsRelativePath(firstDirectoryWatchKeyEntry)
-            ?: return@coroutineScope // no watch key in a scope matched taken watch key, ignore
         val fileCandidateRelativePathAsString = fileCandidateRelativePath.value.toString()
         scopes.values.forEach { scope ->
             scope.filePatterns.forEach { filePattern ->
                 if (filePattern.matcher(fileCandidateRelativePathAsString).matches()) {
                     when (event.kind()) {
-                        StandardWatchEventKinds.ENTRY_CREATE,
-                        StandardWatchEventKinds.ENTRY_MODIFY -> Event.File.Exists(
+                        StandardWatchEventKinds.ENTRY_CREATE -> Event.File.Created(
                             fileCandidateRelativePath,
                             Event.File.Origin.WATCH
                         )
-
-                        StandardWatchEventKinds.ENTRY_DELETE -> Event.File.DoesNotExist(
+                        StandardWatchEventKinds.ENTRY_MODIFY -> Event.File.Modified(
                             fileCandidateRelativePath,
                             Event.File.Origin.WATCH
                         )
-
+                        StandardWatchEventKinds.ENTRY_DELETE -> Event.File.Deleted(
+                            fileCandidateRelativePath,
+                            Event.File.Origin.WATCH
+                        )
                         else -> null
                     }
                         ?.also { scope.token.events.emit(it) }
@@ -715,12 +715,19 @@ open class FileWatchEngine(
             abstract val file: RelativePath
             abstract val origin: Origin
 
-            data class Exists(
+            sealed class Exists : File()
+
+            data class Created(
                 override val file: RelativePath,
                 override val origin: Origin
-            ) : File()
+            ) : Exists()
 
-            data class DoesNotExist(
+            data class Modified(
+                override val file: RelativePath,
+                override val origin: Origin
+            ) : Exists()
+
+            data class Deleted(
                 override val file: RelativePath,
                 override val origin: Origin
             ) : File()

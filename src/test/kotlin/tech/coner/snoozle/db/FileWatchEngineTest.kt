@@ -40,6 +40,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
+import tech.coner.snoozle.util.isValid
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardWatchEventKinds
@@ -51,7 +52,6 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.io.path.createDirectory
 import kotlin.io.path.deleteExisting
 import kotlin.io.path.writeText
-import tech.coner.snoozle.util.isValid
 
 class FileWatchEngineTest : CoroutineScope {
 
@@ -594,7 +594,7 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isFileExistsInstance()
+                .isFileCreatedInstance()
                 .all {
                     file().isEqualTo(subfolder1FileDotTxt.relative)
                     origin().isEqualTo(FileWatchEngine.Event.File.Origin.NEW_DIRECTORY_SCAN)
@@ -667,7 +667,7 @@ class FileWatchEngineTest : CoroutineScope {
     inner class EventFileCreatedEmissions {
 
         @Test
-        fun `It should emit record exists when matching file created`() = runBlocking {
+        fun `It should emit file created when matching file created`() = runBlocking {
             val token = fileWatchEngine.createToken()
             token.registerRootDirectory()
             token.registerFilePattern(rootAnyTxtPattern)
@@ -676,7 +676,7 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isFileExistsInstance()
+                .isFileCreatedInstance()
                 .all {
                     file().isEqualTo(rootFileDotTxt.relative)
                     origin().isEqualTo(FileWatchEngine.Event.File.Origin.WATCH)
@@ -710,7 +710,7 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isFileExistsInstance()
+                .isFileModifiedInstance()
                 .all {
                     file().isEqualTo(rootFileDotTxt.relative)
                     origin().isEqualTo(FileWatchEngine.Event.File.Origin.WATCH)
@@ -750,7 +750,7 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isFileDoesNotExistInstance()
+                .isFileDeletedInstance()
                 .all {
                     file().isEqualTo(rootFileDotTxt.relative)
                     origin().isEqualTo(FileWatchEngine.Event.File.Origin.WATCH)
@@ -919,8 +919,9 @@ private fun Assert<FileWatchEngine.Scope.WatchedSubdirectoryEntry>.absolutePath(
 private fun Assert<FileWatchEngine.Scope.WatchedSubdirectoryEntry>.relativePath() = prop(FileWatchEngine.Scope.WatchedSubdirectoryEntry::relativePath)
 
 
-private fun Assert<FileWatchEngine.Event>.isFileExistsInstance() = isInstanceOf(FileWatchEngine.Event.File.Exists::class)
-private fun Assert<FileWatchEngine.Event>.isFileDoesNotExistInstance() = isInstanceOf(FileWatchEngine.Event.File.DoesNotExist::class)
+private fun Assert<FileWatchEngine.Event>.isFileCreatedInstance() = isInstanceOf(FileWatchEngine.Event.File.Created::class)
+private fun Assert<FileWatchEngine.Event>.isFileModifiedInstance() = isInstanceOf(FileWatchEngine.Event.File.Modified::class)
+private fun Assert<FileWatchEngine.Event>.isFileDeletedInstance() = isInstanceOf(FileWatchEngine.Event.File.Deleted::class)
 private fun Assert<FileWatchEngine.Event>.isOverflowInstance() = isInstanceOf(FileWatchEngine.Event.Overflow::class)
 private fun Assert<FileWatchEngine.Event.File>.file() = prop(FileWatchEngine.Event.File::file)
 private fun Assert<FileWatchEngine.Event.File>.origin() = prop(FileWatchEngine.Event.File::origin)
