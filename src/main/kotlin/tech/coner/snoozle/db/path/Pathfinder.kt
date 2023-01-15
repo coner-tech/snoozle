@@ -1,5 +1,7 @@
-package tech.coner.snoozle.db
+package tech.coner.snoozle.db.path
 
+import tech.coner.snoozle.db.Key
+import tech.coner.snoozle.db.Record
 import java.nio.file.Files
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
@@ -8,7 +10,7 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.util.regex.Pattern
 import java.util.stream.Stream
 
-open class Pathfinder<K : tech.coner.snoozle.db.Key, R : Record<K>>(
+open class Pathfinder<K : Key, R : Record<K>>(
     protected val root: AbsolutePath,
     protected val pathParts: List<PathPart<K, R, *>>
 ) {

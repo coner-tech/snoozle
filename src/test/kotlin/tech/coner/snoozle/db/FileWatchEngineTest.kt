@@ -40,6 +40,10 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
+import tech.coner.snoozle.db.path.AbsolutePath
+import tech.coner.snoozle.db.path.RelativePath
+import tech.coner.snoozle.db.path.asAbsolute
+import tech.coner.snoozle.db.path.asRelative
 import tech.coner.snoozle.util.isValid
 import java.nio.file.Files
 import java.nio.file.Path

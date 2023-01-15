@@ -22,7 +22,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.readText
-import tech.coner.snoozle.db.asAbsolute
+import tech.coner.snoozle.db.path.asAbsolute
 
 class InitializationIntegrationTest {
 

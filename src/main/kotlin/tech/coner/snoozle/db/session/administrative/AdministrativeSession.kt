@@ -8,7 +8,7 @@ import tech.coner.snoozle.db.migration.MigrationException
 import tech.coner.snoozle.db.migration.Segment
 import tech.coner.snoozle.db.session.Session
 import java.util.*
-import tech.coner.snoozle.db.AbsolutePath
+import tech.coner.snoozle.db.path.AbsolutePath
 
 class AdministrativeSession(
     private val root: AbsolutePath,

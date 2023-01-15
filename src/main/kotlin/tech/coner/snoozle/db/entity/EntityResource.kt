@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectWriter
 import io.reactivex.Observable
 import tech.coner.snoozle.db.Key
 import tech.coner.snoozle.db.KeyMapper
-import tech.coner.snoozle.db.Pathfinder
+import tech.coner.snoozle.db.path.Pathfinder
 import tech.coner.snoozle.db.FileWatchEngine
 import tech.coner.snoozle.util.PathWatchEvent
 import tech.coner.snoozle.util.watch
@@ -17,10 +17,10 @@ import java.nio.file.StandardWatchEventKinds
 import java.util.function.Predicate
 import java.util.stream.Stream
 import kotlin.io.path.notExists
-import tech.coner.snoozle.db.AbsolutePath
-import tech.coner.snoozle.db.RelativePath
-import tech.coner.snoozle.db.asAbsolute
-import tech.coner.snoozle.db.asRelative
+import tech.coner.snoozle.db.path.AbsolutePath
+import tech.coner.snoozle.db.path.RelativePath
+import tech.coner.snoozle.db.path.asAbsolute
+import tech.coner.snoozle.db.path.asRelative
 
 class EntityResource<K : Key, E : Entity<K>>(
     private val root: AbsolutePath,

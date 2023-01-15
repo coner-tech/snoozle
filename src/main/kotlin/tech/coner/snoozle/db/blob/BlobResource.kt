@@ -1,16 +1,15 @@
 package tech.coner.snoozle.db.blob
 
 import tech.coner.snoozle.db.KeyMapper
-import tech.coner.snoozle.db.Pathfinder
+import tech.coner.snoozle.db.path.Pathfinder
 import tech.coner.snoozle.db.Record
 import java.io.InputStream
 import java.nio.file.Files
-import java.nio.file.Path
 import java.util.stream.Stream
 import kotlin.io.path.readText
-import tech.coner.snoozle.db.AbsolutePath
-import tech.coner.snoozle.db.RelativePath
-import tech.coner.snoozle.db.asAbsolute
+import tech.coner.snoozle.db.path.AbsolutePath
+import tech.coner.snoozle.db.path.RelativePath
+import tech.coner.snoozle.db.path.asAbsolute
 
 class BlobResource<B : Blob>(
     private val root: AbsolutePath,

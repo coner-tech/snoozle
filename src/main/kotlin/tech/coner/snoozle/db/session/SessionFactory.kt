@@ -3,7 +3,7 @@ package tech.coner.snoozle.db.session
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import tech.coner.snoozle.db.AbsolutePath
+import tech.coner.snoozle.db.path.AbsolutePath
 import tech.coner.snoozle.db.MigrationsRegistry
 import tech.coner.snoozle.db.TypesRegistry
 import tech.coner.snoozle.db.blob.BlobIoException

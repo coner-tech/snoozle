@@ -1,5 +1,6 @@
 package tech.coner.snoozle.db
 
+import tech.coner.snoozle.db.path.PathPart
 import kotlin.reflect.KClass
 
 abstract class RecordDefinition<K : Key, R : Record<K>>(

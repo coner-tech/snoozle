@@ -5,7 +5,7 @@ import tech.coner.snoozle.db.entity.EntityIoException
 import tech.coner.snoozle.util.resolve
 import java.nio.file.Files
 import java.util.*
-import tech.coner.snoozle.db.AbsolutePath
+import tech.coner.snoozle.db.path.AbsolutePath
 
 class MetadataRepository(
     private val root: AbsolutePath,

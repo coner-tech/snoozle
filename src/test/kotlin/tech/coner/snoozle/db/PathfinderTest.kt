@@ -8,6 +8,10 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import tech.coner.snoozle.db.path.PathPart
+import tech.coner.snoozle.db.path.Pathfinder
+import tech.coner.snoozle.db.path.asAbsolute
+import tech.coner.snoozle.db.path.asRelative
 import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.sample.Subwidget
 import tech.coner.snoozle.db.sample.Widget

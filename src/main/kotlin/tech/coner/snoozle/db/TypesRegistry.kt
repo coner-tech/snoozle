@@ -9,6 +9,9 @@ import tech.coner.snoozle.db.entity.EntityDefinition
 import tech.coner.snoozle.db.entity.EntityResource
 import tech.coner.snoozle.db.metadata.DatabaseVersionBlob
 import tech.coner.snoozle.db.metadata.SessionMetadataEntity
+import tech.coner.snoozle.db.path.AbsolutePath
+import tech.coner.snoozle.db.path.PathPart
+import tech.coner.snoozle.db.path.Pathfinder
 import kotlin.reflect.KClass
 
 class TypesRegistry(

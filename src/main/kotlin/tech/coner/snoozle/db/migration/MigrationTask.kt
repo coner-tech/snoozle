@@ -8,7 +8,7 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.util.regex.Pattern
 import java.util.stream.Stream
 import kotlin.io.path.*
-import tech.coner.snoozle.db.AbsolutePath
+import tech.coner.snoozle.db.path.AbsolutePath
 
 sealed class MigrationTask {
 

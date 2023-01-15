@@ -35,7 +35,7 @@ import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteExisting
 import kotlin.io.path.readText
-import tech.coner.snoozle.db.asAbsolute
+import tech.coner.snoozle.db.path.asAbsolute
 
 class DataSessionIntegrationTest {
 

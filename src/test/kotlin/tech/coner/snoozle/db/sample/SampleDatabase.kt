@@ -1,6 +1,6 @@
 package tech.coner.snoozle.db.sample
 
-import tech.coner.snoozle.db.AbsolutePath
+import tech.coner.snoozle.db.path.AbsolutePath
 import tech.coner.snoozle.db.Database
 import tech.coner.snoozle.db.entity.EntityResource
 import tech.coner.snoozle.db.migration.MigrationPathMatcher

@@ -13,7 +13,7 @@ import tech.coner.snoozle.db.migration.MigrationTask
 import tech.coner.snoozle.util.doesNotExist
 import java.nio.file.Path
 import java.nio.file.Paths
-import tech.coner.snoozle.db.asAbsolute
+import tech.coner.snoozle.db.path.asAbsolute
 
 class MigrationTaskTest {
 

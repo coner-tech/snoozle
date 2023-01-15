@@ -31,7 +31,7 @@ import java.util.*
 import kotlin.io.path.bufferedReader
 import kotlin.io.path.bufferedWriter
 import kotlin.io.path.readText
-import tech.coner.snoozle.db.asAbsolute
+import tech.coner.snoozle.db.path.asAbsolute
 
 class MigrationIntegrationTest {
 

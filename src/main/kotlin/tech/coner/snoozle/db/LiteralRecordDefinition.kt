@@ -1,5 +1,6 @@
 package tech.coner.snoozle.db
 
+import tech.coner.snoozle.db.path.PathPart
 import java.util.*
 import kotlin.reflect.KClass
 

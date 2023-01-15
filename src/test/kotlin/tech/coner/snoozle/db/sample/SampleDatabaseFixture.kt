@@ -6,7 +6,7 @@ import tech.coner.snoozle.util.uuid
 import java.nio.file.Path
 import java.time.format.DateTimeFormatter
 import java.util.*
-import tech.coner.snoozle.db.asAbsolute
+import tech.coner.snoozle.db.path.asAbsolute
 
 object SampleDatabaseFixture {
 
