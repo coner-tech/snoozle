@@ -5,8 +5,12 @@ import com.fasterxml.jackson.databind.ObjectWriter
 import io.reactivex.Observable
 import tech.coner.snoozle.db.Key
 import tech.coner.snoozle.db.KeyMapper
+import tech.coner.snoozle.db.path.AbsolutePath
 import tech.coner.snoozle.db.path.Pathfinder
-import tech.coner.snoozle.db.FileWatchEngine
+import tech.coner.snoozle.db.path.RelativePath
+import tech.coner.snoozle.db.path.asAbsolute
+import tech.coner.snoozle.db.path.asRelative
+import tech.coner.snoozle.db.watch.FileWatchEngine
 import tech.coner.snoozle.util.PathWatchEvent
 import tech.coner.snoozle.util.watch
 import java.nio.file.Files
@@ -17,10 +21,6 @@ import java.nio.file.StandardWatchEventKinds
 import java.util.function.Predicate
 import java.util.stream.Stream
 import kotlin.io.path.notExists
-import tech.coner.snoozle.db.path.AbsolutePath
-import tech.coner.snoozle.db.path.RelativePath
-import tech.coner.snoozle.db.path.asAbsolute
-import tech.coner.snoozle.db.path.asRelative
 
 class EntityResource<K : Key, E : Entity<K>>(
     private val root: AbsolutePath,
@@ -141,7 +141,7 @@ class EntityResource<K : Key, E : Entity<K>>(
 
     fun watch(keyFilter: Predicate<K>? = null): Observable<EntityEvent<K, E>> {
         return root.value.watch(recursive = true)
-                .filter { pathfinder.isRecord(root.value.relativize(it.file)) }
+                .filter { pathfinder.isRecord(root.value.relativize(it.file).asRelative()) }
                 .map { event: PathWatchEvent ->
                     PreReadWatchEventPayload(
                             event = event,

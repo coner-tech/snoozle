@@ -41,12 +41,12 @@ open class Pathfinder<K : Key, R : Record<K>>(
             .let { Pattern.compile("^$it$") }
     }
 
-    fun isRecordParent(candidate: Path): Boolean {
-        return recordParentCandidatePath.matcher(candidate.toString()).matches()
+    fun isRecordParent(candidate: RelativePath): Boolean {
+        return recordParentCandidatePath.matcher(candidate.value.toString()).matches()
     }
 
-    fun isRecord(candidate: Path): Boolean {
-        return recordCandidatePath.matcher(candidate.toString()).matches()
+    fun isRecord(candidate: RelativePath): Boolean {
+        return recordCandidatePath.matcher(candidate.value.toString()).matches()
     }
 
     private val listingStart: AbsolutePath by lazy {
@@ -71,7 +71,7 @@ open class Pathfinder<K : Key, R : Record<K>>(
                     start.value,
                     maxDepth,
                     { candidate: Path, attrs: BasicFileAttributes ->
-                        attrs.isRegularFile && isRecord(root.value.relativize(candidate))
+                        attrs.isRegularFile && isRecord(root.value.relativize(candidate).asRelative())
                     }
             )
                     .map { root.value.relativize(it).asRelative() }

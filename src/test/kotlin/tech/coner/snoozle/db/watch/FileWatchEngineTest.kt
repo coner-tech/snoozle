@@ -1,4 +1,4 @@
-package tech.coner.snoozle.db
+package tech.coner.snoozle.db.watch
 
 import assertk.Assert
 import assertk.all

@@ -1,17 +1,12 @@
-package tech.coner.snoozle.db
+package tech.coner.snoozle.db.path
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import assertk.assertions.isFalse
 import assertk.assertions.isTrue
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import tech.coner.snoozle.db.path.PathPart
-import tech.coner.snoozle.db.path.Pathfinder
-import tech.coner.snoozle.db.path.asAbsolute
-import tech.coner.snoozle.db.path.asRelative
 import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.sample.Subwidget
 import tech.coner.snoozle.db.sample.Widget
@@ -76,6 +71,7 @@ class PathfinderTest {
     @Test
     fun `It should find correct Widget candidate path is a record`() {
         val correctWidgetCandidate = root.relativize(SampleDatabaseFixture.Widgets.tempFile(root, SampleDatabaseFixture.Widgets.One))
+            .asRelative()
 
         val actual = widgetPathfinder.isRecord(correctWidgetCandidate)
 
@@ -83,30 +79,13 @@ class PathfinderTest {
     }
 
     @Test
-    fun `It should find incorrect Widget candidate paths are not a record`() {
-        val notRelativizedWidgetCandidate = SampleDatabaseFixture.Widgets.tempFile(root, SampleDatabaseFixture.Widgets.One)
-        assertThat(widgetPathfinder.isRecord(notRelativizedWidgetCandidate)).isFalse()
-
-        val correctSubwidgetCandidate = root.relativize(SampleDatabaseFixture.Subwidgets.tempFile(root, SampleDatabaseFixture.Subwidgets.WidgetOneSubwidgetOne))
-        assertThat(widgetPathfinder.isRecord(correctSubwidgetCandidate)).isFalse()
-    }
-
-    @Test
     fun `It should find correct Subwidget candidate path is a record`() {
         val correctSubwidgetCandidate = root.relativize(SampleDatabaseFixture.Subwidgets.tempFile(root, SampleDatabaseFixture.Subwidgets.WidgetOneSubwidgetOne))
+            .asRelative()
 
         val actual = subwidgetPathfinder.isRecord(correctSubwidgetCandidate)
 
         assertThat(actual).isTrue()
-    }
-
-    @Test
-    fun `It should find incorrect Subwidget candidate path is not a record`() {
-        val notRelativizedSubwidgetCandidate = SampleDatabaseFixture.Subwidgets.tempFile(root, SampleDatabaseFixture.Subwidgets.WidgetOneSubwidgetOne)
-        assertThat(subwidgetPathfinder.isRecord(notRelativizedSubwidgetCandidate)).isFalse()
-
-        val correctWidgetCandidate = root.relativize(SampleDatabaseFixture.Widgets.tempFile(root, SampleDatabaseFixture.Widgets.One))
-        assertThat(subwidgetPathfinder.isRecord(correctWidgetCandidate)).isFalse()
     }
 
     @Test

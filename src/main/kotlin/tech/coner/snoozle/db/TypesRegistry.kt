@@ -12,6 +12,7 @@ import tech.coner.snoozle.db.metadata.SessionMetadataEntity
 import tech.coner.snoozle.db.path.AbsolutePath
 import tech.coner.snoozle.db.path.PathPart
 import tech.coner.snoozle.db.path.Pathfinder
+import tech.coner.snoozle.db.watch.FileWatchEngine
 import kotlin.reflect.KClass
 
 class TypesRegistry(

@@ -7,6 +7,7 @@ import tech.coner.snoozle.db.path.AbsolutePath
 import tech.coner.snoozle.db.session.SessionFactory
 import tech.coner.snoozle.db.session.administrative.AdministrativeSession
 import tech.coner.snoozle.db.session.data.DataSession
+import tech.coner.snoozle.db.watch.FileWatchEngine
 import tech.coner.snoozle.util.snoozleJacksonObjectMapper
 
 abstract class Database(

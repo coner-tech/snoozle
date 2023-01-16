@@ -1,4 +1,4 @@
-package tech.coner.snoozle.db
+package tech.coner.snoozle.db.watch
 
 import kotlinx.coroutines.flow.Flow
 

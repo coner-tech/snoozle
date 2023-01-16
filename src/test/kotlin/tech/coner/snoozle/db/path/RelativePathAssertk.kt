@@ -1,4 +1,4 @@
-package tech.coner.snoozle.db
+package tech.coner.snoozle.db.path
 
 import assertk.Assert
 import assertk.assertions.prop
