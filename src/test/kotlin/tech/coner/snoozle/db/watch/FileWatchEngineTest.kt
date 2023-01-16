@@ -635,10 +635,10 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isFileCreatedInstance()
+                .isCreatedTypedInstance<RelativePath>()
                 .all {
-                    file().isEqualTo(subfolder1FileDotTxt.relative)
-                    origin().isEqualTo(FileWatchEngine.Event.File.Origin.NEW_DIRECTORY_SCAN)
+                    record().isEqualTo(subfolder1FileDotTxt.relative)
+                    origin().isEqualTo(Event.Origin.NEW_DIRECTORY_SCAN)
                 }
         }
     }
@@ -721,10 +721,10 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isFileCreatedInstance()
+                .isCreatedTypedInstance<RelativePath>()
                 .all {
-                    file().isEqualTo(rootFileDotTxt.relative)
-                    origin().isEqualTo(FileWatchEngine.Event.File.Origin.WATCH)
+                    record().isEqualTo(rootFileDotTxt.relative)
+                    origin().isEqualTo(Event.Origin.WATCH)
                 }
         }
 
@@ -755,10 +755,10 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isFileModifiedInstance()
+                .isModifiedTypedInstance<RelativePath>()
                 .all {
-                    file().isEqualTo(rootFileDotTxt.relative)
-                    origin().isEqualTo(FileWatchEngine.Event.File.Origin.WATCH)
+                    record().isEqualTo(rootFileDotTxt.relative)
+                    origin().isEqualTo(Event.Origin.WATCH)
                 }
         }
 
@@ -795,10 +795,10 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isFileDeletedInstance()
+                .isDeletedTypedInstance<RelativePath>()
                 .all {
-                    file().isEqualTo(rootFileDotTxt.relative)
-                    origin().isEqualTo(FileWatchEngine.Event.File.Origin.WATCH)
+                    record().isEqualTo(rootFileDotTxt.relative)
+                    origin().isEqualTo(Event.Origin.WATCH)
                 }
         }
 

@@ -271,9 +271,9 @@ open class FileWatchEngine(
                             watchStore.allScopes.forEach { scope ->
                                 if (scope.filePatterns.any { it.matcher(newFileCandidateRelativeAsString).matches() }) {
                                     scope.token.events.emit(
-                                        Event.File.Created(
+                                        Event.Created(
                                             newFileCandidateRelative,
-                                            Event.File.Origin.NEW_DIRECTORY_SCAN
+                                            Event.Origin.NEW_DIRECTORY_SCAN
                                         )
                                     )
                                 }
@@ -302,17 +302,17 @@ open class FileWatchEngine(
             scope.filePatterns.forEach { filePattern ->
                 if (filePattern.matcher(fileCandidateRelativePathAsString).matches()) {
                     when (event.kind()) {
-                        StandardWatchEventKinds.ENTRY_CREATE -> Event.File.Created(
+                        StandardWatchEventKinds.ENTRY_CREATE -> Event.Created(
                             fileCandidateRelativePath,
-                            Event.File.Origin.WATCH
+                            Event.Origin.WATCH
                         )
-                        StandardWatchEventKinds.ENTRY_MODIFY -> Event.File.Modified(
+                        StandardWatchEventKinds.ENTRY_MODIFY -> Event.Modified(
                             fileCandidateRelativePath,
-                            Event.File.Origin.WATCH
+                            Event.Origin.WATCH
                         )
-                        StandardWatchEventKinds.ENTRY_DELETE -> Event.File.Deleted(
+                        StandardWatchEventKinds.ENTRY_DELETE -> Event.Deleted(
                             fileCandidateRelativePath,
-                            Event.File.Origin.WATCH
+                            Event.Origin.WATCH
                         )
                         else -> null
                     }
@@ -673,37 +673,6 @@ open class FileWatchEngine(
         override suspend fun destroy() {
             engine.destroyToken(this)
         }
-    }
-
-    sealed class Event {
-        sealed class File : Event() {
-            abstract val file: RelativePath
-            abstract val origin: Origin
-
-            sealed class Exists : File()
-
-            data class Created(
-                override val file: RelativePath,
-                override val origin: Origin
-            ) : Exists()
-
-            data class Modified(
-                override val file: RelativePath,
-                override val origin: Origin
-            ) : Exists()
-
-            data class Deleted(
-                override val file: RelativePath,
-                override val origin: Origin
-            ) : File()
-
-            enum class Origin {
-                WATCH,
-                NEW_DIRECTORY_SCAN
-            }
-        }
-
-        object Overflow : Event()
     }
 
     object StandardPatterns {
