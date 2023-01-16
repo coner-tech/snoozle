@@ -27,7 +27,7 @@ sealed class Event {
     data class Deleted<R>(
         override val record: R,
         override val origin: Origin
-    ) : Event(), Record<R>, Exists
+    ) : Event(), Record<R>
 
     object Overflow : Event()
 }
