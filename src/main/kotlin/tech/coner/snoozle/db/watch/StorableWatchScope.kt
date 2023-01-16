@@ -1,5 +1,5 @@
 package tech.coner.snoozle.db.watch
 
-interface StorableWatchScope<SWT : StorableWatchToken<T>, T> {
+interface StorableWatchScope<SWT : StorableWatchToken> {
     val token: SWT
 }

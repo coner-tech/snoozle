@@ -524,7 +524,7 @@ open class FileWatchEngine(
         val directoryPatterns: List<Pattern>,
         val filePatterns: List<Pattern>,
         val directoryWatchKeyEntries: List<DirectoryWatchKeyEntry>
-    ) : StorableWatchScope<TokenImpl, Event> {
+    ) : StorableWatchScope<TokenImpl> {
         fun copyAndAddDirectoryPattern(directoryPattern: Pattern) = copy(
             directoryPatterns = directoryPatterns
                 .toMutableList()
@@ -631,7 +631,7 @@ open class FileWatchEngine(
         watchedSubdirectories = emptySet()
     )
 
-    interface Token : WatchToken<Event> {
+    interface Token : WatchToken {
 
         suspend fun registerDirectoryPattern(pattern: Pattern)
         suspend fun registerRootDirectory()
@@ -641,7 +641,7 @@ open class FileWatchEngine(
         suspend fun unregisterFilePattern(pattern: Pattern)
     }
 
-    data class TokenImpl(override val id: Int) : Token, StorableWatchToken<Event> {
+    data class TokenImpl(override val id: Int) : Token, StorableWatchToken {
         lateinit var engine: FileWatchEngine
         override val events = MutableSharedFlow<Event>()
         override var destroyed: Boolean = false

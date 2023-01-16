@@ -26,12 +26,12 @@ open class Pathfinder<K : Key, R : Record<K>>(
         return Paths.get(relativePath).asRelative()
     }
 
-    private val recordCandidatePath: Pattern by lazy {
+    val recordCandidatePath: Pattern by lazy {
         val joined = pathParts.joinToString("") { it.regex.pattern() }
         Pattern.compile("^$joined$")
     }
 
-    private val recordParentCandidatePath: Pattern by lazy {
+    val recordParentCandidatePath: Pattern by lazy {
         val indexOfLastDirectorySeparator = pathParts.indexOfLast {
             it is PathPart.DirectorySeparator<K, R>
         }

@@ -1,6 +1,8 @@
 package tech.coner.snoozle.db.watch
 
-open class WatchStore<SWT : StorableWatchToken<*>, SWS : StorableWatchScope<SWT, *>> {
+import kotlinx.coroutines.runBlocking
+
+open class WatchStore<SWT : StorableWatchToken, SWS : StorableWatchScope<SWT>> {
 
     protected val scopes = mutableMapOf<SWT, SWS>()
     protected var nextTokenId = Int.MIN_VALUE
@@ -8,13 +10,13 @@ open class WatchStore<SWT : StorableWatchToken<*>, SWS : StorableWatchScope<SWT,
 
     fun create(
         tokenFactory: (id: Int) -> SWT,
-        scopeFactory: (SWT) -> SWS
+        scopeFactory: suspend (SWT) -> SWS
     ): Pair<SWT, SWS> {
         val token = tokenFactory(
             chooseNextTokenId()
                 ?: throw TokenCapacityLimitException("Too many tokens created and not destroyed")
         )
-        val scope = scopeFactory(token)
+        val scope = runBlocking { scopeFactory(token) }
         scopes[token] = scope
         return token to scope
     }
@@ -23,8 +25,9 @@ open class WatchStore<SWT : StorableWatchToken<*>, SWS : StorableWatchScope<SWT,
         scopes[token] = scope
     }
 
-    operator fun get(token: SWT): SWS? {
+    operator fun get(token: SWT): SWS {
         return scopes[token]
+            ?: throw TokenNotFoundException("Token not found in store")
     }
 
     val allScopes: Collection<SWS>
@@ -50,7 +53,7 @@ open class WatchStore<SWT : StorableWatchToken<*>, SWS : StorableWatchScope<SWT,
 
     fun destroy(
         token: SWT,
-        afterDestroyFn: ((SWS) -> Unit)? = null
+        afterDestroyFn: (suspend (SWS) -> Unit)? = null
     ) {
         val scope = scopes[token]
         if (scope == null || token.destroyed) {
@@ -58,7 +61,7 @@ open class WatchStore<SWT : StorableWatchToken<*>, SWS : StorableWatchScope<SWT,
         }
 
         scopes.remove(token)
-        afterDestroyFn?.invoke(scope)
+        runBlocking { afterDestroyFn?.invoke(scope) }
 
         // record the scope id as destroyed
         val relevantRanges = destroyedTokenIdRanges.filter { candidate ->
