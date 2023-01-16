@@ -9,25 +9,25 @@ sealed class Event {
 
     interface Exists
 
-    interface Record<R> {
-        val record: R
-        val origin: Origin
+    sealed class Record<R> : Event() {
+        abstract val record: R
+        abstract val origin: Origin
     }
 
     data class Created<R>(
         override val record: R,
         override val origin: Origin
-    ) : Event(), Record<R>, Exists
+    ) : Record<R>(), Exists
 
     data class Modified<R>(
         override val record: R,
         override val origin: Origin
-    ) : Event(), Record<R>, Exists
+    ) : Record<R>(), Exists
 
     data class Deleted<R>(
         override val record: R,
         override val origin: Origin
-    ) : Event(), Record<R>
+    ) : Record<R>()
 
     object Overflow : Event()
 }
