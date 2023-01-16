@@ -46,43 +46,33 @@ open class FileWatchEngine(
     protected var watchKeyFactoryFn: (AbsolutePath, WatchService) -> WatchKey = { dir, watchService ->
         dir.value.register(watchService, watchEventKinds)
     }
-    protected var nextTokenId = Int.MIN_VALUE
-    protected val destroyedTokenIdRanges: MutableSet<ClosedRange<Int>> = mutableSetOf()
-    protected val scopes = mutableMapOf<TokenImpl, Scope>()
+    protected var watchStoreFactoryFn: () -> WatchStore<TokenImpl, Scope> = {
+        WatchStore()
+    }
+
+    protected val watchStore: WatchStore<TokenImpl, Scope> by lazy {
+        watchStoreFactoryFn()
+    }
+
     protected var service: WatchService? = null
     protected var pollLoopScope: CoroutineContext? = null
     protected var pollLoopJob: Job? = null
 
     suspend fun createToken(): Token = mutex.withLock {
-        val token = TokenImpl(
-            chooseNextTokenId()
-                ?: throw TokenCapacityLimitException("Too many tokens created and not destroyed")
+        val (token, _) = watchStore.create(
+            tokenFactory = { id -> TokenImpl(id) },
+            scopeFactory = { token ->
+                Scope(
+                    token = token,
+                    directoryPatterns = emptyList(),
+                    filePatterns = emptyList(),
+                    directoryWatchKeyEntries = emptyList()
+                )
+            }
         )
-            .apply { engine = this@FileWatchEngine }
-        scopes[token] = Scope(
-            token = token,
-            directoryPatterns = emptyList(),
-            filePatterns = emptyList(),
-            directoryWatchKeyEntries = emptyList()
-        )
+            .also { (token, _) -> token.engine = this }
         startService()
         token
-    }
-
-    private fun chooseNextTokenId(): Int? {
-        val takeRange = destroyedTokenIdRanges.minByOrNull { it.start }
-        return when {
-            takeRange != null -> {
-                destroyedTokenIdRanges.remove(takeRange)
-                if (takeRange.start < takeRange.endInclusive) {
-                    destroyedTokenIdRanges.add((takeRange.start + 1)..takeRange.endInclusive)
-                }
-                takeRange.start
-            }
-
-            nextTokenId < Int.MAX_VALUE -> nextTokenId++
-            else -> null
-        }
     }
 
     private suspend fun startService() = coroutineScope {
@@ -165,7 +155,7 @@ open class FileWatchEngine(
         val newDirectoryRelativePath = root.value.relativize(newDirectoryAbsolutePath.value).asRelative()
         newDirectoryRelativePath.value.toString()
             .let { pathAsString ->
-                scopes.values.filter { scope ->
+                watchStore.allScopes.filter { scope ->
                     scope.directoryPatterns.any { it.matcher(pathAsString).matches() }
                 }
             }
@@ -179,7 +169,7 @@ open class FileWatchEngine(
                     )
                 )
             }
-            .onEach { newScope -> scopes[newScope.token] = newScope }
+            .onEach { newScope -> watchStore[newScope.token] = newScope }
             .also { scanNewWatchedDirectory(newDirectoryAbsolutePath) }
     }
 
@@ -197,7 +187,7 @@ open class FileWatchEngine(
 
         fun Scope.findDirectoryWatchKeysToRemoveWatchedSubdirectory() = directoryWatchKeyEntries
             .filter { deletedDirectoryAbsolute.value.parent == it.absoluteDirectory.value }
-        scopes.values
+        watchStore.allScopes
             .mapNotNull { scope ->
                 val directoryWatchKeyEntriesToCancel = scope.findDirectoryWatchKeyEntriesToCancel()
                 if (directoryWatchKeyEntriesToCancel.isNotEmpty()) {
@@ -220,7 +210,7 @@ open class FileWatchEngine(
                     null
                 }
             }
-            .onEach { scopes[it.token] = it }
+            .onEach { watchStore[it.token] = it }
     }
 
     private suspend fun scanNewWatchedDirectory(newDirectory: AbsolutePath): Unit = coroutineScope {
@@ -235,7 +225,7 @@ open class FileWatchEngine(
             delay(100)
             mutex.withLock {
                 val service = service
-                if (!isActive || service == null || scopes.isEmpty()) {
+                if (!isActive || service == null || watchStore.isEmpty()) {
                     return@withLock
                 }
                 newDirectory.value
@@ -249,7 +239,7 @@ open class FileWatchEngine(
                         if (newFileCandidateAbsolute.value.isDirectory(LinkOption.NOFOLLOW_LINKS)) {
                             val newDirectoryWatchKeyEntriesToAdd =
                                 mutableMapOf<TokenImpl, MutableList<Scope.DirectoryWatchKeyEntry>>()
-                            scopes.values.forEach { scope ->
+                            watchStore.allScopes.forEach { scope ->
                                 if (scope.directoryPatterns.any {
                                         it.matcher(newFileCandidateRelativeAsString).matches()
                                     }) {
@@ -271,14 +261,14 @@ open class FileWatchEngine(
                             }
                             newDirectoryWatchKeyEntriesToAdd.forEach { (token, directoryWatchKeyEntriesToAdd) ->
                                 directoryWatchKeyEntriesToAdd.forEach { entryToAdd ->
-                                    scopes[token]
+                                    watchStore[token]
                                         ?.copyAndAddDirectoryWatchKeyEntry(entryToAdd)
-                                        ?.also { scopes[token] = it }
+                                        ?.also { watchStore[token] = it }
                                         ?.also { scanNewWatchedDirectory(entryToAdd.absoluteDirectory) }
                                 }
                             }
                         } else if (newFileCandidateAbsolute.value.isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
-                            scopes.values.forEach { scope ->
+                            watchStore.allScopes.forEach { scope ->
                                 if (scope.filePatterns.any { it.matcher(newFileCandidateRelativeAsString).matches() }) {
                                     scope.token.events.emit(
                                         Event.File.Created(
@@ -289,7 +279,6 @@ open class FileWatchEngine(
                                 }
                             }
                         }
-
                     }
             }
         }
@@ -309,7 +298,7 @@ open class FileWatchEngine(
         }
         val fileCandidateRelativePath = event.contextAsRelativePath(firstDirectoryWatchKeyEntry)
         val fileCandidateRelativePathAsString = fileCandidateRelativePath.value.toString()
-        scopes.values.forEach { scope ->
+        watchStore.allScopes.forEach { scope ->
             scope.filePatterns.forEach { filePattern ->
                 if (filePattern.matcher(fileCandidateRelativePathAsString).matches()) {
                     when (event.kind()) {
@@ -337,7 +326,7 @@ open class FileWatchEngine(
         takenWatchKey: WatchKey,
         event: WatchEvent<Any>
     ) {
-        scopes.values
+        watchStore.allScopes
             .filter { scope -> scope.directoryWatchKeyEntries.any { it.watchKey === takenWatchKey } }
             .forEach { scope -> scope.token.events.emit(Event.Overflow) }
     }
@@ -360,20 +349,20 @@ open class FileWatchEngine(
     ) {
         mutex.withLock {
             val service = this@FileWatchEngine.service ?: return@withLock Unit
-            scopes[token]
+            watchStore[token]
                 ?.copyAndAddDirectoryPattern(directoryPattern)
-                ?.also { scopes[token] = it }
+                ?.also { watchStore[token] = it }
             Files.walkFileTree(root.value, object : SimpleFileVisitor<Path>() {
                 override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
                     val dirAsAbsolute = dir.asAbsolute()
                     val dirAsRelative = root.value.relativize(dir).asRelative()
                     if (directoryPattern.matcher(dirAsRelative.value.toString()).matches()) {
                         val watchKey = watchKeyFactoryFn(dirAsAbsolute, service)
-                        scopes[token]
+                        watchStore[token]
                             ?.copyAndAddDirectoryWatchKeyEntry(
                                 directoryWatchKeyEntryFactory(token, dirAsAbsolute, watchKey)
                             )
-                            ?.also { scopes[token] = it }
+                            ?.also { watchStore[token] = it }
                     }
                     return FileVisitResult.CONTINUE
                 }
@@ -384,11 +373,11 @@ open class FileWatchEngine(
                     val dirAsRelative = root.value.relativize(dir).asRelative()
                     if (dirAsAbsolute != root) {
                         val parentDirAsAbsolute = dirAsAbsolute.value.parent.asAbsolute()
-                        val entryToMutate = scopes[token]
+                        val entryToMutate = watchStore[token]
                             ?.directoryWatchKeyEntries
                             ?.firstOrNull { it.absoluteDirectory == parentDirAsAbsolute }
                         if (entryToMutate != null) {
-                            scopes[token]
+                            watchStore[token]
                                 ?.copyAndAddWatchedSubdirectory(
                                     watchedSubdirectory = Scope.WatchedSubdirectoryEntry(
                                         absolutePath = dirAsAbsolute,
@@ -396,7 +385,7 @@ open class FileWatchEngine(
                                     ),
                                     watchKey = entryToMutate.watchKey
                                 )
-                                ?.also { scopes[token] = it }
+                                ?.also { watchStore[token] = it }
                         }
                     }
                     return FileVisitResult.CONTINUE
@@ -416,7 +405,7 @@ open class FileWatchEngine(
     ) {
         mutex.withLock {
             service ?: return@withLock
-            scopes[token]
+            watchStore[token]
                 ?.let { scope ->
                     scope.directoryWatchKeyEntries
                         .filter { directoryPattern.matcher(it.relativeDirectory.value.toString()).matches() }
@@ -424,7 +413,7 @@ open class FileWatchEngine(
                         .let { scope.copyAndRemoveDirectoryWatchKeyEntries(it) }
                         .copyAndRemoveDirectoryPattern(directoryPattern)
                 }
-                ?.also { scopes[token] = it }
+                ?.also { watchStore[token] = it }
         }
     }
 
@@ -433,11 +422,11 @@ open class FileWatchEngine(
         filePattern: Pattern
     ) {
         mutex.withLock {
-            scopes[token]
+            watchStore[token]
                 ?.also { it.checkDirectoryPatternsNotEmpty() }
                 ?.also { require(!it.filePatterns.contains(filePattern)) { "Scope already has file pattern: $filePattern" } }
                 ?.copyAndAddFilePattern(filePattern)
-                ?.also { scopes[token] = it }
+                ?.also { watchStore[token] = it }
         }
     }
 
@@ -446,83 +435,51 @@ open class FileWatchEngine(
         filePattern: Pattern
     ) {
         mutex.withLock {
-            scopes[token]
+            watchStore[token]
                 ?.also { it.checkDirectoryPatternsNotEmpty() }
                 ?.also { require(it.filePatterns.contains(filePattern)) { "Scope does not contain file pattern: $filePattern" } }
                 ?.copyAndRemoveFilePattern(filePattern)
-                ?.also { scopes[token] = it }
+                ?.also { watchStore[token] = it }
         }
     }
 
     private fun Scope.checkDirectoryPatternsNotEmpty() =
         check(directoryPatterns.isNotEmpty()) { "Scope must have a directory pattern registered" }
 
-    suspend fun destroyToken(token: Token) = mutex.withLock {
-        val scope = scopes[token]
-        if (scope == null || scope.token.destroyed) {
-            return@withLock // already destroyed, ignore
-        }
-
-        val otherScopes = scopes.values.filter { it.token != token }
-        scope.directoryWatchKeyEntries.forEach { destroyingDirectoryWatchKeyEntry ->
-            if (otherScopes.none { otherScope ->
-                    otherScope.directoryWatchKeyEntries.any {
-                        it.watchKey == destroyingDirectoryWatchKeyEntry.watchKey
+    suspend fun destroyToken(token: TokenImpl) = mutex.withLock {
+        watchStore.destroy(
+            token = token,
+            afterDestroyFn = { scope ->
+                processScopesForClose()
+                scope.directoryWatchKeyEntries.forEach { destroyedDirectoryWatchKeyEntry ->
+                    if (watchStore.allScopes.none { otherScope ->
+                            otherScope.directoryWatchKeyEntries.any {
+                                it.watchKey == destroyedDirectoryWatchKeyEntry.watchKey
+                            }
+                        }) {
+                        destroyedDirectoryWatchKeyEntry.watchKey.cancel()
                     }
-            }) {
-                destroyingDirectoryWatchKeyEntry.watchKey.cancel()
+                }
             }
-        }
-        scopes.remove(token)
-        processScopesForClose()
-
-        // record the scope id as destroyed
-        val relevantRanges = destroyedTokenIdRanges.filter { candidate ->
-            candidate.endInclusive + 1 == scope.token.id
-                    || candidate.start - 1 == scope.token.id
-        }
-        if (relevantRanges.isEmpty()) {
-            destroyedTokenIdRanges += scope.token.id..scope.token.id
-        } else if (relevantRanges.size == 1) {
-            val relevantRange = relevantRanges.single()
-            destroyedTokenIdRanges.remove(relevantRange)
-            if (relevantRange.endInclusive + 1 == scope.token.id) {
-                // replace with appended range
-                destroyedTokenIdRanges.add(relevantRange.start..scope.token.id)
-            } else {
-                // replace with preprended range
-                destroyedTokenIdRanges.add(scope.token.id..relevantRange.endInclusive)
-            }
-        } else if (relevantRanges.size == 2) {
-            val sorted = relevantRanges.sortedBy { it.start }
-            relevantRanges.forEach { destroyedTokenIdRanges.remove(it) }
-            destroyedTokenIdRanges.add(sorted[0].start..sorted[1].endInclusive)
-        } else {
-            // something went wrong
-        }
+        )
     }
 
     private fun processScopesForClose() {
-        if (scopes.isEmpty()) {
+        if (watchStore.isEmpty()) {
             pollLoopJob?.cancel()
             pollLoopJob = null
             pollLoopScope?.cancel()
             pollLoopScope = null
             service?.close()
             service = null
-            scopes.clear()
+            watchStore.destroyAll()
         }
     }
 
     suspend fun shutDown() {
         coroutineScope {
             mutex.withLock {
-                scopes.values.forEach { scope ->
-                    scope.directoryWatchKeyEntries.forEach { entry ->
-                        entry.watchKey.cancel()
-                    }
-                }
-                scopes.clear()
+                watchStore.destroyAll()
                 processScopesForClose()
             }
         }
@@ -530,7 +487,7 @@ open class FileWatchEngine(
     }
 
     private fun findDirectoryWatchKeyEntries(takenWatchKey: WatchKey): Collection<Scope.DirectoryWatchKeyEntry> {
-        return scopes.values.mapNotNull { scope ->
+        return watchStore.allScopes.mapNotNull { scope ->
             scope.directoryWatchKeyEntries.firstNotNullOfOrNull { directoryWatchKeyEntry ->
                 if (directoryWatchKeyEntry.watchKey == takenWatchKey) {
                     directoryWatchKeyEntry
@@ -563,11 +520,11 @@ open class FileWatchEngine(
     }
 
     data class Scope(
-        val token: TokenImpl,
+        override val token: TokenImpl,
         val directoryPatterns: List<Pattern>,
         val filePatterns: List<Pattern>,
         val directoryWatchKeyEntries: List<DirectoryWatchKeyEntry>
-    ) {
+    ) : StorableWatchScope<TokenImpl, Event> {
         fun copyAndAddDirectoryPattern(directoryPattern: Pattern) = copy(
             directoryPatterns = directoryPatterns
                 .toMutableList()
@@ -684,10 +641,10 @@ open class FileWatchEngine(
         suspend fun unregisterFilePattern(pattern: Pattern)
     }
 
-    data class TokenImpl(val id: Int) : Token {
+    data class TokenImpl(override val id: Int) : Token, StorableWatchToken<Event> {
         lateinit var engine: FileWatchEngine
         override val events = MutableSharedFlow<Event>()
-        var destroyed: Boolean = false
+        override var destroyed: Boolean = false
 
         override suspend fun registerDirectoryPattern(pattern: Pattern) {
             engine.registerDirectoryPattern(this, pattern)
@@ -711,6 +668,10 @@ open class FileWatchEngine(
 
         override suspend fun unregisterFilePattern(pattern: Pattern) {
             engine.unregisterFilePattern(this, pattern)
+        }
+
+        override suspend fun destroy() {
+            engine.destroyToken(this)
         }
     }
 
@@ -749,5 +710,4 @@ open class FileWatchEngine(
         val root: Pattern by lazy { Pattern.compile("^$") }
     }
 
-    class TokenCapacityLimitException(message: String) : Exception(message)
 }

@@ -1,6 +1,5 @@
 package tech.coner.snoozle.db.watch
 
-import assertk.Assert
 import assertk.all
 import assertk.assertAll
 import assertk.assertThat
@@ -12,11 +11,9 @@ import assertk.assertions.hasSize
 import assertk.assertions.index
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
-import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.key
-import assertk.assertions.prop
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
@@ -52,7 +49,6 @@ import java.nio.file.WatchEvent
 import java.nio.file.WatchKey
 import java.nio.file.WatchService
 import java.util.regex.Pattern
-import kotlin.coroutines.CoroutineContext
 import kotlin.io.path.createDirectory
 import kotlin.io.path.deleteExisting
 import kotlin.io.path.writeText
@@ -85,6 +81,9 @@ class FileWatchEngineTest : CoroutineScope {
             coroutineContext = coroutineContext,
             root = root.asAbsolute()
         )
+        fileWatchEngine.testWatchStoreFactoryFn = {
+            TestWatchStore()
+        }
     }
 
     @AfterEach
@@ -98,17 +97,22 @@ class FileWatchEngineTest : CoroutineScope {
 
         @Test
         fun `Its next token ID should be integer minimum value initially`() {
-            assertThat(fileWatchEngine).nextTokenId().isEqualTo(Int.MIN_VALUE)
+            assertThat(fileWatchEngine)
+                .watchStore()
+                .nextTokenId().isEqualTo(Int.MIN_VALUE)
         }
 
         @Test
         fun `Its destroyed token ID ranges should be empty initially`() {
-            assertThat(fileWatchEngine).destroyedTokenIdRanges().isEmpty()
+            assertThat(fileWatchEngine)
+                .watchStore()
+                .destroyedTokenIdRanges().isEmpty()
         }
 
         @Test
         fun `It should not have any scopes initially`() {
-            assertThat(fileWatchEngine).scopes().isEmpty()
+            assertThat(fileWatchEngine)
+                .watchStore().isEmpty()
         }
 
         @Test
@@ -130,16 +134,18 @@ class FileWatchEngineTest : CoroutineScope {
 
         @Test
         fun `It should create token`() = runBlocking {
-            val token = fileWatchEngine.createToken()
+            val token = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
 
             assertThat(fileWatchEngine).all {
-                nextTokenId().isEqualTo(Int.MIN_VALUE + 1)
-                scopes().all {
-                    hasSize(1)
-                    key(token).all {
-                        directoryPatterns().isEmpty()
-                        filePatterns().isEmpty()
-                        directoryWatchKeyEntries().isEmpty()
+                watchStore().all {
+                    nextTokenId().isEqualTo(Int.MIN_VALUE + 1)
+                    scopes().all {
+                        hasSize(1)
+                        key(token).all {
+                            directoryPatterns().isEmpty()
+                            filePatterns().isEmpty()
+                            directoryWatchKeyEntries().isEmpty()
+                        }
                     }
                 }
                 service().isNotNull()
@@ -154,9 +160,9 @@ class FileWatchEngineTest : CoroutineScope {
                 fileWatchEngine.createToken()
             }
 
-            assertThat(fileWatchEngine).all {
+            assertThat(fileWatchEngine)
+                .watchStore().
                 nextTokenId().isEqualTo(Int.MIN_VALUE + 2)
-            }
         }
 
         @Test
@@ -164,16 +170,17 @@ class FileWatchEngineTest : CoroutineScope {
             runBlocking {
                 repeat(2) {
                     val token = fileWatchEngine.createToken()
-                    fileWatchEngine.destroyToken(token)
+                    token.destroy()
                 }
             }
 
-            assertThat(fileWatchEngine).all {
-                nextTokenId().isEqualTo(Int.MIN_VALUE + 1)
-                destroyedTokenIdRanges().all {
-                    hasSize(1)
-                    exactly(1) { it.isEqualTo(Int.MIN_VALUE..(Int.MIN_VALUE)) }
-                }
+            assertThat(fileWatchEngine)
+                .watchStore().all {
+                    nextTokenId().isEqualTo(Int.MIN_VALUE + 1)
+                    destroyedTokenIdRanges().all {
+                        hasSize(1)
+                        exactly(1) { it.isEqualTo(Int.MIN_VALUE..(Int.MIN_VALUE)) }
+                    }
             }
         }
     }
@@ -185,47 +192,51 @@ class FileWatchEngineTest : CoroutineScope {
         fun `It should destroy sole token`() = runBlocking {
             val token = fileWatchEngine.createToken()
 
-            fileWatchEngine.destroyToken(token)
+            token.destroy()
 
             assertThat(fileWatchEngine).all {
-                scopes().isEmpty()
+                watchStore().isEmpty()
                 service().isNull()
                 pollLoopScope().isNull()
                 pollLoopJob().isNull()
-                destroyedTokenIdRanges().all {
-                    hasSize(1)
-                    exactly(1) { it.isEqualTo(Int.MIN_VALUE..Int.MIN_VALUE) }
+                watchStore().all {
+                    destroyedTokenIdRanges().all {
+                        hasSize(1)
+                        exactly(1) { it.isEqualTo(Int.MIN_VALUE..Int.MIN_VALUE) }
+                    }
+                    nextTokenId().isEqualTo(Int.MIN_VALUE + 1)
                 }
-                nextTokenId().isEqualTo(Int.MIN_VALUE + 1)
             }
         }
 
         @Test
         fun `It should destroy one of many tokens`() = runBlocking {
-            val token1 = fileWatchEngine.createToken()
-            val token2 = fileWatchEngine.createToken()
-            val token3 = fileWatchEngine.createToken()
+            val token1 = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
+            val token2 = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
+            val token3 = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
 
-            fileWatchEngine.destroyToken(token1)
+            token1.destroy()
 
             assertThat(fileWatchEngine).all {
-                scopes().all {
-                    hasSize(2)
-                    key(token2).all {
-                        directoryWatchKeyEntries().isEmpty()
+                watchStore().all {
+                    scopes().all {
+                        hasSize(2)
+                        key(token2).all {
+                            directoryWatchKeyEntries().isEmpty()
+                        }
+                        key(token3).all {
+                            directoryWatchKeyEntries().isEmpty()
+                        }
                     }
-                    key(token3).all {
-                        directoryWatchKeyEntries().isEmpty()
+                    destroyedTokenIdRanges().all {
+                        hasSize(1)
+                        exactly(1) { it.isEqualTo(Int.MIN_VALUE..Int.MIN_VALUE) }
                     }
+                    nextTokenId().isEqualTo(Int.MIN_VALUE + 3)
                 }
                 service().isNotNull()
                 pollLoopScope().isNotNull()
                 pollLoopJob().isNotNull()
-                destroyedTokenIdRanges().all {
-                    hasSize(1)
-                    exactly(1) { it.isEqualTo(Int.MIN_VALUE..Int.MIN_VALUE) }
-                }
-                nextTokenId().isEqualTo(Int.MIN_VALUE + 3)
             }
         }
 
@@ -234,19 +245,21 @@ class FileWatchEngineTest : CoroutineScope {
             val token1 = fileWatchEngine.createToken()
             val token2 = fileWatchEngine.createToken()
 
-            fileWatchEngine.destroyToken(token1)
-            fileWatchEngine.destroyToken(token2)
+            token1.destroy()
+            token2.destroy()
 
             assertThat(fileWatchEngine).all {
-                scopes().isEmpty()
+                watchStore().isEmpty()
                 service().isNull()
                 pollLoopScope().isNull()
                 pollLoopJob().isNull()
-                destroyedTokenIdRanges().all {
-                    hasSize(1)
-                    exactly(1) { it.isEqualTo(Int.MIN_VALUE..(Int.MIN_VALUE + 1)) }
+                watchStore().all {
+                    destroyedTokenIdRanges().all {
+                        hasSize(1)
+                        exactly(1) { it.isEqualTo(Int.MIN_VALUE..(Int.MIN_VALUE + 1)) }
+                    }
+                    nextTokenId().isEqualTo(Int.MIN_VALUE + 2)
                 }
-                nextTokenId().isEqualTo(Int.MIN_VALUE + 2)
             }
         }
 
@@ -256,15 +269,16 @@ class FileWatchEngineTest : CoroutineScope {
             val token2 = fileWatchEngine.createToken()
             val token3 = fileWatchEngine.createToken()
 
-            fileWatchEngine.destroyToken(token3)
+            token3.destroy()
 
-            assertThat(fileWatchEngine).all {
-                destroyedTokenIdRanges().all {
-                    hasSize(1)
-                    val expectedTokenId = Int.MIN_VALUE + 2
-                    exactly(1) { it.isEqualTo(expectedTokenId..expectedTokenId) }
+            assertThat(fileWatchEngine)
+                .watchStore().all {
+                    destroyedTokenIdRanges().all {
+                        hasSize(1)
+                        val expectedTokenId = Int.MIN_VALUE + 2
+                        exactly(1) { it.isEqualTo(expectedTokenId..expectedTokenId) }
+                    }
                 }
-            }
         }
 
         @Test
@@ -273,15 +287,16 @@ class FileWatchEngineTest : CoroutineScope {
             val token2 = fileWatchEngine.createToken()
             val token3 = fileWatchEngine.createToken()
 
-            fileWatchEngine.destroyToken(token2)
+            token2.destroy()
 
-            assertThat(fileWatchEngine).all {
-                destroyedTokenIdRanges().all {
-                    hasSize(1)
-                    val expectedTokenId = Int.MIN_VALUE + 1
-                    exactly(1) { it.isEqualTo(expectedTokenId..expectedTokenId) }
+            assertThat(fileWatchEngine)
+                .watchStore().all {
+                    destroyedTokenIdRanges().all {
+                        hasSize(1)
+                        val expectedTokenId = Int.MIN_VALUE + 1
+                        exactly(1) { it.isEqualTo(expectedTokenId..expectedTokenId) }
+                    }
                 }
-            }
         }
 
         @Test
@@ -289,15 +304,16 @@ class FileWatchEngineTest : CoroutineScope {
             val token1 = fileWatchEngine.createToken()
             val token2 = fileWatchEngine.createToken()
 
-            fileWatchEngine.destroyToken(token1)
-            fileWatchEngine.destroyToken(token2)
+            token1.destroy()
+            token2.destroy()
 
-            assertThat(fileWatchEngine).all {
-                destroyedTokenIdRanges().all {
-                    hasSize(1)
-                    exactly(1) { it.isEqualTo(Int.MIN_VALUE..(Int.MIN_VALUE + 1)) }
+            assertThat(fileWatchEngine)
+                .watchStore().all {
+                    destroyedTokenIdRanges().all {
+                        hasSize(1)
+                        exactly(1) { it.isEqualTo(Int.MIN_VALUE..(Int.MIN_VALUE + 1)) }
+                    }
                 }
-            }
         }
 
         @Test
@@ -305,22 +321,23 @@ class FileWatchEngineTest : CoroutineScope {
             val token1 = fileWatchEngine.createToken()
             val token2 = fileWatchEngine.createToken()
 
-            fileWatchEngine.destroyToken(token2)
-            fileWatchEngine.destroyToken(token1)
+            token2.destroy()
+            token1.destroy()
 
-            assertThat(fileWatchEngine).all {
-                destroyedTokenIdRanges().all {
-                    hasSize(1)
-                    exactly(1) { it.isEqualTo(Int.MIN_VALUE..(Int.MIN_VALUE + 1)) }
+            assertThat(fileWatchEngine)
+                .watchStore().all {
+                    destroyedTokenIdRanges().all {
+                        hasSize(1)
+                        exactly(1) { it.isEqualTo(Int.MIN_VALUE..(Int.MIN_VALUE + 1)) }
+                    }
                 }
-            }
         }
 
         @Test
         fun `When multiple tokens watch the same directory and one is closed the other watch key should remain valid`() = runBlocking {
             subfolder1.createDirectory()
             val token1 = fileWatchEngine.createToken()
-            val token2 = fileWatchEngine.createToken()
+            val token2 = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
             arrayOf(token1, token2)
                 .forEach { token ->
                     token.registerRootDirectory()
@@ -328,15 +345,17 @@ class FileWatchEngineTest : CoroutineScope {
                     token.registerFilePattern(subfolderAnyTxtPattern)
                 }
 
-            fileWatchEngine.destroyToken(token1)
+            token1.destroy()
 
             assertThat(fileWatchEngine).isNotNull().all {
-                scopes().all {
-                    hasSize(1)
-                    key(token2).all {
-                        directoryWatchKeyEntries().all {
-                            hasSize(2)
-                            each { it.watchKey().isValid() }
+                watchStore().all {
+                    scopes().all {
+                        hasSize(1)
+                        key(token2).all {
+                            directoryWatchKeyEntries().all {
+                                hasSize(2)
+                                each { it.watchKey().isValid() }
+                            }
                         }
                     }
                 }
@@ -349,176 +368,192 @@ class FileWatchEngineTest : CoroutineScope {
 
         @Test
         fun `It should register root directory`() = runBlocking {
-            val token = fileWatchEngine.createToken()
+            val token = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
 
             token.registerRootDirectory()
 
-            assertThat(fileWatchEngine).scopes().all {
-                hasSize(1)
-                key(token).all {
-                    directoryPatterns().containsExactly(FileWatchEngine.StandardPatterns.root)
-                    filePatterns().isEmpty()
-                    directoryWatchKeyEntries().all {
-                        hasSize(1)
-                        index(0).all {
-                            absoluteDirectory().isEqualTo(root.asAbsolute())
-                            relativeDirectory().isEqualTo(root.relativize(root).asRelative())
-                            watchKey().isNotNull()
-                            watchedSubdirectories().isEmpty()
+            assertThat(fileWatchEngine)
+                .watchStore()
+                .scopes()
+                .all {
+                    hasSize(1)
+                    key(token).all {
+                        directoryPatterns().containsExactly(FileWatchEngine.StandardPatterns.root)
+                        filePatterns().isEmpty()
+                        directoryWatchKeyEntries().all {
+                            hasSize(1)
+                            index(0).all {
+                                absoluteDirectory().isEqualTo(root.asAbsolute())
+                                relativeDirectory().isEqualTo(root.relativize(root).asRelative())
+                                watchKey().isNotNull()
+                                watchedSubdirectories().isEmpty()
+                            }
                         }
                     }
                 }
-            }
         }
 
         @Test
         fun `It should unregister root directory`() = runBlocking {
-            val token = fileWatchEngine.createToken()
+            val token = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
             token.registerRootDirectory()
 
             token.unregisterRootDirectory()
 
-            assertThat(fileWatchEngine).scopes().all {
-                hasSize(1)
-                key(token).all {
-                    directoryPatterns().isEmpty()
-                    filePatterns().isEmpty()
-                    directoryWatchKeyEntries().isEmpty()
+            assertThat(fileWatchEngine)
+                .watchStore()
+                .scopes().all {
+                    hasSize(1)
+                    key(token).all {
+                        directoryPatterns().isEmpty()
+                        filePatterns().isEmpty()
+                        directoryWatchKeyEntries().isEmpty()
+                    }
                 }
-            }
         }
 
         @Test
         fun `It should register arbitrary directory pattern when no matching directories exist`() = runBlocking {
-            val token = fileWatchEngine.createToken()
+            val token = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
             token.registerDirectoryPattern(subfolderDirectoryPattern)
 
-            assertThat(fileWatchEngine).scopes().all {
-                hasSize(1)
-                key(token).all {
-                    directoryPatterns().containsExactly(subfolderDirectoryPattern)
-                    filePatterns().isEmpty()
-                    directoryWatchKeyEntries().isEmpty()
+            assertThat(fileWatchEngine)
+                .watchStore()
+                .scopes().all {
+                    hasSize(1)
+                    key(token).all {
+                        directoryPatterns().containsExactly(subfolderDirectoryPattern)
+                        filePatterns().isEmpty()
+                        directoryWatchKeyEntries().isEmpty()
+                    }
                 }
-            }
         }
 
         @Test
         fun `It should register arbitrary directory pattern when matching subdirectories exist`() = runBlocking {
             subfolder1.createDirectory()
-            val token = fileWatchEngine.createToken()
+            val token = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
             token.registerDirectoryPattern(subfolderDirectoryPattern)
 
-            assertThat(fileWatchEngine).scopes().all {
-                hasSize(1)
-                key(token).all {
-                    directoryPatterns().containsExactly(subfolderDirectoryPattern)
-                    filePatterns().isEmpty()
-                    directoryWatchKeyEntries().all {
-                        hasSize(1)
-                        index(0).all {
-                            absoluteDirectory().isEqualTo(subfolder1.asAbsolute())
-                            relativeDirectory().isEqualTo(root.relativize(subfolder1).asRelative())
-                            watchKey().isNotNull()
-                            watchedSubdirectories().isEmpty()
+            assertThat(fileWatchEngine)
+                .watchStore()
+                .scopes().all {
+                    hasSize(1)
+                    key(token).all {
+                        directoryPatterns().containsExactly(subfolderDirectoryPattern)
+                        filePatterns().isEmpty()
+                        directoryWatchKeyEntries().all {
+                            hasSize(1)
+                            index(0).all {
+                                absoluteDirectory().isEqualTo(subfolder1.asAbsolute())
+                                relativeDirectory().isEqualTo(root.relativize(subfolder1).asRelative())
+                                watchKey().isNotNull()
+                                watchedSubdirectories().isEmpty()
+                            }
                         }
                     }
                 }
-            }
         }
 
         @Test
         fun `It should unregister arbitrary directory pattern for matching directory does not exist`() = runBlocking {
-            val token = fileWatchEngine.createToken()
+            val token = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
             token.registerDirectoryPattern(subfolderDirectoryPattern)
 
             token.unregisterDirectoryPattern(subfolderDirectoryPattern)
 
-            assertThat(fileWatchEngine).scopes().all {
-                hasSize(1)
-                key(token).all {
-                    directoryPatterns().isEmpty()
-                    filePatterns().isEmpty()
-                    directoryWatchKeyEntries().isEmpty()
+            assertThat(fileWatchEngine)
+                .watchStore()
+                .scopes().all {
+                    hasSize(1)
+                    key(token).all {
+                        directoryPatterns().isEmpty()
+                        filePatterns().isEmpty()
+                        directoryWatchKeyEntries().isEmpty()
+                    }
                 }
-            }
         }
 
         @Test
         fun `It should unregister arbitrary directory pattern with matching directory exists`() = runBlocking {
             subfolder1.createDirectory()
-            val token = fileWatchEngine.createToken()
+            val token = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
             token.registerDirectoryPattern(subfolderDirectoryPattern)
             token.unregisterDirectoryPattern(subfolderDirectoryPattern)
 
-            assertThat(fileWatchEngine).scopes().all {
-                hasSize(1)
-                key(token).all {
-                    directoryPatterns().isEmpty()
-                    filePatterns().isEmpty()
-                    directoryWatchKeyEntries().isEmpty()
+            assertThat(fileWatchEngine)
+                .watchStore()
+                .scopes().all {
+                    hasSize(1)
+                    key(token).all {
+                        directoryPatterns().isEmpty()
+                        filePatterns().isEmpty()
+                        directoryWatchKeyEntries().isEmpty()
+                    }
                 }
-            }
         }
 
         @Test
         fun `When it registers a directory pattern matching a subdirectory of another registered directory it should add watched subdirectory to parent entry`() = runBlocking {
             subfolder1.createDirectory()
-            val token = fileWatchEngine.createToken()
+            val token = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
             token.registerDirectoryPattern(subfolderDirectoryPattern)
             token.registerRootDirectory()
 
-            assertThat(fileWatchEngine).scopes().all {
-                hasSize(1)
-                key(token).all {
-                    directoryPatterns().all {
-                        hasSize(2)
-                        index(0).isEqualTo(subfolderDirectoryPattern)
-                        index(1).isEqualTo(FileWatchEngine.StandardPatterns.root)
-                    }
-                    filePatterns().isEmpty()
-                    directoryWatchKeyEntries().all {
-                        hasSize(2)
-                        index(0).all {
-                            absoluteDirectory().isEqualTo(subfolder1.asAbsolute())
-                            watchKey().isNotNull()
-                            watchedSubdirectories().isEmpty()
+            assertThat(fileWatchEngine)
+                .watchStore()
+                .scopes().all {
+                    hasSize(1)
+                    key(token).all {
+                        directoryPatterns().all {
+                            hasSize(2)
+                            index(0).isEqualTo(subfolderDirectoryPattern)
+                            index(1).isEqualTo(FileWatchEngine.StandardPatterns.root)
                         }
-                        index(1).all {
-                            absoluteDirectory().isEqualTo(root.asAbsolute())
-                            watchKey().isNotNull()
-                            watchedSubdirectories().all {
-                                hasSize(1)
-                                exactly(1) {
-                                    it.absolutePath().isEqualTo(subfolder1.asAbsolute())
+                        filePatterns().isEmpty()
+                        directoryWatchKeyEntries().all {
+                            hasSize(2)
+                            index(0).all {
+                                absoluteDirectory().isEqualTo(subfolder1.asAbsolute())
+                                watchKey().isNotNull()
+                                watchedSubdirectories().isEmpty()
+                            }
+                            index(1).all {
+                                absoluteDirectory().isEqualTo(root.asAbsolute())
+                                watchKey().isNotNull()
+                                watchedSubdirectories().all {
+                                    hasSize(1)
+                                    exactly(1) {
+                                        it.absolutePath().isEqualTo(subfolder1.asAbsolute())
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
         }
 
         @Test
         fun `When multiple tokens match the same directory it should reuse the watchToken`() = runBlocking {
             subfolder1.createDirectory()
-            val token1 = fileWatchEngine.createToken()
-            val token2 = fileWatchEngine.createToken()
+            val token1 = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
+            val token2 = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
 
             token1.registerDirectoryPattern(subfolderDirectoryPattern)
             token2.registerDirectoryPattern(subfolderDirectoryPattern)
 
             assertThat(fileWatchEngine).all {
-                scopes().all {
-                    hasSize(2)
-                    transform("scopes distinct watchKeys") { scopes ->
-                        scopes.values
-                            .flatMap { it.directoryWatchKeyEntries }
-                            .map { it.watchKey }
-                            .distinct()
+                watchStore()
+                    .scopes().all {
+                        hasSize(2)
+                        transform("scopes distinct watchKeys") { scopes ->
+                            scopes.values
+                                .flatMap { it.directoryWatchKeyEntries }
+                                .map { it.watchKey }
+                                .distinct()
+                        }
+                            .hasSize(1)
                     }
-                        .hasSize(1)
-                }
             }
         }
     }
@@ -528,12 +563,13 @@ class FileWatchEngineTest : CoroutineScope {
 
         @Test
         fun `It should register file pattern`() = runBlocking {
-            val token = fileWatchEngine.createToken()
+            val token = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
             token.registerRootDirectory()
 
             token.registerFilePattern(rootAnyTxtPattern)
 
             assertThat(fileWatchEngine)
+                .watchStore()
                 .scopes()
                 .key(token)
                 .filePatterns().isEqualTo(listOf(rootAnyTxtPattern))
@@ -561,13 +597,14 @@ class FileWatchEngineTest : CoroutineScope {
 
         @Test
         fun `It should unregister file pattern`() = runBlocking {
-            val token = fileWatchEngine.createToken()
+            val token = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
             token.registerRootDirectory()
             token.registerFilePattern(rootAnyTxtPattern)
 
             token.unregisterFilePattern(rootAnyTxtPattern)
 
             assertThat(fileWatchEngine)
+                .watchStore()
                 .scopes()
                 .key(token)
                 .filePatterns().isEmpty()
@@ -612,7 +649,7 @@ class FileWatchEngineTest : CoroutineScope {
         @Test
         fun `When watched directory deleted it should remove watch entry`() = runBlocking {
             subfolder1.createDirectory()
-            val token = fileWatchEngine.createToken()
+            val token = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
             token.registerRootDirectory()
             token.registerDirectoryPattern(subfolderDirectoryPattern)
             delay(defaultTimeoutMillis)
@@ -620,7 +657,9 @@ class FileWatchEngineTest : CoroutineScope {
             subfolder1.deleteExisting()
             delay(defaultTimeoutMillis)
 
-            assertThat(fileWatchEngine).scopes()
+            assertThat(fileWatchEngine)
+                .watchStore()
+                .scopes()
                 .key(token)
                 .directoryWatchKeyEntries().all {
                     hasSize(1)
@@ -636,7 +675,7 @@ class FileWatchEngineTest : CoroutineScope {
         fun `When one of many watched subdirectories deleted it should remove watch entry`() = runBlocking {
             subfolder1.createDirectory()
             subfolder2.createDirectory()
-            val token = fileWatchEngine.createToken()
+            val token = fileWatchEngine.createToken() as FileWatchEngine.TokenImpl
             token.registerRootDirectory()
             token.registerDirectoryPattern(subfolderDirectoryPattern)
             delay(defaultTimeoutMillis)
@@ -644,7 +683,9 @@ class FileWatchEngineTest : CoroutineScope {
             subfolder1.deleteExisting()
             delay(defaultTimeoutMillis)
 
-            assertThat(fileWatchEngine).scopes()
+            assertThat(fileWatchEngine)
+                .watchStore()
+                .scopes()
                 .key(token)
                 .directoryWatchKeyEntries().all {
                     hasSize(2)
@@ -872,60 +913,3 @@ class FileWatchEngineTest : CoroutineScope {
     }
 }
 
-private class TestFileWatchEngine(
-    coroutineContext: CoroutineContext,
-    root: AbsolutePath
-) : FileWatchEngine(coroutineContext, root) {
-    var testWatchServiceFactoryFn: (AbsolutePath) -> WatchService = watchServiceFactoryFn
-        get() = watchServiceFactoryFn
-        set(value) {
-            watchServiceFactoryFn = value
-            field = value
-        }
-    var testWatchKeyFactoryFn: (AbsolutePath, WatchService) -> WatchKey = watchKeyFactoryFn
-        get() = watchKeyFactoryFn
-        set(value) {
-            watchKeyFactoryFn = value
-            field = value
-        }
-    val testNextTokenId: Int
-        get() = nextTokenId
-    val testDestroyedTokenIdRanges: Set<ClosedRange<Int>>
-        get() = destroyedTokenIdRanges
-    val testScopes: Map<Token, Scope>
-        get() = scopes as Map<Token, Scope>
-    val testService: WatchService?
-        get() = service
-    val testPollLoopScope: CoroutineContext?
-        get() = pollLoopScope
-    val testPollLoopJob: Job?
-        get() = pollLoopJob
-}
-
-private fun Assert<TestFileWatchEngine>.nextTokenId() = prop("nextTokenId") { it.testNextTokenId }
-private fun Assert<TestFileWatchEngine>.destroyedTokenIdRanges() = prop("destroyedTokendRanges") { it.testDestroyedTokenIdRanges }
-private fun Assert<TestFileWatchEngine>.scopes() = prop("scopes") { it.testScopes }
-private fun Assert<TestFileWatchEngine>.service() = prop("service") { it.testService }
-private fun Assert<TestFileWatchEngine>.pollLoopScope() = prop("pollLoopScope") { it.testPollLoopScope }
-private fun Assert<TestFileWatchEngine>.pollLoopJob() = prop("pollLoopJob") { it.testPollLoopJob}
-
-private fun Assert<FileWatchEngine.Scope>.token() = prop(FileWatchEngine.Scope::token)
-private fun Assert<FileWatchEngine.Scope>.directoryPatterns() = prop(FileWatchEngine.Scope::directoryPatterns)
-private fun Assert<FileWatchEngine.Scope>.filePatterns() = prop(FileWatchEngine.Scope::filePatterns)
-private fun Assert<FileWatchEngine.Scope>.directoryWatchKeyEntries() = prop(FileWatchEngine.Scope::directoryWatchKeyEntries)
-
-private fun Assert<FileWatchEngine.Scope.DirectoryWatchKeyEntry>.absoluteDirectory() = prop(FileWatchEngine.Scope.DirectoryWatchKeyEntry::absoluteDirectory)
-private fun Assert<FileWatchEngine.Scope.DirectoryWatchKeyEntry>.relativeDirectory() = prop(FileWatchEngine.Scope.DirectoryWatchKeyEntry::relativeDirectory)
-private fun Assert<FileWatchEngine.Scope.DirectoryWatchKeyEntry>.watchKey() = prop(FileWatchEngine.Scope.DirectoryWatchKeyEntry::watchKey)
-private fun Assert<FileWatchEngine.Scope.DirectoryWatchKeyEntry>.watchedSubdirectories() = prop(FileWatchEngine.Scope.DirectoryWatchKeyEntry::watchedSubdirectories)
-
-private fun Assert<FileWatchEngine.Scope.WatchedSubdirectoryEntry>.absolutePath() = prop(FileWatchEngine.Scope.WatchedSubdirectoryEntry::absolutePath)
-private fun Assert<FileWatchEngine.Scope.WatchedSubdirectoryEntry>.relativePath() = prop(FileWatchEngine.Scope.WatchedSubdirectoryEntry::relativePath)
-
-
-private fun Assert<FileWatchEngine.Event>.isFileCreatedInstance() = isInstanceOf(FileWatchEngine.Event.File.Created::class)
-private fun Assert<FileWatchEngine.Event>.isFileModifiedInstance() = isInstanceOf(FileWatchEngine.Event.File.Modified::class)
-private fun Assert<FileWatchEngine.Event>.isFileDeletedInstance() = isInstanceOf(FileWatchEngine.Event.File.Deleted::class)
-private fun Assert<FileWatchEngine.Event>.isOverflowInstance() = isInstanceOf(FileWatchEngine.Event.Overflow::class)
-private fun Assert<FileWatchEngine.Event.File>.file() = prop(FileWatchEngine.Event.File::file)
-private fun Assert<FileWatchEngine.Event.File>.origin() = prop(FileWatchEngine.Event.File::origin)
