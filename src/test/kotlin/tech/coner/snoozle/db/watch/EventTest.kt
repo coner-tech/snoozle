@@ -9,29 +9,9 @@ import org.junit.jupiter.api.Test
 class EventTest {
 
     @Nested
-    inner class Created {
+    inner class Exists {
 
-        private val actualUnit = Event.Created(
-            recordId = Unit,
-            recordContent = Unit,
-            origin = Event.Origin.WATCH
-        )
-
-        @Test
-        fun `It should be a Record instance`() {
-            assertThat(actualUnit).isInstanceOf(Event.Record::class)
-        }
-
-        @Test
-        fun `It should be an Exists instance`() {
-            assertThat(actualUnit).isInstanceOf(Event.Exists::class)
-        }
-    }
-
-    @Nested
-    inner class Modified {
-
-        private val actualUnit = Event.Modified(
+        private val actualUnit = Event.Exists(
             recordId = Unit,
             recordContent = Unit,
             origin = Event.Origin.WATCH

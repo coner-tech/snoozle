@@ -6,6 +6,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import tech.coner.snoozle.db.Key
@@ -48,8 +49,10 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
                                 fileWatchEngineToken.registerRootDirectory()
                                 fileWatchEngineToken.events
                                     .onEach {
-                                        mutex.withLock {
-                                            handleFileWatchEvent(scope, it)
+                                        scope.launch {
+                                            mutex.withLock {
+                                                handleFileWatchEvent(scope, it)
+                                            }
                                         }
                                     }
                                     .launchIn(scope)
@@ -72,12 +75,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
             .let {
                 val key = keyMapper.fromRelativeRecord(it.recordId)
                 when (it) {
-                    is Event.Created<RelativePath, Unit> -> Event.Created(
-                        recordId = key,
-                        recordContent = resource.read(key),
-                        origin = it.origin
-                    )
-                    is Event.Modified<RelativePath, Unit> -> Event.Modified(
+                    is Event.Exists<RelativePath, Unit> -> Event.Exists(
                         recordId = key,
                         recordContent = resource.read(key),
                         origin = it.origin
@@ -98,7 +96,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
     suspend fun registerAll(token: TokenImpl<K, E>) = mutex.withLock {
         val fileWatchEngineToken = watchStore[token].fileWatchEngineToken
         fileWatchEngineToken.registerDirectoryPattern(pathfinder.recordParentCandidatePath)
-        fileWatchEngineToken.registerDirectoryPattern(pathfinder.recordParentCandidatePath)
+        fileWatchEngineToken.registerFilePattern(pathfinder.recordCandidatePath)
     }
     
     suspend fun unregisterAll(token: TokenImpl<K, E>) = mutex.withLock { 

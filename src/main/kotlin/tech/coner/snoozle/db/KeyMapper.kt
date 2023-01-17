@@ -4,10 +4,10 @@ import tech.coner.snoozle.db.path.Pathfinder
 import tech.coner.snoozle.db.path.RelativePath
 import java.util.*
 
-class KeyMapper<K : tech.coner.snoozle.db.Key, R : tech.coner.snoozle.db.Record<K>>(
-    private val definition: tech.coner.snoozle.db.RecordDefinition<K, R>,
+class KeyMapper<K : Key, R : Record<K>>(
+    private val definition: RecordDefinition<K, R>,
     private val pathfinder: Pathfinder<K, R>,
-    private val relativeRecordFn: tech.coner.snoozle.db.KeyMapper<K, R>.RelativeRecordContext.() -> K,
+    private val relativeRecordFn: KeyMapper<K, R>.RelativeRecordContext.() -> K,
     private val instanceFn: R.() -> K
 ) {
 

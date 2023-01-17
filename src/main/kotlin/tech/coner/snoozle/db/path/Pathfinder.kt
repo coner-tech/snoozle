@@ -16,7 +16,7 @@ open class Pathfinder<K : Key, R : Record<K>>(
 ) {
 
     fun findRecord(key: K): RelativePath {
-        val relativePath = pathParts.joinToString(separator = "") { pathPart ->
+        val relativePath = pathParts.joinToString("") { pathPart ->
             when (pathPart) {
                 is PathPart.StaticExtractor<*> -> pathPart.value
                 is PathPart.VariableExtractor<*, *> -> (pathPart as PathPart.VariableExtractor<K, *>).pathPartFromKey(key).toString()
@@ -27,7 +27,7 @@ open class Pathfinder<K : Key, R : Record<K>>(
     }
 
     val recordCandidatePath: Pattern by lazy {
-        val joined = pathParts.joinToString("") { it.regex.pattern() }
+        val joined = pathParts.joinToPathPatternString { it.regex.pattern() }
         Pattern.compile("^$joined$")
     }
 
@@ -37,7 +37,7 @@ open class Pathfinder<K : Key, R : Record<K>>(
         }
         pathParts
             .take(indexOfLastDirectorySeparator)
-            .joinToString("") { it.regex.pattern() }
+            .joinToPathPatternString { it.regex.pattern() }
             .let { Pattern.compile("^$it$") }
     }
 
@@ -94,5 +94,14 @@ open class Pathfinder<K : Key, R : Record<K>>(
         check(remainingPathParts.isEmpty()) { "Remaining path parts must be empty but were not"}
         return extractedVariables.map { it.toString() }.toTypedArray()
     }
+
+    private fun <K : Key, R : Record<K>> List<PathPart<K, R, *>>.joinToPathPatternString(
+        transform: (PathPart<K, R, *>) -> CharSequence
+    ): String = joinToString(
+        separator = "",
+        prefix = "^",
+        postfix = "$",
+        transform = transform
+    )
 
 }

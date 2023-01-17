@@ -636,7 +636,7 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isCreatedTypedInstance()
+                .isInstanceOfExists()
                 .all {
                     recordId().isEqualTo(subfolder1FileDotTxt.relative)
                     recordContent().isSameAs(Unit)
@@ -711,7 +711,7 @@ class FileWatchEngineTest : CoroutineScope {
     }
 
     @Nested
-    inner class EventFileCreatedEmissions {
+    inner class EventFileExistsEmissions {
 
         @Test
         fun `It should emit file created when matching file created`() = runBlocking {
@@ -723,7 +723,7 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isCreatedTypedInstance()
+                .isInstanceOfExists()
                 .all {
                     recordId().isEqualTo(rootFileDotTxt.relative)
                     origin().isEqualTo(Event.Origin.WATCH)
@@ -757,7 +757,7 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isModifiedTypedInstance()
+                .isInstanceOfExists()
                 .all {
                     recordId().isEqualTo(rootFileDotTxt.relative)
                     recordContent().isSameAs(Unit)
@@ -798,7 +798,7 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isDeletedTypedInstance()
+                .isInstanceOfDeleted()
                 .all {
                     recordId().isEqualTo(rootFileDotTxt.relative)
                     origin().isEqualTo(Event.Origin.WATCH)
@@ -868,7 +868,7 @@ class FileWatchEngineTest : CoroutineScope {
 
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
             assertThat(event)
-                .isOverflowInstance()
+                .isInstanceOfOverflow()
         }
 
         @Test
@@ -897,7 +897,7 @@ class FileWatchEngineTest : CoroutineScope {
                 assertThat(subfolder1Event.await()).isNull()
                 assertThat(subfolder2Event.await())
                     .isNotNull()
-                    .isOverflowInstance()
+                    .isInstanceOfOverflow()
             }
         }
     }

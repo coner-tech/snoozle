@@ -271,7 +271,7 @@ open class FileWatchEngine(
                             watchStore.allScopes.forEach { scope ->
                                 if (scope.filePatterns.any { it.matcher(newFileCandidateRelativeAsString).matches() }) {
                                     scope.token.events.emit(
-                                        Event.Created(
+                                        Event.Exists(
                                             recordId = newFileCandidateRelative,
                                             recordContent = Unit,
                                             origin = Event.Origin.NEW_DIRECTORY_SCAN
@@ -303,12 +303,8 @@ open class FileWatchEngine(
             scope.filePatterns.forEach { filePattern ->
                 if (filePattern.matcher(fileCandidateRelativePathAsString).matches()) {
                     when (event.kind()) {
-                        StandardWatchEventKinds.ENTRY_CREATE -> Event.Created(
-                            recordId = fileCandidateRelativePath,
-                            recordContent = Unit,
-                            origin = Event.Origin.WATCH
-                        )
-                        StandardWatchEventKinds.ENTRY_MODIFY -> Event.Modified(
+                        StandardWatchEventKinds.ENTRY_CREATE,
+                        StandardWatchEventKinds.ENTRY_MODIFY -> Event.Exists(
                             recordId = fileCandidateRelativePath,
                             recordContent = Unit,
                             origin = Event.Origin.WATCH

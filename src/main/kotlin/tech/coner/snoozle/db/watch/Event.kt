@@ -13,21 +13,11 @@ sealed class Event<ID : Any, C : Any> {
         abstract val recordId: ID
     }
 
-    sealed class Exists<ID : Any, C : Any> : Record<ID, C>() {
-        abstract val recordContent: C
-    }
-
-    data class Created<ID : Any, C : Any>(
+    data class Exists<ID : Any, C : Any>(
         override val recordId: ID,
-        override val recordContent: C,
+        val recordContent: C,
         override val origin: Origin
-    ) : Exists<ID, C>()
-
-    data class Modified<ID : Any, C : Any>(
-        override val recordId: ID,
-        override val recordContent: C,
-        override val origin: Origin
-    ) : Exists<ID, C>()
+    ) : Record<ID, C>()
 
     data class Deleted<ID : Any, C : Any>(
         override val recordId: ID,

@@ -7,28 +7,21 @@ import assertk.assertions.prop
 
 fun <ID : Any, C : Any> Assert<Event<ID, C>>.origin() = prop(Event<ID, C>::origin)
 
-inline fun <reified ID : Any, reified C : Any> Assert<Event<ID, C>>.isCreatedTypedInstance() =
-    isInstanceOf(Event.Created::class)
+inline fun <reified ID : Any, reified C : Any> Assert<Event<ID, C>>.isInstanceOfExists() =
+    isInstanceOf(Event.Exists::class)
         .transform {
             assertThat(it).recordIdAsAny().isNotNull().isInstanceOf(ID::class)
             assertThat(it).recordContentAsAny().isNotNull().isInstanceOf(C::class)
-            it as Event.Created<ID, C>
+            it as Event.Exists<ID, C>
         }
-inline fun <reified ID : Any, reified C : Any> Assert<Event<ID, C>>.isModifiedTypedInstance() =
-    isInstanceOf(Event.Modified::class)
-        .transform {
-            assertThat(it).recordIdAsAny().isNotNull().isInstanceOf(ID::class)
-            assertThat(it).recordContentAsAny().isNotNull().isInstanceOf(C::class)
-            it as Event.Modified<ID, C>
-        }
-inline fun <reified ID : Any, C : Any> Assert<Event<ID, C>>.isDeletedTypedInstance() =
+inline fun <reified ID : Any, C : Any> Assert<Event<ID, C>>.isInstanceOfDeleted() =
     isInstanceOf(Event.Deleted::class)
         .transform {
             assertThat(it).recordIdAsAny().isNotNull().isInstanceOf(ID::class)
             it as Event.Deleted<ID, C>
         }
 
-fun <ID : Any, C : Any> Assert<Event<ID, C>>.isOverflowInstance() = isInstanceOf(Event.Overflow::class)
+fun <ID : Any, C : Any> Assert<Event<ID, C>>.isInstanceOfOverflow() = isInstanceOf(Event.Overflow::class)
 
 fun Assert<Event.Record<*, *>>.recordIdAsAny() = prop(Event.Record<*, *>::recordId)
 fun <ID : Any, C : Any> Assert<Event.Record<ID, C>>.recordId() = prop(Event.Record<ID, C>::recordId)
