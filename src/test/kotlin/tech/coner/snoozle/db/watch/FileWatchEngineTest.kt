@@ -13,6 +13,7 @@ import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
+import assertk.assertions.isSameAs
 import assertk.assertions.key
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
@@ -635,9 +636,10 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isCreatedTypedInstance<RelativePath>()
+                .isCreatedTypedInstance()
                 .all {
-                    record().isEqualTo(subfolder1FileDotTxt.relative)
+                    recordId().isEqualTo(subfolder1FileDotTxt.relative)
+                    recordContent().isSameAs(Unit)
                     origin().isEqualTo(Event.Origin.NEW_DIRECTORY_SCAN)
                 }
         }
@@ -721,9 +723,9 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isCreatedTypedInstance<RelativePath>()
+                .isCreatedTypedInstance()
                 .all {
-                    record().isEqualTo(rootFileDotTxt.relative)
+                    recordId().isEqualTo(rootFileDotTxt.relative)
                     origin().isEqualTo(Event.Origin.WATCH)
                 }
         }
@@ -755,9 +757,10 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isModifiedTypedInstance<RelativePath>()
+                .isModifiedTypedInstance()
                 .all {
-                    record().isEqualTo(rootFileDotTxt.relative)
+                    recordId().isEqualTo(rootFileDotTxt.relative)
+                    recordContent().isSameAs(Unit)
                     origin().isEqualTo(Event.Origin.WATCH)
                 }
         }
@@ -795,9 +798,9 @@ class FileWatchEngineTest : CoroutineScope {
             val event = withTimeout(defaultTimeoutMillis) { token.events.first() }
 
             assertThat(event)
-                .isDeletedTypedInstance<RelativePath>()
+                .isDeletedTypedInstance()
                 .all {
-                    record().isEqualTo(rootFileDotTxt.relative)
+                    recordId().isEqualTo(rootFileDotTxt.relative)
                     origin().isEqualTo(Event.Origin.WATCH)
                 }
         }

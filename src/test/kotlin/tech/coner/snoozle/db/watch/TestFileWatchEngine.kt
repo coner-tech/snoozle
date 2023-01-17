@@ -2,6 +2,7 @@ package tech.coner.snoozle.db.watch
 
 import kotlinx.coroutines.Job
 import tech.coner.snoozle.db.path.AbsolutePath
+import tech.coner.snoozle.db.path.RelativePath
 import java.nio.file.WatchKey
 import java.nio.file.WatchService
 import kotlin.coroutines.CoroutineContext
@@ -22,14 +23,14 @@ class TestFileWatchEngine(
             watchKeyFactoryFn = value
             field = value
         }
-    var testWatchStoreFactoryFn: () -> WatchStore<TokenImpl, Scope> = watchStoreFactoryFn
+    var testWatchStoreFactoryFn: () -> WatchStore<RelativePath, Unit, TokenImpl, Scope> = watchStoreFactoryFn
         get() = watchStoreFactoryFn
         set(value) {
             watchStoreFactoryFn = value
             field = value
         }
-    val testWatchStore: TestWatchStore<TokenImpl, Scope>
-        get() = watchStore as TestWatchStore<TokenImpl, Scope>
+    val testWatchStore: TestWatchStore<RelativePath, Unit, TokenImpl, Scope>
+        get() = watchStore as TestWatchStore<RelativePath, Unit, TokenImpl, Scope>
     val testService: WatchService?
         get() = service
     val testPollLoopScope: CoroutineContext?

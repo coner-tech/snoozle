@@ -1,33 +1,40 @@
 package tech.coner.snoozle.db.watch
 
-sealed class Event {
+sealed class Event<ID : Any, C : Any> {
+
+    abstract val origin: Origin
 
     enum class Origin {
         WATCH,
         NEW_DIRECTORY_SCAN
     }
 
-    interface Exists
-
-    sealed class Record<R> : Event() {
-        abstract val record: R
-        abstract val origin: Origin
+    sealed class Record<ID : Any, C : Any> : Event<ID, C>() {
+        abstract val recordId: ID
     }
 
-    data class Created<R>(
-        override val record: R,
-        override val origin: Origin
-    ) : Record<R>(), Exists
+    sealed class Exists<ID : Any, C : Any> : Record<ID, C>() {
+        abstract val recordContent: C
+    }
 
-    data class Modified<R>(
-        override val record: R,
+    data class Created<ID : Any, C : Any>(
+        override val recordId: ID,
+        override val recordContent: C,
         override val origin: Origin
-    ) : Record<R>(), Exists
+    ) : Exists<ID, C>()
 
-    data class Deleted<R>(
-        override val record: R,
+    data class Modified<ID : Any, C : Any>(
+        override val recordId: ID,
+        override val recordContent: C,
         override val origin: Origin
-    ) : Record<R>()
+    ) : Exists<ID, C>()
 
-    object Overflow : Event()
+    data class Deleted<ID : Any, C : Any>(
+        override val recordId: ID,
+        override val origin: Origin
+    ) : Record<ID, C>()
+
+    class Overflow<ID : Any, C : Any> : Event<ID, C>() {
+        override val origin = Origin.WATCH
+    }
 }

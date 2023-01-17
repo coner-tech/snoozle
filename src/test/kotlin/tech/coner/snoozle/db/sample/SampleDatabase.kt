@@ -1,10 +1,11 @@
 package tech.coner.snoozle.db.sample
 
-import tech.coner.snoozle.db.path.AbsolutePath
 import tech.coner.snoozle.db.Database
 import tech.coner.snoozle.db.entity.EntityResource
 import tech.coner.snoozle.db.migration.MigrationPathMatcher
+import tech.coner.snoozle.db.path.AbsolutePath
 import tech.coner.snoozle.db.session.data.DataSession
+import tech.coner.snoozle.db.watch.EntityWatchEngine
 
 class SampleDatabase(root: AbsolutePath) : Database(root) {
 
@@ -114,3 +115,8 @@ class SampleDatabase(root: AbsolutePath) : Database(root) {
 
 typealias WidgetResource = EntityResource<Widget.Key, Widget>
 fun DataSession.widgets(): WidgetResource = entity()
+typealias WidgetWatchEngine = EntityWatchEngine<Widget.Key, Widget>
+
+typealias SubwidgetResource = EntityResource<Subwidget.Key, Subwidget>
+fun DataSession.subwidgets(): SubwidgetResource = entity()
+typealias SubwidgetWatchEngine = EntityWatchEngine<Subwidget.Key, Subwidget>

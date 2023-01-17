@@ -12,7 +12,8 @@ class EventTest {
     inner class Created {
 
         private val actualUnit = Event.Created(
-            record = Unit,
+            recordId = Unit,
+            recordContent = Unit,
             origin = Event.Origin.WATCH
         )
 
@@ -31,7 +32,8 @@ class EventTest {
     inner class Modified {
 
         private val actualUnit = Event.Modified(
-            record = Unit,
+            recordId = Unit,
+            recordContent = Unit,
             origin = Event.Origin.WATCH
         )
 
@@ -49,8 +51,8 @@ class EventTest {
     @Nested
     inner class Deleted {
 
-        private val actualUnit = Event.Deleted(
-            record = Unit,
+        private val actualUnit = Event.Deleted<Unit, Unit>(
+            recordId = Unit,
             origin = Event.Origin.WATCH
         )
 
@@ -68,14 +70,16 @@ class EventTest {
     @Nested
     inner class Overflow {
 
+        private val actual = Event.Overflow<Unit, Unit>()
+
         @Test
         fun `It should not be a Record instance`() {
-            assertThat(Event.Overflow).isNotInstanceOf(Event.Record::class)
+            assertThat(actual).isNotInstanceOf(Event.Record::class)
         }
 
         @Test
         fun `It should not be an exists instance`() {
-            assertThat(Event.Overflow).isNotInstanceOf(Event.Exists::class)
+            assertThat(actual).isNotInstanceOf(Event.Exists::class)
         }
     }
 }

@@ -1,6 +1,8 @@
 package tech.coner.snoozle.db
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import tech.coner.snoozle.db.blob.Blob
 import tech.coner.snoozle.db.blob.BlobDefinition
 import tech.coner.snoozle.db.blob.BlobResource
@@ -12,6 +14,7 @@ import tech.coner.snoozle.db.metadata.SessionMetadataEntity
 import tech.coner.snoozle.db.path.AbsolutePath
 import tech.coner.snoozle.db.path.PathPart
 import tech.coner.snoozle.db.path.Pathfinder
+import tech.coner.snoozle.db.watch.EntityWatchEngine
 import tech.coner.snoozle.db.watch.FileWatchEngine
 import kotlin.reflect.KClass
 
@@ -55,18 +58,19 @@ class TypesRegistry(
                 root = root,
                 pathParts = entityDefinition.path
         )
+        val keyMapper = KeyMapper(
+            definition = entityDefinition,
+            pathfinder = pathfinder,
+            relativeRecordFn = requireNotNull(entityDefinition.keyFromPath),
+            instanceFn = requireNotNull(entityDefinition.keyFromEntity)
+        )
         entityResources[E::class] = EntityResource(
             root = root,
             definition = entityDefinition,
             reader = objectMapper.readerFor(E::class.java),
             writer = objectMapper.writerFor(E::class.java),
             pathfinder = pathfinder,
-            keyMapper = KeyMapper(
-                definition = entityDefinition,
-                pathfinder = pathfinder,
-                relativeRecordFn = requireNotNull(entityDefinition.keyFromPath),
-                instanceFn = requireNotNull(entityDefinition.keyFromEntity)
-            ),
+            keyMapper = keyMapper,
             fileWatchEngine = fileWatchEngine
         )
     }

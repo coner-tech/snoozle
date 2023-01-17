@@ -46,11 +46,11 @@ open class FileWatchEngine(
     protected var watchKeyFactoryFn: (AbsolutePath, WatchService) -> WatchKey = { dir, watchService ->
         dir.value.register(watchService, watchEventKinds)
     }
-    protected var watchStoreFactoryFn: () -> WatchStore<TokenImpl, Scope> = {
+    protected var watchStoreFactoryFn: () -> WatchStore<RelativePath, Unit, TokenImpl, Scope> = {
         WatchStore()
     }
 
-    protected val watchStore: WatchStore<TokenImpl, Scope> by lazy {
+    protected val watchStore: WatchStore<RelativePath, Unit, TokenImpl, Scope> by lazy {
         watchStoreFactoryFn()
     }
 
@@ -272,8 +272,9 @@ open class FileWatchEngine(
                                 if (scope.filePatterns.any { it.matcher(newFileCandidateRelativeAsString).matches() }) {
                                     scope.token.events.emit(
                                         Event.Created(
-                                            newFileCandidateRelative,
-                                            Event.Origin.NEW_DIRECTORY_SCAN
+                                            recordId = newFileCandidateRelative,
+                                            recordContent = Unit,
+                                            origin = Event.Origin.NEW_DIRECTORY_SCAN
                                         )
                                     )
                                 }
@@ -303,16 +304,18 @@ open class FileWatchEngine(
                 if (filePattern.matcher(fileCandidateRelativePathAsString).matches()) {
                     when (event.kind()) {
                         StandardWatchEventKinds.ENTRY_CREATE -> Event.Created(
-                            fileCandidateRelativePath,
-                            Event.Origin.WATCH
+                            recordId = fileCandidateRelativePath,
+                            recordContent = Unit,
+                            origin = Event.Origin.WATCH
                         )
                         StandardWatchEventKinds.ENTRY_MODIFY -> Event.Modified(
-                            fileCandidateRelativePath,
-                            Event.Origin.WATCH
+                            recordId = fileCandidateRelativePath,
+                            recordContent = Unit,
+                            origin = Event.Origin.WATCH
                         )
                         StandardWatchEventKinds.ENTRY_DELETE -> Event.Deleted(
-                            fileCandidateRelativePath,
-                            Event.Origin.WATCH
+                            recordId = fileCandidateRelativePath,
+                            origin = Event.Origin.WATCH
                         )
                         else -> null
                     }
@@ -328,7 +331,7 @@ open class FileWatchEngine(
     ) {
         watchStore.allScopes
             .filter { scope -> scope.directoryWatchKeyEntries.any { it.watchKey === takenWatchKey } }
-            .forEach { scope -> scope.token.events.emit(Event.Overflow) }
+            .forEach { scope -> scope.token.events.emit(Event.Overflow()) }
     }
 
     private suspend fun WatchService.awaitTake(timeoutMillis: Long = 10) = coroutineScope {
@@ -524,7 +527,7 @@ open class FileWatchEngine(
         val directoryPatterns: List<Pattern>,
         val filePatterns: List<Pattern>,
         val directoryWatchKeyEntries: List<DirectoryWatchKeyEntry>
-    ) : StorableWatchScope<TokenImpl> {
+    ) : StorableWatchScope<RelativePath, Unit, TokenImpl> {
         fun copyAndAddDirectoryPattern(directoryPattern: Pattern) = copy(
             directoryPatterns = directoryPatterns
                 .toMutableList()
@@ -631,7 +634,7 @@ open class FileWatchEngine(
         watchedSubdirectories = emptySet()
     )
 
-    interface Token : WatchToken {
+    interface Token : WatchToken<RelativePath, Unit> {
 
         suspend fun registerDirectoryPattern(pattern: Pattern)
         suspend fun registerRootDirectory()
@@ -641,9 +644,9 @@ open class FileWatchEngine(
         suspend fun unregisterFilePattern(pattern: Pattern)
     }
 
-    data class TokenImpl(override val id: Int) : Token, StorableWatchToken {
+    data class TokenImpl(override val id: Int) : Token, StorableWatchToken<RelativePath, Unit> {
         lateinit var engine: FileWatchEngine
-        override val events = MutableSharedFlow<Event>()
+        override val events = MutableSharedFlow<Event<RelativePath, Unit>>()
         override var destroyed: Boolean = false
 
         override suspend fun registerDirectoryPattern(pattern: Pattern) {
@@ -680,3 +683,5 @@ open class FileWatchEngine(
     }
 
 }
+
+typealias FileWatchEvent = Event<RelativePath, Unit>

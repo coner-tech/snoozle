@@ -2,7 +2,7 @@ package tech.coner.snoozle.db.watch
 
 import kotlinx.coroutines.runBlocking
 
-open class WatchStore<SWT : StorableWatchToken, SWS : StorableWatchScope<SWT>> {
+open class WatchStore<ID : Any, C : Any, SWT : StorableWatchToken<ID, C>, SWS : StorableWatchScope<ID, C, SWT>> {
 
     protected val scopes = mutableMapOf<SWT, SWS>()
     protected var nextTokenId = Int.MIN_VALUE

@@ -3,6 +3,8 @@ package tech.coner.snoozle.db.entity
 import com.fasterxml.jackson.databind.ObjectReader
 import com.fasterxml.jackson.databind.ObjectWriter
 import io.reactivex.Observable
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import tech.coner.snoozle.db.Key
 import tech.coner.snoozle.db.KeyMapper
 import tech.coner.snoozle.db.path.AbsolutePath
@@ -10,6 +12,7 @@ import tech.coner.snoozle.db.path.Pathfinder
 import tech.coner.snoozle.db.path.RelativePath
 import tech.coner.snoozle.db.path.asAbsolute
 import tech.coner.snoozle.db.path.asRelative
+import tech.coner.snoozle.db.watch.EntityWatchEngine
 import tech.coner.snoozle.db.watch.FileWatchEngine
 import tech.coner.snoozle.util.PathWatchEvent
 import tech.coner.snoozle.util.watch
@@ -29,7 +32,7 @@ class EntityResource<K : Key, E : Entity<K>>(
     private val writer: ObjectWriter,
     private val pathfinder: Pathfinder<K, E>,
     private val keyMapper: KeyMapper<K, E>,
-    private val fileWatchEngine: FileWatchEngine
+    private val fileWatchEngine: FileWatchEngine,
 ) {
 
     fun key(entity: E): K {
@@ -137,6 +140,16 @@ class EntityResource<K : Key, E : Entity<K>>(
                 .map { recordPath: RelativePath -> keyMapper.fromRelativeRecord(recordPath) }
         val allKeysForRead = keyFilter?.let { allPathsMappedToKeys.filter(it) } ?: allPathsMappedToKeys
         return allKeysForRead.map { read(root.value.resolve(pathfinder.findRecord(it).value).asAbsolute()) }
+    }
+
+    val watchEngine: EntityWatchEngine<K, E> by lazy {
+        EntityWatchEngine(
+            coroutineContext = Dispatchers.IO + Job(),
+            fileWatchEngine = fileWatchEngine,
+            keyMapper = keyMapper,
+            resource = this,
+            pathfinder = pathfinder
+        )
     }
 
     fun watch(keyFilter: Predicate<K>? = null): Observable<EntityEvent<K, E>> {
