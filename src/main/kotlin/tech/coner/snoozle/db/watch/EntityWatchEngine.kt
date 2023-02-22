@@ -35,7 +35,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
     }
 
     suspend fun createToken(): Token<K, E> = mutex.withLock {
-        val (token, _) = watchStore.create(
+        watchStore.create(
             tokenFactory = { id -> TokenImpl(id) },
             scopeFactory = { token ->
                 Scope(
@@ -44,7 +44,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
                 )
                     .also { scope ->
                         token.engine = this
-                        scope.fileWatchEngineToken = fileWatchEngine.createToken()
+                        scope.fileWatchEngineToken = fileWatchEngine.getOrCreateToken()
                             .also { fileWatchEngineToken ->
                                 fileWatchEngineToken.registerRootDirectory()
                                 fileWatchEngineToken.events
@@ -60,7 +60,6 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
                     }
             }
         )
-        token
     }
 
     private suspend fun handleFileWatchEvent(scope: Scope<K, E>, event: FileWatchEvent) {
