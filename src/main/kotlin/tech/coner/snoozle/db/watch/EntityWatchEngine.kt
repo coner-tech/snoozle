@@ -93,15 +93,27 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
     }
 
     suspend fun registerAll(token: TokenImpl<K, E>) = mutex.withLock {
-        val fileWatchEngineToken = watchStore[token].fileWatchEngineToken
+        val scope = watchStore[token]
+        val fileWatchEngineToken = scope.fileWatchEngineToken
         fileWatchEngineToken.registerDirectoryPattern(pathfinder.recordParentCandidatePath)
         fileWatchEngineToken.registerFilePattern(pathfinder.recordCandidatePath)
     }
     
     suspend fun unregisterAll(token: TokenImpl<K, E>) = mutex.withLock { 
-        watchStore[token]
-            .fileWatchEngineToken
-            .unregisterDirectoryPattern(pathfinder.recordParentCandidatePath)
+        val fileWatchEngineToken = watchStore[token].fileWatchEngineToken
+        fileWatchEngineToken.unregisterDirectoryPattern(pathfinder.recordParentCandidatePath)
+        fileWatchEngineToken.unregisterFilePattern(pathfinder.recordCandidatePath)
+    }
+
+    suspend fun registerMatching(token: TokenImpl<K, E>, keyFilter: (K) -> Boolean): Nothing = mutex.withLock {
+        val scope = watchStore[token]
+        TODO("register keyFilter")
+        TODO("attach keyFilter")
+    }
+
+    suspend fun unregisterMatching(token: TokenImpl<K, E>, keyFilter: (K) -> Boolean): Nothing = mutex.withLock {
+        val scope = watchStore[token]
+        TODO("unregister keyFilter")
     }
 
     suspend fun destroyToken(token: TokenImpl<K, E>) = mutex.withLock {
@@ -115,6 +127,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
 
         suspend fun registerAll()
         suspend fun unregisterAll()
+        suspend fun registerKeyFilter()
     }
 
     data class TokenImpl<K : Key, E : Entity<K>>(
@@ -132,6 +145,10 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
             engine.unregisterAll(this)
         }
 
+        override suspend fun registerKeyFilter() {
+            TODO("Not yet implemented")
+        }
+
         override suspend fun destroy() {
             engine.destroyToken(this)
         }
@@ -144,5 +161,4 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
         CoroutineScope by CoroutineScope(coroutineContext) {
         lateinit var fileWatchEngineToken: FileWatchEngine.Token
     }
-
 }
