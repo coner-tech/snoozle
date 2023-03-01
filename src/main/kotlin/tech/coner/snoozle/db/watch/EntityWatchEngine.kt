@@ -13,8 +13,10 @@ import tech.coner.snoozle.db.Key
 import tech.coner.snoozle.db.KeyMapper
 import tech.coner.snoozle.db.entity.Entity
 import tech.coner.snoozle.db.entity.EntityResource
+import tech.coner.snoozle.db.path.PathPart
 import tech.coner.snoozle.db.path.Pathfinder
 import tech.coner.snoozle.db.path.RelativePath
+import java.util.regex.Pattern
 import kotlin.coroutines.CoroutineContext
 
 class EntityWatchEngine<K : Key, E : Entity<K>>(
@@ -26,6 +28,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
 ) : CoroutineScope {
 
     private val mutex = Mutex()
+    private var nextKeyFilterId: Int = Int.MIN_VALUE
 
     protected var watchStoreFactoryFn: () -> WatchStore<K, E, TokenImpl<K, E>, Scope<K, E>> = {
         WatchStore()
@@ -161,4 +164,47 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
         CoroutineScope by CoroutineScope(coroutineContext) {
         lateinit var fileWatchEngineToken: FileWatchEngine.Token
     }
+
+    fun createKeyFilter(factoryFn: KeyFilterFactory.() -> Unit): KeyFilter {
+
+    }
+
+    interface KeyFilterFactory {
+
+        suspend fun build(): KeyFilter
+    }
+
+    inner class KeyFilterFactoryImpl<K : Key>(
+        val segmentFilters: List<Pattern>
+    ) : KeyFilterFactory {
+
+        override suspend fun build(): KeyFilter {
+            val countOfVariableExtractors = resource.definition.path
+                .count { it is PathPart.VariableExtractor<*, *> }
+            check(countOfVariableExtractors == segmentFilters.size)
+            var nextVariableExtractorIndex = 0
+            return KeyFilter(
+                id = mutex.withLock { nextKeyFilterId++ },
+                pattern = resource.definition.path.joinToString { pathPart ->
+                    when (pathPart) {
+                        is PathPart.StaticExtractor<*> -> pathPart.regex.pattern()
+                        is PathPart.VariableExtractor<*, *> -> {
+                            val segmentFilterIndex = nextVariableExtractorIndex
+                            segmentFilters[segmentFilterIndex]
+                                .also { nextVariableExtractorIndex++ }
+                                .pattern()
+                        }
+
+                        else -> throw IllegalStateException("Encountered pathPart that is neither a static nor variable extractor")
+                    }
+                }
+                    .toPattern()
+            )
+        }
+    }
+
+    class KeyFilter(
+        val id: Int,
+        val pattern: Pattern
+    )
 }

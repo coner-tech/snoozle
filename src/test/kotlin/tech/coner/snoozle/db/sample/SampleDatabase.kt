@@ -119,9 +119,9 @@ typealias WidgetResource = EntityResource<Widget.Key, Widget>
 fun DataSession.widgets(): WidgetResource = entity()
 typealias WidgetWatchEngine = EntityWatchEngine<Widget.Key, Widget>
 
-fun WidgetWatchEngine.createAllWidgetsKeyFilter() = createKeyFilter { uuidAtIndexIsAny(0) }
-fun WidgetWatchEngine.createSpecificWidgetKeyFilter(uuid: UUID) = createKeyFilter { uuidAtIndexIsEqualTo(0, uuid) }
-fun WidgetWatchEngine.createSpecificWidgetsKeyFilter(uuids: Collection<UUID>) = createKeyFilter { uuidAtIndexIsOneOf(0, uuids) }
+fun WidgetWatchEngine.createAllWidgetsKeyFilter() = createKeyFilter { uuidIsAny() }
+fun WidgetWatchEngine.createSpecificWidgetKeyFilter(uuid: UUID) = createKeyFilter { uuidIsEqualTo(uuid) }
+fun WidgetWatchEngine.createSpecificWidgetsKeyFilter(uuids: Collection<UUID>) = createKeyFilter { uuidIsOneOf(uuids) }
 
 typealias SubwidgetResource = EntityResource<Subwidget.Key, Subwidget>
 
