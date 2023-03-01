@@ -58,21 +58,21 @@ open class FileWatchEngine(
     protected var pollLoopScope: CoroutineContext? = null
     protected var pollLoopJob: Job? = null
 
-    suspend fun createToken(): Token = mutex.withLock {
-        val (token, _) = watchStore.create(
-            tokenFactory = { id -> TokenImpl(id) },
-            scopeFactory = { token ->
-                Scope(
-                    token = token,
-                    directoryPatterns = emptyList(),
-                    filePatterns = emptyList(),
-                    directoryWatchKeyEntries = emptyList()
-                )
-            }
-        )
-            .also { (token, _) -> token.engine = this }
-        startService()
-        token
+    suspend fun getOrCreateToken(): Token = mutex.withLock {
+        watchStore.allTokens.firstOrNull()
+            ?: watchStore.create(
+                tokenFactory = { id -> TokenImpl(id) },
+                scopeFactory = { token ->
+                    token.engine = this
+                    Scope(
+                        token = token,
+                        directoryPatterns = emptyList(),
+                        filePatterns = emptyList(),
+                        directoryWatchKeyEntries = emptyList()
+                    )
+                }
+            )
+                .also { startService() }
     }
 
     private suspend fun startService() = coroutineScope {

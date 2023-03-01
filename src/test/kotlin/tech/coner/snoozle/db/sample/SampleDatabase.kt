@@ -6,6 +6,7 @@ import tech.coner.snoozle.db.migration.MigrationPathMatcher
 import tech.coner.snoozle.db.path.AbsolutePath
 import tech.coner.snoozle.db.session.data.DataSession
 import tech.coner.snoozle.db.watch.EntityWatchEngine
+import java.util.*
 
 class SampleDatabase(root: AbsolutePath) : Database(root) {
 
@@ -114,9 +115,15 @@ class SampleDatabase(root: AbsolutePath) : Database(root) {
 }
 
 typealias WidgetResource = EntityResource<Widget.Key, Widget>
+
 fun DataSession.widgets(): WidgetResource = entity()
 typealias WidgetWatchEngine = EntityWatchEngine<Widget.Key, Widget>
 
+fun WidgetWatchEngine.createAllWidgetsKeyFilter() = createKeyFilter { uuidIsAny() }
+fun WidgetWatchEngine.createSpecificWidgetKeyFilter(uuid: UUID) = createKeyFilter { uuidIsEqualTo(uuid) }
+fun WidgetWatchEngine.createSpecificWidgetsKeyFilter(uuids: Collection<UUID>) = createKeyFilter { uuidIsOneOf(uuids) }
+
 typealias SubwidgetResource = EntityResource<Subwidget.Key, Subwidget>
+
 fun DataSession.subwidgets(): SubwidgetResource = entity()
 typealias SubwidgetWatchEngine = EntityWatchEngine<Subwidget.Key, Subwidget>

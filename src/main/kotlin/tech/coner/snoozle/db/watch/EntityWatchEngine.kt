@@ -13,8 +13,10 @@ import tech.coner.snoozle.db.Key
 import tech.coner.snoozle.db.KeyMapper
 import tech.coner.snoozle.db.entity.Entity
 import tech.coner.snoozle.db.entity.EntityResource
+import tech.coner.snoozle.db.path.PathPart
 import tech.coner.snoozle.db.path.Pathfinder
 import tech.coner.snoozle.db.path.RelativePath
+import java.util.regex.Pattern
 import kotlin.coroutines.CoroutineContext
 
 class EntityWatchEngine<K : Key, E : Entity<K>>(
@@ -26,6 +28,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
 ) : CoroutineScope {
 
     private val mutex = Mutex()
+    private var nextKeyFilterId: Int = Int.MIN_VALUE
 
     protected var watchStoreFactoryFn: () -> WatchStore<K, E, TokenImpl<K, E>, Scope<K, E>> = {
         WatchStore()
@@ -35,7 +38,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
     }
 
     suspend fun createToken(): Token<K, E> = mutex.withLock {
-        val (token, _) = watchStore.create(
+        watchStore.create(
             tokenFactory = { id -> TokenImpl(id) },
             scopeFactory = { token ->
                 Scope(
@@ -44,7 +47,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
                 )
                     .also { scope ->
                         token.engine = this
-                        scope.fileWatchEngineToken = fileWatchEngine.createToken()
+                        scope.fileWatchEngineToken = fileWatchEngine.getOrCreateToken()
                             .also { fileWatchEngineToken ->
                                 fileWatchEngineToken.registerRootDirectory()
                                 fileWatchEngineToken.events
@@ -60,7 +63,6 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
                     }
             }
         )
-        token
     }
 
     private suspend fun handleFileWatchEvent(scope: Scope<K, E>, event: FileWatchEvent) {
@@ -95,15 +97,27 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
     }
 
     suspend fun registerAll(token: TokenImpl<K, E>) = mutex.withLock {
-        val fileWatchEngineToken = watchStore[token].fileWatchEngineToken
+        val scope = watchStore[token]
+        val fileWatchEngineToken = scope.fileWatchEngineToken
         fileWatchEngineToken.registerDirectoryPattern(pathfinder.recordParentCandidatePath)
         fileWatchEngineToken.registerFilePattern(pathfinder.recordCandidatePath)
     }
     
     suspend fun unregisterAll(token: TokenImpl<K, E>) = mutex.withLock { 
-        watchStore[token]
-            .fileWatchEngineToken
-            .unregisterDirectoryPattern(pathfinder.recordParentCandidatePath)
+        val fileWatchEngineToken = watchStore[token].fileWatchEngineToken
+        fileWatchEngineToken.unregisterDirectoryPattern(pathfinder.recordParentCandidatePath)
+        fileWatchEngineToken.unregisterFilePattern(pathfinder.recordCandidatePath)
+    }
+
+    suspend fun registerMatching(token: TokenImpl<K, E>, keyFilter: (K) -> Boolean): Nothing = mutex.withLock {
+        val scope = watchStore[token]
+        TODO("register keyFilter")
+        TODO("attach keyFilter")
+    }
+
+    suspend fun unregisterMatching(token: TokenImpl<K, E>, keyFilter: (K) -> Boolean): Nothing = mutex.withLock {
+        val scope = watchStore[token]
+        TODO("unregister keyFilter")
     }
 
     fun onResourceCreatedEntity(key: K, entity: E) {
@@ -144,6 +158,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
 
         suspend fun registerAll()
         suspend fun unregisterAll()
+        suspend fun registerKeyFilter()
     }
 
     data class TokenImpl<K : Key, E : Entity<K>>(
@@ -161,6 +176,10 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
             engine.unregisterAll(this)
         }
 
+        override suspend fun registerKeyFilter() {
+            TODO("Not yet implemented")
+        }
+
         override suspend fun destroy() {
             engine.destroyToken(this)
         }
@@ -174,4 +193,46 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
         lateinit var fileWatchEngineToken: FileWatchEngine.Token
     }
 
+    fun createKeyFilter(factoryFn: KeyFilterFactory.() -> Unit): KeyFilter {
+
+    }
+
+    interface KeyFilterFactory {
+
+        suspend fun build(): KeyFilter
+    }
+
+    inner class KeyFilterFactoryImpl<K : Key>(
+        val segmentFilters: List<Pattern>
+    ) : KeyFilterFactory {
+
+        override suspend fun build(): KeyFilter {
+            val countOfVariableExtractors = resource.definition.path
+                .count { it is PathPart.VariableExtractor<*, *> }
+            check(countOfVariableExtractors == segmentFilters.size)
+            var nextVariableExtractorIndex = 0
+            return KeyFilter(
+                id = mutex.withLock { nextKeyFilterId++ },
+                pattern = resource.definition.path.joinToString { pathPart ->
+                    when (pathPart) {
+                        is PathPart.StaticExtractor<*> -> pathPart.regex.pattern()
+                        is PathPart.VariableExtractor<*, *> -> {
+                            val segmentFilterIndex = nextVariableExtractorIndex
+                            segmentFilters[segmentFilterIndex]
+                                .also { nextVariableExtractorIndex++ }
+                                .pattern()
+                        }
+
+                        else -> throw IllegalStateException("Encountered pathPart that is neither a static nor variable extractor")
+                    }
+                }
+                    .toPattern()
+            )
+        }
+    }
+
+    class KeyFilter(
+        val id: Int,
+        val pattern: Pattern
+    )
 }

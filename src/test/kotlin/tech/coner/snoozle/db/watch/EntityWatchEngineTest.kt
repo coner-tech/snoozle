@@ -121,6 +121,12 @@ class EntityWatchEngineTest : CoroutineScope {
         }
 
         @Test
+        fun `It should watch for specific widget created`(): Unit = runBlocking {
+            val token = widgets.watchEngine.createToken()
+            token.registerKeyFilter()
+        }
+
+        @Test
         fun `It should watch for any widget modified`() = runBlocking {
             val original = SampleDatabaseFixture.Widgets.One
             widgets.create(original)

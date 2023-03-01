@@ -11,14 +11,14 @@ open class WatchStore<ID : Any, C : Any, SWT : StorableWatchToken<ID, C>, SWS : 
     fun create(
         tokenFactory: (id: Int) -> SWT,
         scopeFactory: suspend (SWT) -> SWS
-    ): Pair<SWT, SWS> {
+    ): SWT {
         val token = tokenFactory(
             chooseNextTokenId()
                 ?: throw TokenCapacityLimitException("Too many tokens created and not destroyed")
         )
         val scope = runBlocking { scopeFactory(token) }
         scopes[token] = scope
-        return token to scope
+        return token
     }
 
     operator fun set(token: SWT, scope: SWS) {
@@ -32,6 +32,9 @@ open class WatchStore<ID : Any, C : Any, SWT : StorableWatchToken<ID, C>, SWS : 
 
     val allScopes: Collection<SWS>
         get() = scopes.values
+
+    val allTokens: Collection<SWT>
+        get() = scopes.keys
 
     fun isEmpty() = scopes.isEmpty()
 
