@@ -90,7 +90,8 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
     }
 
     private suspend fun handleOverflowEvent(scope: Scope<K, E>, event: Event.Overflow<RelativePath, Unit>) {
-        scope.token.events.emit(Event.Overflow())
+        val emit = Event.Overflow<K, E>()
+        scope.token.events.emit(emit)
     }
 
     suspend fun registerAll(token: TokenImpl<K, E>) = mutex.withLock {
@@ -105,11 +106,38 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
             .unregisterDirectoryPattern(pathfinder.recordParentCandidatePath)
     }
 
+    fun onResourceCreatedEntity(key: K, entity: E) {
+        val event = Event.Exists(key, entity, Event.Origin.RESOURCE_CREATED)
+        watchStore.allScopes
+            // TODO: filter interested scopes
+            .forEach { it.token.events.tryEmit(event) }
+    }
+
+    fun onResourceModifiedEntity(key: K, entity: E) {
+        val event = Event.Exists(key, entity, Event.Origin.RESOURCE_UPDATED)
+        watchStore.allScopes
+            // TODO: filter interested scopes
+            .forEach { it.token.events.tryEmit(event) }
+    }
+
+    fun onResourceDeletedEntity(key: K) {
+        val event = Event.Deleted<K, E>(key, Event.Origin.RESOURCE_DELETED)
+        watchStore.allScopes
+            // TODO: filter interested scopes
+            .forEach { it.token.events.tryEmit(event) }
+    }
+
     suspend fun destroyToken(token: TokenImpl<K, E>) = mutex.withLock {
-        watchStore.destroy(token) {
-            it.cancel()
-            it.fileWatchEngineToken.destroy()
-        }
+        watchStore.destroy(token, ::afterDestroyTokenFn)
+    }
+
+    suspend fun destroyAllTokens() = mutex.withLock {
+        watchStore.destroyAll(::afterDestroyTokenFn)
+    }
+
+    private suspend fun afterDestroyTokenFn(scope: Scope<K, E>) {
+        scope.cancel()
+        scope.fileWatchEngineToken.destroy()
     }
 
     interface Token<K : Key, E : Entity<K>> : WatchToken<K, E> {
@@ -122,7 +150,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
         override val id: Int
     ) : Token<K, E>, StorableWatchToken<K, E> {
         lateinit var engine: EntityWatchEngine<K, E>
-        override val events = MutableSharedFlow<Event<K, E>>()
+        override val events = MutableSharedFlow<Event<K, E>>(replay = 100)
         override var destroyed: Boolean = false
 
         override suspend fun registerAll() {

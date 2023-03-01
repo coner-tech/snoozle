@@ -1,12 +1,12 @@
 package tech.coner.snoozle.db.sample
 
 import tech.coner.snoozle.db.entity.Entity
+import tech.coner.snoozle.db.path.asAbsolute
 import tech.coner.snoozle.util.requireResourceAsFile
 import tech.coner.snoozle.util.uuid
 import java.nio.file.Path
 import java.time.format.DateTimeFormatter
 import java.util.*
-import tech.coner.snoozle.db.path.asAbsolute
 
 object SampleDatabaseFixture {
 
@@ -47,8 +47,9 @@ object SampleDatabaseFixture {
         override fun asJson(entity: Widget): String {
             return """
                 {
-                    id: "${entity.id}",
-                    name: "${entity.name}"
+                    "id": "${entity.id}",
+                    "name": "${entity.name}",
+                    "widget": "${entity.widget}"
                 }
             """.trimIndent()
         }

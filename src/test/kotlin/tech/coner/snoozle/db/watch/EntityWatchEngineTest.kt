@@ -6,6 +6,7 @@ import assertk.assertions.isEqualTo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -23,17 +24,19 @@ import tech.coner.snoozle.db.sample.WidgetResource
 import tech.coner.snoozle.db.sample.widgets
 import tech.coner.snoozle.db.session.data.DataSession
 import java.nio.file.Path
+import kotlin.io.path.createDirectory
+import kotlin.io.path.writeText
 
 class EntityWatchEngineTest : CoroutineScope {
 
-    override val coroutineContext = Dispatchers.IO + Job()
+    override val coroutineContext = Dispatchers.Default + Job()
 
     @TempDir lateinit var root: Path
 
     lateinit var database: SampleDatabase
     lateinit var dataSession: DataSession
 
-    private val defaultTimeoutMillis = 5000L
+    private val defaultTimeoutMillis: Long = 5000L
 
     @BeforeEach
     fun before() {
@@ -52,30 +55,68 @@ class EntityWatchEngineTest : CoroutineScope {
     inner class Widgets {
 
         lateinit var widgets: WidgetResource
+        lateinit var widgetsDirectory: Path
 
         @BeforeEach
         fun before() {
             widgets = dataSession.widgets()
+            widgetsDirectory = root.resolve("widgets")
+        }
+
+        @AfterEach
+        fun after () = runBlocking {
+            widgets.watchEngine.destroyAllTokens()
         }
 
         @Test
-        fun `It should watch for any widget created`(): Unit = runBlocking {
-            val created = SampleDatabaseFixture.Widgets.One
+        fun `It should watch for any widget created in new directory`(): Unit = runBlocking {
+            val widget = SampleDatabaseFixture.Widgets.One
+            val widgetAsJson = SampleDatabaseFixture.Widgets.asJson(widget)
+            val widgetFile = widgetsDirectory.resolve("${widget.id}.json")
             val token = widgets.watchEngine.createToken()
             token.registerAll()
 
             launch {
-                widgets.create(created)
+                widgetsDirectory.createDirectory()
+                widgetFile.writeText(widgetAsJson)
             }
             val event = withTimeout(defaultTimeoutMillis) {
-                token.events.first()
+                token.events
+                    .filter { it.origin == Event.Origin.NEW_DIRECTORY_SCAN }
+                    .first()
             }
 
             assertThat(event)
                 .isInstanceOfExists()
                 .all {
-                    recordId().isEqualTo(Widget.Key(created.id))
-                    recordContent().isEqualTo(created)
+                    recordId().isEqualTo(Widget.Key(widget.id))
+                    recordContent().isEqualTo(widget)
+                    origin().isEqualTo(Event.Origin.NEW_DIRECTORY_SCAN)
+                }
+        }
+
+        @Test
+        fun `It should watch for any widget created in existing directory`() = runBlocking {
+            widgetsDirectory.createDirectory()
+            val widget = SampleDatabaseFixture.Widgets.One
+            val widgetAsJson = SampleDatabaseFixture.Widgets.asJson(widget)
+            val widgetFile = widgetsDirectory.resolve("${widget.id}.json")
+            val token = widgets.watchEngine.createToken()
+            token.registerAll()
+
+            launch { widgetFile.writeText(widgetAsJson) }
+            val event = withTimeout(defaultTimeoutMillis) {
+                token.events
+                    .filter { it.origin == Event.Origin.WATCH }
+                    .first()
+            }
+
+            assertThat(event)
+                .isInstanceOfExists()
+                .all {
+                    recordId().isEqualTo(Widget.Key(widget.id))
+                    recordContent().isEqualTo(widget)
+                    origin().isEqualTo(Event.Origin.WATCH)
                 }
         }
 
@@ -83,16 +124,17 @@ class EntityWatchEngineTest : CoroutineScope {
         fun `It should watch for any widget modified`() = runBlocking {
             val original = SampleDatabaseFixture.Widgets.One
             widgets.create(original)
+            val widgetFile = widgetsDirectory.resolve("${original.id}.json")
             val modified = original.copy(name = "modified")
-
+            val modifiedAsJson = SampleDatabaseFixture.Widgets.asJson(modified)
             val token = widgets.watchEngine.createToken()
             token.registerAll()
 
-            launch(Dispatchers.IO) {
-                widgets.update(modified)
-            }
+            launch { widgetFile.writeText(modifiedAsJson) }
             val event = withTimeout(defaultTimeoutMillis) {
-                token.events.first()
+                token.events
+                    .filter { it.origin == Event.Origin.WATCH }
+                    .first()
             }
 
             assertThat(event)
@@ -100,6 +142,7 @@ class EntityWatchEngineTest : CoroutineScope {
                 .all {
                     recordId().isEqualTo(Widget.Key(original.id))
                     recordContent().isEqualTo(modified)
+                    origin().isEqualTo(Event.Origin.WATCH)
                 }
         }
 
@@ -111,16 +154,18 @@ class EntityWatchEngineTest : CoroutineScope {
             val token = widgets.watchEngine.createToken()
             token.registerAll()
 
-            launch {
-                widgets.delete(original)
-            }
+            launch { widgets.delete(original) }
             val event = withTimeout(defaultTimeoutMillis) {
-                token.events.first()
-            }
+                token.events
+                    .filter { it.origin == Event.Origin.WATCH }
+                    .first() }
 
             assertThat(event)
                 .isInstanceOfDeleted()
-                .recordId().isEqualTo(Widget.Key(original.id))
+                .all {
+                    recordId().isEqualTo(Widget.Key(original.id))
+                    origin().isEqualTo(Event.Origin.WATCH)
+                }
         }
     }
 

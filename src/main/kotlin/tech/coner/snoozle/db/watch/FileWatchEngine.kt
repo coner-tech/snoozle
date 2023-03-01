@@ -270,13 +270,12 @@ open class FileWatchEngine(
                         } else if (newFileCandidateAbsolute.value.isRegularFile(LinkOption.NOFOLLOW_LINKS)) {
                             watchStore.allScopes.forEach { scope ->
                                 if (scope.filePatterns.any { it.matcher(newFileCandidateRelativeAsString).matches() }) {
-                                    scope.token.events.emit(
-                                        Event.Exists(
-                                            recordId = newFileCandidateRelative,
-                                            recordContent = Unit,
-                                            origin = Event.Origin.NEW_DIRECTORY_SCAN
-                                        )
+                                    val event = Event.Exists(
+                                        recordId = newFileCandidateRelative,
+                                        recordContent = Unit,
+                                        origin = Event.Origin.NEW_DIRECTORY_SCAN
                                     )
+                                    scope.token.events.emit(event)
                                 }
                             }
                         }
@@ -315,7 +314,9 @@ open class FileWatchEngine(
                         )
                         else -> null
                     }
-                        ?.also { scope.token.events.emit(it) }
+                        ?.also { emitEvent ->
+                            scope.token.events.emit(emitEvent)
+                        }
                 }
             }
         }
@@ -327,7 +328,10 @@ open class FileWatchEngine(
     ) {
         watchStore.allScopes
             .filter { scope -> scope.directoryWatchKeyEntries.any { it.watchKey === takenWatchKey } }
-            .forEach { scope -> scope.token.events.emit(Event.Overflow()) }
+            .forEach { scope ->
+                val emitEvent = Event.Overflow<RelativePath, Unit>()
+                scope.token.events.emit(emitEvent)
+            }
     }
 
     private suspend fun WatchService.awaitTake(timeoutMillis: Long = 10) = coroutineScope {
@@ -446,21 +450,20 @@ open class FileWatchEngine(
         check(directoryPatterns.isNotEmpty()) { "Scope must have a directory pattern registered" }
 
     suspend fun destroyToken(token: TokenImpl) = mutex.withLock {
-        watchStore.destroy(
-            token = token,
-            afterDestroyFn = { scope ->
-                processScopesForClose()
-                scope.directoryWatchKeyEntries.forEach { destroyedDirectoryWatchKeyEntry ->
-                    if (watchStore.allScopes.none { otherScope ->
-                            otherScope.directoryWatchKeyEntries.any {
-                                it.watchKey == destroyedDirectoryWatchKeyEntry.watchKey
-                            }
-                        }) {
-                        destroyedDirectoryWatchKeyEntry.watchKey.cancel()
+        watchStore.destroy(token, ::afterDestroyTokenFn)
+    }
+
+    private fun afterDestroyTokenFn(scope: Scope) {
+        processScopesForClose()
+        scope.directoryWatchKeyEntries.forEach { destroyedDirectoryWatchKeyEntry ->
+            if (watchStore.allScopes.none { otherScope ->
+                    otherScope.directoryWatchKeyEntries.any {
+                        it.watchKey == destroyedDirectoryWatchKeyEntry.watchKey
                     }
-                }
+                }) {
+                destroyedDirectoryWatchKeyEntry.watchKey.cancel()
             }
-        )
+        }
     }
 
     private fun processScopesForClose() {
@@ -471,14 +474,14 @@ open class FileWatchEngine(
             pollLoopScope = null
             service?.close()
             service = null
-            watchStore.destroyAll()
+            watchStore.destroyAll(::afterDestroyTokenFn)
         }
     }
 
     suspend fun shutDown() {
         coroutineScope {
             mutex.withLock {
-                watchStore.destroyAll()
+                watchStore.destroyAll(::afterDestroyTokenFn)
                 processScopesForClose()
             }
         }

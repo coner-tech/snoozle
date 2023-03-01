@@ -6,7 +6,10 @@ sealed class Event<ID : Any, C : Any> {
 
     enum class Origin {
         WATCH,
-        NEW_DIRECTORY_SCAN
+        NEW_DIRECTORY_SCAN,
+        RESOURCE_CREATED,
+        RESOURCE_UPDATED,
+        RESOURCE_DELETED
     }
 
     sealed class Record<ID : Any, C : Any> : Event<ID, C>() {

@@ -27,8 +27,9 @@ open class Pathfinder<K : Key, R : Record<K>>(
     }
 
     val recordCandidatePath: Pattern by lazy {
-        val joined = pathParts.joinToPathPatternString { it.regex.pattern() }
-        Pattern.compile("^$joined$")
+        pathParts
+            .joinToPathPatternString { it.regex.pattern() }
+            .let(Pattern::compile)
     }
 
     val recordParentCandidatePath: Pattern by lazy {

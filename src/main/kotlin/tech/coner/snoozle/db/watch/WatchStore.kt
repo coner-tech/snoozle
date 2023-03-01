@@ -53,7 +53,7 @@ open class WatchStore<ID : Any, C : Any, SWT : StorableWatchToken<ID, C>, SWS : 
 
     fun destroy(
         token: SWT,
-        afterDestroyFn: (suspend (SWS) -> Unit)? = null
+        afterDestroyFn: suspend (SWS) -> Unit
     ) {
         val scope = scopes[token]
         if (scope == null || token.destroyed) {
@@ -61,7 +61,7 @@ open class WatchStore<ID : Any, C : Any, SWT : StorableWatchToken<ID, C>, SWS : 
         }
 
         scopes.remove(token)
-        runBlocking { afterDestroyFn?.invoke(scope) }
+        runBlocking { afterDestroyFn.invoke(scope) }
 
         // record the scope id as destroyed
         val relevantRanges = destroyedTokenIdRanges.filter { candidate ->
@@ -89,9 +89,9 @@ open class WatchStore<ID : Any, C : Any, SWT : StorableWatchToken<ID, C>, SWS : 
         }
     }
 
-    fun destroyAll() {
+    fun destroyAll(afterDestroyFn: suspend (SWS) -> Unit) {
         ArrayList(scopes.keys)
-            .forEach { token -> destroy(token) }
+            .forEach { token -> destroy(token, afterDestroyFn) }
         scopes.clear()
     }
 }
