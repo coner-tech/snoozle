@@ -10,6 +10,13 @@ abstract class RecordDefinition<K : Key, R : Record<K>>(
 
     var path: List<PathPart<K, R, *>> = mutableListOf()
     var keyFromPath: (KeyMapper<K, R>.RelativeRecordContext.() -> K)? = null
+    val pathParent: List<PathPart<K, R, *>>
+        get() {
+            return when (val indexOfLastDirectorySeparator = path.indexOfLast { it is PathPart.DirectorySeparator<K, R> }) {
+                in Int.MIN_VALUE..(-1) -> emptyList<PathPart<K, R, *>>()
+                else -> path.take(indexOfLastDirectorySeparator)
+            }
+        }
 
     abstract class PathArgumentExtractor<K : Key, P>(private val fn: K.() -> P) {
         fun extract(key: K): P {

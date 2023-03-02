@@ -70,7 +70,7 @@ class EntityWatchEngineTest : CoroutineScope {
             val widgetAsJson = SampleDatabaseFixture.Widgets.asJson(widget)
             val widgetFile = widgetsDirectory.resolve("${widget.id}.json")
             val token = widgets.watchEngine.createToken()
-            token.registerAll()
+            token.register(widgets.watchEngine.watchAll())
 
             launch {
                 widgetsDirectory.createDirectory()
@@ -98,7 +98,7 @@ class EntityWatchEngineTest : CoroutineScope {
             val widgetAsJson = SampleDatabaseFixture.Widgets.asJson(widget)
             val widgetFile = widgetsDirectory.resolve("${widget.id}.json")
             val token = widgets.watchEngine.createToken()
-            token.registerAll()
+            token.register(widgets.watchEngine.watchAll())
 
             launch { widgetFile.writeText(widgetAsJson) }
             val event = withTimeout(defaultTimeoutMillis) {
@@ -118,8 +118,8 @@ class EntityWatchEngineTest : CoroutineScope {
 
         @Test
         fun `It should watch for specific widget created`(): Unit = runBlocking {
-            val token = widgets.watchEngine.createToken()
-            token.registerWatch(widgets.watchEngine.watchFactory.watchSpecificWidget())
+//            val token = widgets.watchEngine.createToken()
+//            token.register(widgets.watchEngine.watchSpecific())
         }
 
         @Test
@@ -130,7 +130,7 @@ class EntityWatchEngineTest : CoroutineScope {
             val modified = original.copy(name = "modified")
             val modifiedAsJson = SampleDatabaseFixture.Widgets.asJson(modified)
             val token = widgets.watchEngine.createToken()
-            token.registerAll()
+            token.register(widgets.watchEngine.watchAll())
 
             launch { widgetFile.writeText(modifiedAsJson) }
             val event = withTimeout(defaultTimeoutMillis) {
@@ -154,7 +154,7 @@ class EntityWatchEngineTest : CoroutineScope {
             widgets.create(original)
 
             val token = widgets.watchEngine.createToken()
-            token.registerAll()
+            token.register(widgets.watchEngine.watchAll())
 
             launch { widgets.delete(original) }
             val event = withTimeout(defaultTimeoutMillis) {

@@ -118,10 +118,9 @@ typealias WidgetResource = EntityResource<Widget.Key, Widget>
 
 fun DataSession.widgets(): WidgetResource = entity()
 typealias WidgetWatchEngine = EntityWatchEngine<Widget.Key, Widget>
-typealias WidgetWatchFactory = EntityWatchEngine<Widget.Key, Widget>.WatchFactory
-fun WidgetWatchFactory.watchAllWidgets() = create { uuidIsAny() }
-fun WidgetWatchFactory.watchSpecificWidget(uuid: UUID) = create { uuidIsEqualTo(uuid) }
-fun WidgetWatchFactory.watchSpecificWidgets(uuids: Collection<UUID>) = create { uuidIsOneOf(uuids) }
+fun WidgetWatchEngine.watchAll() = createWatch { uuidIsAny() }
+fun WidgetWatchEngine.watchSpecific(uuid: UUID) = createWatch { uuidIsEqualTo(uuid) }
+fun WidgetWatchEngine.watchSpecific(uuids: Collection<UUID>) = createWatch { uuidIsOneOf(uuids) }
 
 typealias SubwidgetResource = EntityResource<Subwidget.Key, Subwidget>
 

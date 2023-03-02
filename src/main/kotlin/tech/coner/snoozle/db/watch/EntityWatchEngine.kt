@@ -28,7 +28,6 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
 
     private val mutex = Mutex()
     private var nextKeyFilterId: Int = Int.MIN_VALUE
-    val watchFactory = WatchFactory()
 
     protected var watchStoreFactoryFn: () -> WatchStore<K, E, TokenImpl<K, E>, Scope<K, E>> = {
         WatchStore()
@@ -96,29 +95,16 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
         scope.token.events.emit(emit)
     }
 
-    suspend fun registerAll(token: TokenImpl<K, E>) = mutex.withLock {
-        val scope = watchStore[token]
-
-        val fileWatchEngineToken = scope.fileWatchEngineToken
-        fileWatchEngineToken.registerDirectoryPattern(pathfinder.recordParentCandidatePath)
-        fileWatchEngineToken.registerFilePattern(pathfinder.recordCandidatePath)
-    }
-    
-    suspend fun unregisterAll(token: TokenImpl<K, E>) = mutex.withLock { 
-        val fileWatchEngineToken = watchStore[token].fileWatchEngineToken
-        fileWatchEngineToken.unregisterDirectoryPattern(pathfinder.recordParentCandidatePath)
-        fileWatchEngineToken.unregisterFilePattern(pathfinder.recordCandidatePath)
+    suspend fun register(token: TokenImpl<K, E>, watch: Watch<K>) = mutex.withLock {
+        watchStore[token].register(watch)
     }
 
-    suspend fun registerWatch(token: TokenImpl<K, E>, watch: Watch): Nothing = mutex.withLock {
-        val scope = watchStore[token]
-        TODO("register keyFilter")
-        TODO("attach keyFilter")
+    suspend fun unregister(token: TokenImpl<K, E>, watch: Watch<K>) = mutex.withLock {
+        watchStore[token].unregister(watch)
     }
 
-    suspend fun unregisterWatch(token: TokenImpl<K, E>, watch: Watch): Nothing = mutex.withLock {
-        val scope = watchStore[token]
-        TODO("unregister keyFilter")
+    suspend fun unregisterAll(token: TokenImpl<K, E>) = mutex.withLock {
+        watchStore[token].unregisterAll()
     }
 
     fun onResourceCreatedEntity(key: K, entity: E) {
@@ -157,9 +143,9 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
 
     interface Token<K : Key, E : Entity<K>> : WatchToken<K, E> {
 
-        suspend fun registerAll()
+        suspend fun register(watch: Watch<K>)
+        suspend fun unregister(watch: Watch<K>)
         suspend fun unregisterAll()
-        suspend fun registerWatch()
     }
 
     data class TokenImpl<K : Key, E : Entity<K>>(
@@ -169,16 +155,16 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
         override val events = MutableSharedFlow<Event<K, E>>(replay = 100)
         override var destroyed: Boolean = false
 
-        override suspend fun registerAll() {
-            engine.registerAll(this)
+        override suspend fun register(watch: Watch<K>) {
+            engine.register(this, watch)
+        }
+
+        override suspend fun unregister(watch: Watch<K>) {
+            engine.unregister(this, watch)
         }
 
         override suspend fun unregisterAll() {
             engine.unregisterAll(this)
-        }
-
-        override suspend fun registerWatch() {
-            TODO("Not yet implemented")
         }
 
         override suspend fun destroy() {
@@ -192,22 +178,41 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
     ) : StorableWatchScope<K, E, TokenImpl<K, E>>,
         CoroutineScope by CoroutineScope(coroutineContext) {
         lateinit var fileWatchEngineToken: FileWatchEngine.Token
+        private var watches: Set<Watch<K>> = emptySet()
+
+        suspend fun register(watch: Watch<K>) {
+            check(!watches.contains(watch)) { "Watch already registered: $watch" }
+            if (watches.none { it.directoryPattern == watch.directoryPattern }) {
+                fileWatchEngineToken.registerDirectoryPattern(watch.directoryPattern)
+            }
+            if (watches.none { it.filePattern == watch.filePattern }) {
+                fileWatchEngineToken.registerFilePattern(watch.filePattern)
+            }
+            watches = watches
+                .toMutableSet()
+                .apply { add(watch) }
+        }
+
+        suspend fun unregister(watch: Watch<K>) {
+            TODO()
+        }
+
+        suspend fun unregisterAll() {
+            TODO()
+        }
     }
 
-    class Watch(
+    fun createWatch(builderDslFn: WatchBuilderDsl.() -> Unit): Watch<K> {
+        return WatchBuilderDslImpl()
+            .apply(builderDslFn)
+            .build()
+    }
+
+    class Watch<K : Key>(
         val id: Int,
         val directoryPattern: Pattern,
         val filePattern: Pattern
     )
-
-    inner class WatchFactory {
-
-        fun create(builderDslFn: WatchBuilderDsl.() -> Unit): Watch {
-            return WatchBuilderDslImpl()
-                .apply(builderDslFn)
-                .build()
-        }
-    }
 
     interface WatchBuilderDsl {
         fun uuidIsAny()
@@ -232,26 +237,42 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
             segmentFilters += Pattern.compile(uuids.joinToString(prefix = "(", separator = "|", postfix = ")"))
         }
 
-        fun build(): Watch {
+        fun build(): Watch<K> {
             val countOfVariableExtractors = resource.definition.path
                 .count { it is PathPart.VariableExtractor<*, *> }
             check(countOfVariableExtractors == segmentFilters.size)
-            var nextVariableExtractorIndex = 0
+            var nextDirectoryPatternVariableExtractorIndex = 0
+            var nextFilePatternVariableExtractorIndex = 0
+            fun handleUnknownPartPartType(): String {
+                throw IllegalStateException("Encountered pathPart that is neither a static nor variable extractor")
+            }
             return Watch(
                 id = runBlocking { mutex.withLock { nextKeyFilterId++ } },
-                directoryPattern = TODO(),
-                filePattern = resource.definition.path
-                    .joinToString { pathPart ->
+                directoryPattern = resource.definition.pathParent
+                    .joinToString(prefix = "^", postfix = "$") { pathPart ->
                         when (pathPart) {
                             is PathPart.StaticExtractor<*> -> pathPart.regex.pattern()
                             is PathPart.VariableExtractor<*, *> -> {
-                                val segmentFilterIndex = nextVariableExtractorIndex
+                                val segmentFilterIndex = nextDirectoryPatternVariableExtractorIndex
                                 segmentFilters[segmentFilterIndex]
-                                    .also { nextVariableExtractorIndex++ }
+                                    .also { nextDirectoryPatternVariableExtractorIndex++ }
                                     .pattern()
                             }
-
-                            else -> throw IllegalStateException("Encountered pathPart that is neither a static nor variable extractor")
+                            else -> handleUnknownPartPartType()
+                        }
+                    }
+                    .toPattern(),
+                filePattern = resource.definition.path
+                    .joinToString(prefix = "^", postfix = "$") { pathPart ->
+                        when (pathPart) {
+                            is PathPart.StaticExtractor<*> -> pathPart.regex.pattern()
+                            is PathPart.VariableExtractor<*, *> -> {
+                                val segmentFilterIndex = nextFilePatternVariableExtractorIndex
+                                segmentFilters[segmentFilterIndex]
+                                    .also { nextFilePatternVariableExtractorIndex++ }
+                                    .pattern()
+                            }
+                            else -> handleUnknownPartPartType()
                         }
                     }
                     .toPattern()
