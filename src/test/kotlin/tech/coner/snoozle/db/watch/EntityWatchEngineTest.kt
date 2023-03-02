@@ -17,11 +17,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import tech.coner.snoozle.db.path.asAbsolute
-import tech.coner.snoozle.db.sample.SampleDatabase
-import tech.coner.snoozle.db.sample.SampleDatabaseFixture
-import tech.coner.snoozle.db.sample.Widget
-import tech.coner.snoozle.db.sample.WidgetResource
-import tech.coner.snoozle.db.sample.widgets
+import tech.coner.snoozle.db.sample.*
 import tech.coner.snoozle.db.session.data.DataSession
 import java.nio.file.Path
 import kotlin.io.path.createDirectory
@@ -123,7 +119,7 @@ class EntityWatchEngineTest : CoroutineScope {
         @Test
         fun `It should watch for specific widget created`(): Unit = runBlocking {
             val token = widgets.watchEngine.createToken()
-            token.registerKeyFilter()
+            token.registerWatch(widgets.watchEngine.watchFactory.watchSpecificWidget())
         }
 
         @Test

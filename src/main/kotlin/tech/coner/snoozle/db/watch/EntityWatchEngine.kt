@@ -1,12 +1,9 @@
 package tech.coner.snoozle.db.watch
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import tech.coner.snoozle.db.Key
@@ -16,6 +13,8 @@ import tech.coner.snoozle.db.entity.EntityResource
 import tech.coner.snoozle.db.path.PathPart
 import tech.coner.snoozle.db.path.Pathfinder
 import tech.coner.snoozle.db.path.RelativePath
+import tech.coner.snoozle.util.hasUuidPattern
+import java.util.*
 import java.util.regex.Pattern
 import kotlin.coroutines.CoroutineContext
 
@@ -29,6 +28,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
 
     private val mutex = Mutex()
     private var nextKeyFilterId: Int = Int.MIN_VALUE
+    val watchFactory = WatchFactory()
 
     protected var watchStoreFactoryFn: () -> WatchStore<K, E, TokenImpl<K, E>, Scope<K, E>> = {
         WatchStore()
@@ -98,6 +98,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
 
     suspend fun registerAll(token: TokenImpl<K, E>) = mutex.withLock {
         val scope = watchStore[token]
+
         val fileWatchEngineToken = scope.fileWatchEngineToken
         fileWatchEngineToken.registerDirectoryPattern(pathfinder.recordParentCandidatePath)
         fileWatchEngineToken.registerFilePattern(pathfinder.recordCandidatePath)
@@ -109,13 +110,13 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
         fileWatchEngineToken.unregisterFilePattern(pathfinder.recordCandidatePath)
     }
 
-    suspend fun registerMatching(token: TokenImpl<K, E>, keyFilter: (K) -> Boolean): Nothing = mutex.withLock {
+    suspend fun registerWatch(token: TokenImpl<K, E>, watch: Watch): Nothing = mutex.withLock {
         val scope = watchStore[token]
         TODO("register keyFilter")
         TODO("attach keyFilter")
     }
 
-    suspend fun unregisterMatching(token: TokenImpl<K, E>, keyFilter: (K) -> Boolean): Nothing = mutex.withLock {
+    suspend fun unregisterWatch(token: TokenImpl<K, E>, watch: Watch): Nothing = mutex.withLock {
         val scope = watchStore[token]
         TODO("unregister keyFilter")
     }
@@ -158,7 +159,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
 
         suspend fun registerAll()
         suspend fun unregisterAll()
-        suspend fun registerKeyFilter()
+        suspend fun registerWatch()
     }
 
     data class TokenImpl<K : Key, E : Entity<K>>(
@@ -176,7 +177,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
             engine.unregisterAll(this)
         }
 
-        override suspend fun registerKeyFilter() {
+        override suspend fun registerWatch() {
             TODO("Not yet implemented")
         }
 
@@ -193,46 +194,68 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
         lateinit var fileWatchEngineToken: FileWatchEngine.Token
     }
 
-    fun createKeyFilter(factoryFn: KeyFilterFactory.() -> Unit): KeyFilter {
+    class Watch(
+        val id: Int,
+        val directoryPattern: Pattern,
+        val filePattern: Pattern
+    )
 
+    inner class WatchFactory {
+
+        fun create(builderDslFn: WatchBuilderDsl.() -> Unit): Watch {
+            return WatchBuilderDslImpl()
+                .apply(builderDslFn)
+                .build()
+        }
     }
 
-    interface KeyFilterFactory {
-
-        suspend fun build(): KeyFilter
+    interface WatchBuilderDsl {
+        fun uuidIsAny()
+        fun uuidIsEqualTo(uuid: UUID)
+        fun uuidIsOneOf(uuids: Collection<UUID>)
     }
 
-    inner class KeyFilterFactoryImpl<K : Key>(
-        val segmentFilters: List<Pattern>
-    ) : KeyFilterFactory {
+    inner class WatchBuilderDslImpl(
+    ) : WatchBuilderDsl {
 
-        override suspend fun build(): KeyFilter {
+        private val segmentFilters: MutableList<Pattern> = mutableListOf()
+
+        override fun uuidIsAny() {
+            segmentFilters += hasUuidPattern
+        }
+
+        override fun uuidIsEqualTo(uuid: UUID) {
+            segmentFilters += Pattern.compile(uuid.toString())
+        }
+
+        override fun uuidIsOneOf(uuids: Collection<UUID>) {
+            segmentFilters += Pattern.compile(uuids.joinToString(prefix = "(", separator = "|", postfix = ")"))
+        }
+
+        fun build(): Watch {
             val countOfVariableExtractors = resource.definition.path
                 .count { it is PathPart.VariableExtractor<*, *> }
             check(countOfVariableExtractors == segmentFilters.size)
             var nextVariableExtractorIndex = 0
-            return KeyFilter(
-                id = mutex.withLock { nextKeyFilterId++ },
-                pattern = resource.definition.path.joinToString { pathPart ->
-                    when (pathPart) {
-                        is PathPart.StaticExtractor<*> -> pathPart.regex.pattern()
-                        is PathPart.VariableExtractor<*, *> -> {
-                            val segmentFilterIndex = nextVariableExtractorIndex
-                            segmentFilters[segmentFilterIndex]
-                                .also { nextVariableExtractorIndex++ }
-                                .pattern()
-                        }
+            return Watch(
+                id = runBlocking { mutex.withLock { nextKeyFilterId++ } },
+                directoryPattern = TODO(),
+                filePattern = resource.definition.path
+                    .joinToString { pathPart ->
+                        when (pathPart) {
+                            is PathPart.StaticExtractor<*> -> pathPart.regex.pattern()
+                            is PathPart.VariableExtractor<*, *> -> {
+                                val segmentFilterIndex = nextVariableExtractorIndex
+                                segmentFilters[segmentFilterIndex]
+                                    .also { nextVariableExtractorIndex++ }
+                                    .pattern()
+                            }
 
-                        else -> throw IllegalStateException("Encountered pathPart that is neither a static nor variable extractor")
+                            else -> throw IllegalStateException("Encountered pathPart that is neither a static nor variable extractor")
+                        }
                     }
-                }
                     .toPattern()
             )
         }
     }
-
-    class KeyFilter(
-        val id: Int,
-        val pattern: Pattern
-    )
 }
