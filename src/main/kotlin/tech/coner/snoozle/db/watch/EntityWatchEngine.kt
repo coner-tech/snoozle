@@ -251,19 +251,23 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
                 directoryPattern = resource.definition.pathParent
                     .joinToString(prefix = "^", postfix = "$") { pathPart ->
                         when (pathPart) {
-                            is PathPart.StaticExtractor<*> -> pathPart.regex.pattern()
+                            is PathPart.StaticExtractor<*> -> {
+                                val pattern = pathPart.regex.pattern()
+                                pattern
+                            }
                             is PathPart.VariableExtractor<*, *> -> {
                                 val segmentFilterIndex = nextDirectoryPatternVariableExtractorIndex
-                                segmentFilters[segmentFilterIndex]
+                                val pattern = segmentFilters[segmentFilterIndex]
                                     .also { nextDirectoryPatternVariableExtractorIndex++ }
                                     .pattern()
+                                pattern
                             }
                             else -> handleUnknownPartPartType()
                         }
                     }
-                    .toPattern(),
+                    .let(Pattern::compile),
                 filePattern = resource.definition.path
-                    .joinToString(prefix = "^", postfix = "$") { pathPart ->
+                    .joinToString(prefix = "^", separator = "", postfix = "$") { pathPart ->
                         when (pathPart) {
                             is PathPart.StaticExtractor<*> -> pathPart.regex.pattern()
                             is PathPart.VariableExtractor<*, *> -> {
@@ -275,7 +279,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
                             else -> handleUnknownPartPartType()
                         }
                     }
-                    .toPattern()
+                    .let(Pattern::compile)
             )
         }
     }

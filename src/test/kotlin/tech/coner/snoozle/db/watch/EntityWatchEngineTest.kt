@@ -3,6 +3,7 @@ package tech.coner.snoozle.db.watch
 import assertk.all
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isTrue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -19,7 +20,10 @@ import org.junit.jupiter.api.io.TempDir
 import tech.coner.snoozle.db.path.asAbsolute
 import tech.coner.snoozle.db.sample.*
 import tech.coner.snoozle.db.session.data.DataSession
+import tech.coner.snoozle.util.hasUuidPattern
 import java.nio.file.Path
+import java.util.regex.Pattern
+import kotlin.io.path.createDirectories
 import kotlin.io.path.createDirectory
 import kotlin.io.path.writeText
 
@@ -118,8 +122,34 @@ class EntityWatchEngineTest : CoroutineScope {
 
         @Test
         fun `It should watch for specific widget created`(): Unit = runBlocking {
-//            val token = widgets.watchEngine.createToken()
-//            token.register(widgets.watchEngine.watchSpecific())
+            val widget = Widget(
+                name = "Specific Widget Created",
+                widget = true
+            )
+            val widgetAsJson = SampleDatabaseFixture.Widgets.asJson(widget)
+            val widgetFile = widgetsDirectory.resolve("${widget.id}.json")
+            val token = widgets.watchEngine.createToken()
+            token.register(widgets.watchEngine.watchSpecific(widget.id))
+
+            launch {
+                widgetsDirectory.createDirectories()
+                widgetFile.writeText(widgetAsJson)
+            }
+            val event = withTimeout(defaultTimeoutMillis) {
+                token.events.first()
+            }
+
+            assertThat(event)
+                .isInstanceOfExists()
+                .all {
+                    recordId().isEqualTo(Widget.Key(widget.id))
+                    recordContent().isEqualTo(widget)
+                }
+        }
+
+        @Test
+        fun `It should not emit when different widget created than specific watched`() {
+            TODO()
         }
 
         @Test
