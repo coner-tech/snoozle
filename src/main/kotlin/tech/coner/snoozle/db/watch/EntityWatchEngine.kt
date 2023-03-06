@@ -107,11 +107,14 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
         watchStore[token].unregisterAll()
     }
 
-    fun onResourceCreatedEntity(key: K, entity: E) {
-        val event = Event.Exists(key, entity, Event.Origin.RESOURCE_CREATED)
-        watchStore.allScopes
-            // TODO: filter interested scopes
-            .forEach { it.token.events.tryEmit(event) }
+    fun onResourceCreatedEntity(key: K, entity: E) = runBlocking {
+        mutex.withLock {
+            val event = Event.Exists(key, entity, Event.Origin.RESOURCE_CREATED)
+            watchStore.allScopes
+                .forEach { scope ->
+                    scope.handleResourceEvent(event)
+                }
+        }
     }
 
     fun onResourceModifiedEntity(key: K, entity: E) {
@@ -191,6 +194,10 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
             watches = watches
                 .toMutableSet()
                 .apply { add(watch) }
+        }
+
+        suspend fun handleResourceEvent(event: Event<K, E>) {
+            TODO("emit events to interested watches")
         }
 
         suspend fun unregister(watch: Watch<K>) {

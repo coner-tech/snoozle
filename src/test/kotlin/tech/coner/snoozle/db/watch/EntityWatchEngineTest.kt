@@ -148,8 +148,32 @@ class EntityWatchEngineTest : CoroutineScope {
         }
 
         @Test
-        fun `It should not emit when different widget created than specific watched`() {
-            TODO()
+        fun `It should not emit when different widget created than specific watched`() = runBlocking {
+            val widgetOfInterest = Widget(
+                name = "Specific Widget to Watch",
+                widget = true
+            )
+            val widgetNotOfInterest = Widget(
+                name = "Widget of no concern with respect to Watch",
+                widget = true
+            )
+            val token = widgets.watchEngine.createToken()
+            token.register(widgets.watchEngine.watchSpecific(widgetOfInterest.id))
+
+            launch {
+                widgets.create(widgetNotOfInterest)
+                widgets.create(widgetOfInterest)
+            }
+            val event = withTimeout(defaultTimeoutMillis) {
+                token.events.first()
+            }
+
+            assertThat(event)
+                .isInstanceOfExists()
+                .all {
+                    recordId().isEqualTo(Widget.Key(widgetOfInterest.id))
+                    recordContent().isEqualTo(widgetOfInterest)
+                }
         }
 
         @Test
