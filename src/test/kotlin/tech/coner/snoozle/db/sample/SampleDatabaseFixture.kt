@@ -49,7 +49,7 @@ object SampleDatabaseFixture {
                 {
                     "id": "${entity.id}",
                     "name": "${entity.name}",
-                    "widget": "${entity.widget}"
+                    "widget": ${entity.widget}
                 }
             """.trimIndent()
         }

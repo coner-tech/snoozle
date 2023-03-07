@@ -56,7 +56,7 @@ class EntityResource<K : Key, E : Entity<K>>(
         } catch (t: Throwable) {
             throw EntityIoException.WriteFailure("Failed to write entity", t)
         }
-        watchEngine.onResourceCreatedEntity(key, entity)
+        fileWatchEngine.onResourceCreatedEntity(relativeRecord)
     }
 
     fun deleteOnExit(entity: E) {
@@ -108,7 +108,7 @@ class EntityResource<K : Key, E : Entity<K>>(
             writer.writeValue(outputStream, entity)
         }
         Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-        watchEngine.onResourceModifiedEntity(key, entity)
+        fileWatchEngine.onResourceModifiedEntity(relativeRecord)
     }
 
     private fun read(file: AbsolutePath): E {
@@ -126,12 +126,13 @@ class EntityResource<K : Key, E : Entity<K>>(
     }
 
     fun delete(key: K) {
-        val file = root.value.resolve(pathfinder.findRecord(key).value)
+        val relativePath = pathfinder.findRecord(key)
+        val file = root.value.resolve(relativePath.value)
         if (Files.notExists(file)) {
             throw EntityIoException.NotFound(key)
         }
         Files.delete(file)
-        watchEngine.onResourceDeletedEntity(key)
+        fileWatchEngine.onResourceDeletedEntity(relativePath)
     }
 
     fun delete(entity: E) {
