@@ -3,8 +3,6 @@ package tech.coner.snoozle.db.it
 import assertk.all
 import assertk.assertThat
 import assertk.assertions.*
-import java.nio.file.Files.isReadable
-import java.nio.file.Files.isRegularFile
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

@@ -12,9 +12,9 @@ object SampleDatabaseFixture {
 
     const val VERSION_HIGHEST = 3
 
-    fun factory(root: Path, version: Int?): SampleDatabase {
+    fun factory(root: Path, version: Int?, populate: Boolean = true): SampleDatabase {
         javaClass.requireResourceAsFile("/sample-db/v$version")
-            .copyRecursively(root.toFile())
+            .apply { if (populate) { copyRecursively(root.toFile()) } }
         return SampleDatabase(root.asAbsolute())
     }
 

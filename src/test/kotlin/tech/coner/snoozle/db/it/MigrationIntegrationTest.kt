@@ -47,8 +47,8 @@ class MigrationIntegrationTest {
         fun before() {
             session = SampleDatabaseFixture
                 .factory(
-                root = rootVNull,
-                version = null
+                    root = rootVNull,
+                    version = null
             )
                 .openAdministrativeSession()
                 .getOrThrow()
