@@ -51,17 +51,12 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
                                 fileWatchEngineToken.registerRootDirectory()
                                 fileWatchEngineToken.events
                                     .onEach { event ->
-                                        println("EntityWatchEngine.onEach >>>")
                                         scope.launch {
-                                            println("EntityWatchEngine.onEach.launch >>>")
                                             mutex.withLock {
-                                                println("EntityWatchEngine.onEach.launch.mutex.withLock >>>")
                                                 handleFileWatchEvent(scope, event)
-                                                println("EntityWatchEngine.onEach.launch.mutex.withLock <<<")
                                             }
-                                            println("EntityWatchEngine.onEach.launch <<<")
                                         }
-                                        println("EntityWatchEngine.onEach <<<")
+                                        
                                     }
                                     .launchIn(this)
                             }

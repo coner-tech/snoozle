@@ -531,16 +531,13 @@ open class FileWatchEngine(
     }
 
     private fun handleResourceEvent(event: Event.Record<RelativePath, Unit>) {
-        println(">>> $event")
         val pathAsString = event.recordId.value.toString()
         watchStore.allScopes.forEach { scope ->
-            println("evaluating scope ${scope.filePatterns}")
             if (scope.filePatterns.any { pattern -> pattern.matcher(pathAsString).matches() }) {
-                println("$pathAsString matched a pattern")
                 launch { scope.token.events.emit(event) }
             }
         }
-        println("<<< $event")
+        
     }
 
     data class Scope(
