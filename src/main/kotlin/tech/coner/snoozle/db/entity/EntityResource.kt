@@ -56,7 +56,7 @@ class EntityResource<K : Key, E : Entity<K>>(
         } catch (t: Throwable) {
             throw EntityIoException.WriteFailure("Failed to write entity", t)
         }
-        fileWatchEngine.onResourceCreatedEntity(relativeRecord)
+        fileWatchEngine.onResourceCreatedRecord(relativeRecord)
     }
 
     fun deleteOnExit(entity: E) {
@@ -108,7 +108,7 @@ class EntityResource<K : Key, E : Entity<K>>(
             writer.writeValue(outputStream, entity)
         }
         Files.move(tempFile, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-        fileWatchEngine.onResourceModifiedEntity(relativeRecord)
+        fileWatchEngine.onResourceModifiedRecord(relativeRecord)
     }
 
     private fun read(file: AbsolutePath): E {
@@ -132,7 +132,7 @@ class EntityResource<K : Key, E : Entity<K>>(
             throw EntityIoException.NotFound(key)
         }
         Files.delete(file)
-        fileWatchEngine.onResourceDeletedEntity(relativePath)
+        fileWatchEngine.onResourceDeletedRecord(relativePath)
     }
 
     fun delete(entity: E) {

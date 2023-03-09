@@ -2,6 +2,7 @@ package tech.coner.snoozle.db.it
 
 import assertk.all
 import assertk.assertThat
+import assertk.assertions.exists
 import assertk.assertions.hasSize
 import assertk.assertions.index
 import assertk.assertions.isEqualTo
@@ -78,19 +79,17 @@ class WidgetIntegrationTest {
         }
     }
 
-
     @Test
-    fun `It should watch for any widget created in new directory`(): Unit = testWidgets {
+    fun `It should watch for any widget created in new directory`(): Unit = testWidgets(populate = false) {
         val widget = Widget(name = "Random Widget", widget = true)
         val token = widgets.watchEngine.createToken()
         token.register(widgets.watchEngine.watchAll())
 
         launch {
-            widgetsDirectory.createDirectories()
             widgets.create(widget)
         }
         val event = withTimeout(defaultTimeoutMillis) {
-            token.events.first()
+            token.events.first { it.origin == Event.Origin.NEW_DIRECTORY_SCAN }
         }
 
         assertThat(event)
@@ -104,18 +103,14 @@ class WidgetIntegrationTest {
 
     @Test
     fun `It should watch for any widget created in existing directory`() = testWidgets {
-        widgetsDirectory.createDirectory()
-        val widget = SampleDatabaseFixture.Widgets.One
-        val widgetAsJson = SampleDatabaseFixture.Widgets.asJson(widget)
-        val widgetFile = widgetsDirectory.resolve("${widget.id}.json")
+        assertThat(widgetsDirectory, "sanity check").exists()
+        val widget = Widget(name = "Any widget", widget = true)
         val token = widgets.watchEngine.createToken()
         token.register(widgets.watchEngine.watchAll())
 
-        launch { widgetFile.writeText(widgetAsJson) }
+        launch { widgets.create(widget) }
         val event = withTimeout(defaultTimeoutMillis) {
-            token.events
-                .filter { it.origin == Event.Origin.WATCH }
-                .first()
+            token.events.first()
         }
 
         assertThat(event)
@@ -123,7 +118,6 @@ class WidgetIntegrationTest {
             .all {
                 recordId().isEqualTo(Widget.Key(widget.id))
                 recordContent().isEqualTo(widget)
-                origin().isEqualTo(Event.Origin.WATCH)
             }
     }
 
@@ -210,8 +204,8 @@ class WidgetIntegrationTest {
     }
 
     @Test
-    fun `It should watch for any widget deleted`() = testWidgets {
-        val original = SampleDatabaseFixture.Widgets.One
+    fun `It should watch for any widget deleted`() = testWidgets(populate = false) {
+        val original = Widget(name = "Widget to delete", widget = true)
         widgets.create(original)
 
         val token = widgets.watchEngine.createToken()
@@ -219,9 +213,8 @@ class WidgetIntegrationTest {
 
         launch { widgets.delete(original) }
         val event = withTimeout(defaultTimeoutMillis) {
-            token.events
-                .filter { it.origin == Event.Origin.WATCH }
-                .first() }
+            token.events.first { it.origin == Event.Origin.WATCH }
+        }
 
         assertThat(event)
             .isInstanceOfDeleted()

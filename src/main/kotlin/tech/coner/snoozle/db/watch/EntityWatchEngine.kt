@@ -50,14 +50,20 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
                             .also { fileWatchEngineToken ->
                                 fileWatchEngineToken.registerRootDirectory()
                                 fileWatchEngineToken.events
-                                    .onEach {
+                                    .onEach { event ->
+                                        println("EntityWatchEngine.onEach >>>")
                                         scope.launch {
+                                            println("EntityWatchEngine.onEach.launch >>>")
                                             mutex.withLock {
-                                                handleFileWatchEvent(scope, it)
+                                                println("EntityWatchEngine.onEach.launch.mutex.withLock >>>")
+                                                handleFileWatchEvent(scope, event)
+                                                println("EntityWatchEngine.onEach.launch.mutex.withLock <<<")
                                             }
+                                            println("EntityWatchEngine.onEach.launch <<<")
                                         }
+                                        println("EntityWatchEngine.onEach <<<")
                                     }
-                                    .launchIn(scope)
+                                    .launchIn(this)
                             }
                     }
             }

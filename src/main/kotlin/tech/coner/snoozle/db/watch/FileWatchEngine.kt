@@ -512,31 +512,35 @@ open class FileWatchEngine(
             .any { it.absolutePath == contextAsAbsolutePath }
     }
 
-    fun onResourceCreatedEntity(relativePath: RelativePath) = runBlocking {
+    fun onResourceCreatedRecord(relativePath: RelativePath) = runBlocking {
         mutex.withLock {
             handleResourceEvent(Event.Exists(relativePath, Unit, Event.Origin.RESOURCE_CREATED))
         }
     }
 
-    fun onResourceModifiedEntity(relativePath: RelativePath) = runBlocking {
+    fun onResourceModifiedRecord(relativePath: RelativePath) = runBlocking {
         mutex.withLock {
             handleResourceEvent(Event.Exists(relativePath, Unit, Event.Origin.RESOURCE_UPDATED))
         }
     }
 
-    fun onResourceDeletedEntity(relativePath: RelativePath) = runBlocking {
+    fun onResourceDeletedRecord(relativePath: RelativePath) = runBlocking {
         mutex.withLock {
             handleResourceEvent(Event.Deleted(relativePath, Event.Origin.RESOURCE_DELETED))
         }
     }
 
     private fun handleResourceEvent(event: Event.Record<RelativePath, Unit>) {
+        println(">>> $event")
         val pathAsString = event.recordId.value.toString()
         watchStore.allScopes.forEach { scope ->
+            println("evaluating scope ${scope.filePatterns}")
             if (scope.filePatterns.any { pattern -> pattern.matcher(pathAsString).matches() }) {
-                scope.token.events.tryEmit(event)
+                println("$pathAsString matched a pattern")
+                launch { scope.token.events.emit(event) }
             }
         }
+        println("<<< $event")
     }
 
     data class Scope(
