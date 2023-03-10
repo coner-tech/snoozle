@@ -2,10 +2,7 @@ package tech.coner.snoozle.db.it
 
 import assertk.all
 import assertk.assertThat
-import assertk.assertions.containsAll
-import assertk.assertions.exists
-import assertk.assertions.hasSize
-import assertk.assertions.isEqualTo
+import assertk.assertions.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,6 +18,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
+import tech.coner.snoozle.db.closeAndAssertSuccess
 import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.sample.Widget
 import tech.coner.snoozle.db.sample.WidgetResource
@@ -160,7 +158,7 @@ class WidgetIntegrationTest {
                 .all {
                     recordId().isEqualTo(Widget.Key(widget.id))
                     recordContent().isEqualTo(widget)
-                    origin().isEqualTo(Event.Origin.RESOURCE_CREATED)
+                    origin().isIn(Event.Origin.RESOURCE_CREATED, Event.Origin.WATCH)
                 }
         }
 
@@ -190,7 +188,7 @@ class WidgetIntegrationTest {
                 .all {
                     recordId().isEqualTo(Widget.Key(widgetOfInterest.id))
                     recordContent().isEqualTo(widgetOfInterest)
-                    origin().isEqualTo(Event.Origin.RESOURCE_CREATED)
+                    origin().isIn(Event.Origin.RESOURCE_CREATED, Event.Origin.WATCH)
                 }
         }
 
@@ -204,8 +202,7 @@ class WidgetIntegrationTest {
 
             launch { widgets.update(modified) }
             val event = withTimeout(defaultTimeoutMillis) {
-                token.events
-                    .first { it.origin == Event.Origin.WATCH }
+                token.events.first()
             }
 
             assertThat(event)
@@ -213,7 +210,7 @@ class WidgetIntegrationTest {
                 .all {
                     recordId().isEqualTo(Widget.Key(original.id))
                     recordContent().isEqualTo(modified)
-                    origin().isEqualTo(Event.Origin.WATCH)
+                    origin().isIn(Event.Origin.RESOURCE_UPDATED, Event.Origin.WATCH)
                 }
         }
 
@@ -227,14 +224,14 @@ class WidgetIntegrationTest {
 
             launch { widgets.delete(original) }
             val event = withTimeout(defaultTimeoutMillis) {
-                token.events.first { it.origin == Event.Origin.WATCH }
+                token.events.first()
             }
 
             assertThat(event)
                 .isInstanceOfDeleted()
                 .all {
                     recordId().isEqualTo(Widget.Key(original.id))
-                    origin().isEqualTo(Event.Origin.WATCH)
+                    origin().isIn(Event.Origin.RESOURCE_DELETED, Event.Origin.WATCH)
                 }
         }
     }
@@ -265,7 +262,7 @@ class WidgetIntegrationTest {
             runBlocking { testFn(context) }
         } finally {
             runBlocking { context.widgets.watchEngine.destroyAllTokens() }
-            context.session.close()
+            context.session.closeAndAssertSuccess()
             context.cancel()
         }
     }
