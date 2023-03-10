@@ -49,6 +49,45 @@ class EntityWatchEngineTest : CoroutineScope {
         dataSession.close()
     }
 
+    @Nested
+    inner class Widgets {
+
+        lateinit var widgets: WidgetResource
+
+        @BeforeEach
+        fun before() {
+            widgets = dataSession.widgets()
+        }
+
+        @Test
+        fun `watchAll should match any widget`() {
+            val watch = widgets.watchEngine.watchAll()
+            TODO()
+        }
+
+        @Test
+        fun `watchSpecific single should match any single widget`() {
+            val widget = SampleDatabaseFixture.Widgets.One
+            val watch = widgets.watchEngine.watchSpecific(widget.id)
+            TODO()
+        }
+
+        @Test
+        fun `watchSpecific single should not match other widgets`() {
+            TODO()
+        }
+
+        @Test
+        fun `watchSpecific collection should match widgets from collection`() {
+            TODO()
+        }
+
+        @Test
+        fun `watchSpecific collection should not match widgets not from collection`() {
+            TODO()
+        }
+    }
+
 
     @Nested
     inner class Subwidgets {
