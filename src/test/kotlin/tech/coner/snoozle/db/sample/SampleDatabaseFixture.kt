@@ -1,12 +1,15 @@
 package tech.coner.snoozle.db.sample
 
 import tech.coner.snoozle.db.entity.Entity
+import tech.coner.snoozle.db.path.RelativePath
 import tech.coner.snoozle.db.path.asAbsolute
+import tech.coner.snoozle.db.path.asRelative
 import tech.coner.snoozle.util.requireResourceAsFile
 import tech.coner.snoozle.util.uuid
 import java.nio.file.Path
 import java.time.format.DateTimeFormatter
 import java.util.*
+import kotlin.io.path.Path
 
 object SampleDatabaseFixture {
 
@@ -42,6 +45,10 @@ object SampleDatabaseFixture {
                 else -> arrayOf("widgets", "$widgetId.json")
             }
                 .fold(root) { acc, segment -> acc.resolve(segment) }
+        }
+
+        fun relativePath(widget: Widget): RelativePath {
+            return Path("widgets", "${widget.id}.json").asRelative()
         }
 
         override fun asJson(entity: Widget): String {

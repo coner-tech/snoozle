@@ -2,7 +2,9 @@ package tech.coner.snoozle.db.watch
 
 import assertk.all
 import assertk.assertThat
+import assertk.assertions.each
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
 import assertk.assertions.isTrue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,11 +19,13 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import tech.coner.snoozle.db.path.RelativePath
 import tech.coner.snoozle.db.path.asAbsolute
 import tech.coner.snoozle.db.sample.*
 import tech.coner.snoozle.db.session.data.DataSession
 import tech.coner.snoozle.util.hasUuidPattern
 import java.nio.file.Path
+import java.util.*
 import java.util.regex.Pattern
 import kotlin.io.path.createDirectories
 import kotlin.io.path.createDirectory
@@ -59,32 +63,75 @@ class EntityWatchEngineTest : CoroutineScope {
             widgets = dataSession.widgets()
         }
 
+        private fun IntRange.randomWidgetRelativePathStrings() = map { Widget(name = "Widget $it", widget = true) }
+            .map { it.toRelativePathString() }
+
+        private fun Widget.toRelativePathString() = SampleDatabaseFixture.Widgets.relativePath(this).value.toString()
+
         @Test
-        fun `watchAll should match any widget`() {
+        fun `watchAll filePattern should match any widget path`() {
+            val randomWidgetPaths = (0..100).randomWidgetRelativePathStrings()
             val watch = widgets.watchEngine.watchAll()
-            TODO()
+
+            val actual = randomWidgetPaths
+                .map { watch.filePattern.matcher(it).matches() }
+
+            assertThat(actual, "match results for all widget paths").each { it.isTrue() }
         }
 
         @Test
-        fun `watchSpecific single should match any single widget`() {
+        fun `watchSpecific single filePattern should match any single widget`() {
             val widget = SampleDatabaseFixture.Widgets.One
+            val widgetPath = SampleDatabaseFixture.Widgets.relativePath(widget).value.toString()
             val watch = widgets.watchEngine.watchSpecific(widget.id)
-            TODO()
+
+            val actual = watch.filePattern.matcher(widgetPath).matches()
+
+            assertThat(actual, "match result for single widget path").isTrue()
         }
 
         @Test
         fun `watchSpecific single should not match other widgets`() {
-            TODO()
+            val randomOtherWidgetPaths = (0..100).randomWidgetRelativePathStrings()
+            val widget = Widget(name = "Random Widget of Interest", widget = true)
+            val watch = widgets.watchEngine.watchSpecific(widget.id)
+
+            val actual = randomOtherWidgetPaths
+                .map { watch.filePattern.matcher(it).matches() }
+
+            assertThat(actual, "match result for random other widget paths").each { it.isFalse() }
         }
 
         @Test
         fun `watchSpecific collection should match widgets from collection`() {
-            TODO()
+            val widgetsCollection = (0..100)
+                .map { Widget(name = "Widget $it", widget = true) }
+            val widgetsIds = widgetsCollection.map { it.id }
+            val watch = widgets.watchEngine.watchSpecific(widgetsIds)
+            val widgetsCollectionPaths = widgetsCollection
+                .map { it.toRelativePathString() }
+
+            val actual = widgetsCollectionPaths
+                .map { watch.filePattern.matcher(it).matches() }
+
+            assertThat(actual, "match result for widgets from collection").each { it.isTrue() }
         }
 
         @Test
         fun `watchSpecific collection should not match widgets not from collection`() {
-            TODO()
+            val widgetsOfInterest = (0..100)
+                .map { Widget(name = "Widget $it", widget = true) }
+                .map { it.id }
+            val widgetsNotOfInterest = (0..100)
+                .map { Widget(name = "Widget $it", widget = true) }
+            val widgetsNotOfInterestPaths = widgetsNotOfInterest
+                .map { it.toRelativePathString() }
+            val watch = widgets.watchEngine.watchSpecific(widgetsOfInterest)
+
+            val actual = widgetsNotOfInterestPaths
+                .map { watch.filePattern.matcher(it).matches() }
+
+            assertThat(actual, "match result for widgets not of interest").each { it.isFalse() }
         }
     }
 
