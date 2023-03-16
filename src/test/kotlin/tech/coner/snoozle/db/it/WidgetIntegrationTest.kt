@@ -2,7 +2,11 @@ package tech.coner.snoozle.db.it
 
 import assertk.all
 import assertk.assertThat
-import assertk.assertions.*
+import assertk.assertions.containsAll
+import assertk.assertions.exists
+import assertk.assertions.hasSize
+import assertk.assertions.isEqualTo
+import assertk.assertions.isIn
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,7 +36,10 @@ import tech.coner.snoozle.db.watch.origin
 import tech.coner.snoozle.db.watch.recordContent
 import tech.coner.snoozle.db.watch.recordId
 import java.nio.file.Path
+import kotlin.io.path.createDirectories
+import kotlin.io.path.deleteExisting
 import kotlin.io.path.readText
+import kotlin.io.path.writeText
 
 class WidgetIntegrationTest {
 
@@ -238,6 +245,164 @@ class WidgetIntegrationTest {
 
     @Nested
     inner class WatchSimulatedExternal {
+
+        @Test
+        fun `It should watch for any widget created in new directory`() = testWidgets(populate = false) {
+            val widget = Widget(name = "Random Widget", widget = true)
+            val token = widgets.watchEngine.createToken()
+            token.register(widgets.watchEngine.watchAll())
+            val widgetFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(widget).value)
+            widgetFile.parent.createDirectories()
+            val widgetAsJson = SampleDatabaseFixture.Widgets.asJson(widget)
+
+            launch {
+                widgetFile.writeText(widgetAsJson)
+            }
+            val event = withTimeout(defaultTimeoutMillis) {
+                token.events.first { it.origin == Event.Origin.NEW_DIRECTORY_SCAN }
+            }
+
+            assertThat(event)
+                .isInstanceOfExists()
+                .all {
+                    recordId().isEqualTo(Widget.Key(widget.id))
+                    recordContent().isEqualTo(widget)
+                    origin().isEqualTo(Event.Origin.NEW_DIRECTORY_SCAN)
+                }
+        }
+
+        @Test
+        fun `It should watch for any widget created in existing directory`() = testWidgets {
+            assertThat(widgetsDirectory, "sanity check").exists()
+            val widget = Widget(name = "Any widget", widget = true)
+            val token = widgets.watchEngine.createToken()
+            token.register(widgets.watchEngine.watchAll())
+            val widgetFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(widget).value)
+            val widgetAsJson = SampleDatabaseFixture.Widgets.asJson(widget)
+
+            launch {
+                widgetFile.writeText(widgetAsJson)
+            }
+            val event = withTimeout(defaultTimeoutMillis) {
+                token.events.first()
+            }
+
+            assertThat(event)
+                .isInstanceOfExists()
+                .all {
+                    recordId().isEqualTo(Widget.Key(widget.id))
+                    recordContent().isEqualTo(widget)
+                    origin().isEqualTo(Event.Origin.WATCH)
+                }
+        }
+
+        @Test
+        fun `It should watch for specific widget created`() = testWidgets {
+            val widget = Widget(
+                name = "Specific Widget Created",
+                widget = true
+            )
+            val token = widgets.watchEngine.createToken()
+            token.register(widgets.watchEngine.watchSpecific(widget.id))
+            val widgetFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(widget).value)
+            val widgetAsJson = SampleDatabaseFixture.Widgets.asJson(widget)
+
+            launch { widgetFile.writeText(widgetAsJson) }
+            val event = withTimeout(defaultTimeoutMillis) {
+                token.events.first()
+            }
+
+            assertThat(event)
+                .isInstanceOfExists()
+                .all {
+                    recordId().isEqualTo(Widget.Key(widget.id))
+                    recordContent().isEqualTo(widget)
+                    origin().isEqualTo(Event.Origin.WATCH)
+                }
+        }
+
+        @Test
+        fun `It should not emit when different widget created than specific watched`() = testWidgets {
+            val widgetOfInterest = Widget(
+                name = "Specific Widget to Watch",
+                widget = true
+            )
+            val widgetOfInterestFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(widgetOfInterest).value)
+            val widgetOfInterestJson = SampleDatabaseFixture.Widgets.asJson(widgetOfInterest)
+            val widgetNotOfInterest = Widget(
+                name = "Widget of no concern with respect to Watch",
+                widget = true
+            )
+            val widgetNotOfInterestFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(widgetOfInterest).value)
+            val widgetNotOfInterestJson = SampleDatabaseFixture.Widgets.asJson(widgetNotOfInterest)
+            val token = widgets.watchEngine.createToken()
+            token.register(widgets.watchEngine.watchSpecific(widgetOfInterest.id))
+
+            launch {
+                widgetNotOfInterestFile.writeText(widgetNotOfInterestJson)
+                widgetOfInterestFile.writeText(widgetOfInterestJson)
+            }
+            val event = withTimeout(defaultTimeoutMillis) {
+                token.events.first()
+            }
+
+            assertThat(event)
+                .isInstanceOfExists()
+                .all {
+                    recordId().isEqualTo(Widget.Key(widgetOfInterest.id))
+                    recordContent().isEqualTo(widgetOfInterest)
+                    origin().isEqualTo(Event.Origin.WATCH)
+                }
+        }
+
+        @Test
+        fun `It should watch for any widget modified`() = testWidgets(populate = false) {
+            val original = Widget(name = "original", widget = true)
+            widgets.create(original)
+            val modified = original.copy(name = "modified")
+            val widgetFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(modified).value)
+            val modifiedWidget = SampleDatabaseFixture.Widgets.asJson(modified)
+            val token = widgets.watchEngine.createToken()
+            token.register(widgets.watchEngine.watchAll())
+
+            launch {
+                widgetFile.writeText(modifiedWidget)
+            }
+            val event = withTimeout(defaultTimeoutMillis) {
+                token.events.first()
+            }
+
+            assertThat(event)
+                .isInstanceOfExists()
+                .all {
+                    recordId().isEqualTo(Widget.Key(original.id))
+                    recordContent().isEqualTo(modified)
+                    origin().isEqualTo(Event.Origin.WATCH)
+                }
+        }
+
+        @Test
+        fun `It should watch for any widget deleted`() = testWidgets(populate = false) {
+            val widget = Widget(name = "Widget to delete", widget = true)
+            widgets.create(widget)
+            val widgetFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(widget).value)
+            val token = widgets.watchEngine.createToken()
+            token.register(widgets.watchEngine.watchAll())
+
+            launch {
+                widgetFile.deleteExisting()
+            }
+            val event = withTimeout(defaultTimeoutMillis) {
+                token.events.first()
+            }
+
+            assertThat(event)
+                .isInstanceOfDeleted()
+                .all {
+                    recordId().isEqualTo(Widget.Key(widget.id))
+                    origin().isEqualTo(Event.Origin.WATCH)
+                }
+        }
     }
 
     private fun testWidgets(populate: Boolean = true, testFn: suspend TestContext.() -> Unit) {
