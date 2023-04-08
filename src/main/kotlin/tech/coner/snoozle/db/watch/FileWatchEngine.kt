@@ -1,9 +1,19 @@
 package tech.coner.snoozle.db.watch
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import tech.coner.snoozle.db.path.AbsolutePath
 import tech.coner.snoozle.db.path.RelativePath
 import tech.coner.snoozle.db.path.asAbsolute
@@ -94,10 +104,6 @@ open class FileWatchEngine(
                                 takenWatchKey = watchKey,
                                 event = event as WatchEvent<Any>
                             )
-
-                            else -> {
-                                TODO("need to handle unknown case")
-                            }
                         }
                     }
                 }
