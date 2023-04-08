@@ -5,13 +5,17 @@ import assertk.assertThat
 import assertk.assertions.containsAll
 import assertk.assertions.exists
 import assertk.assertions.hasSize
+import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isIn
+import assertk.assertions.isNull
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -19,6 +23,8 @@ import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assumptions
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertDoesNotThrow
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
@@ -29,12 +35,16 @@ import tech.coner.snoozle.db.sample.WidgetResource
 import tech.coner.snoozle.db.sample.watchAll
 import tech.coner.snoozle.db.sample.watchSpecific
 import tech.coner.snoozle.db.session.data.DataSession
+import tech.coner.snoozle.db.watch.EntityWatchEngine
 import tech.coner.snoozle.db.watch.Event
+import tech.coner.snoozle.db.watch.TestFileWatchEngine
 import tech.coner.snoozle.db.watch.isInstanceOfDeleted
 import tech.coner.snoozle.db.watch.isInstanceOfExists
 import tech.coner.snoozle.db.watch.origin
 import tech.coner.snoozle.db.watch.recordContent
 import tech.coner.snoozle.db.watch.recordId
+import tech.coner.snoozle.db.watch.scopes
+import tech.coner.snoozle.db.watch.watchStore
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteExisting
@@ -45,7 +55,7 @@ class WidgetIntegrationTest {
 
     @TempDir lateinit var root: Path
 
-    private val defaultTimeoutMillis: Long = 5000L
+    private val defaultTimeoutMillis: Long = 1000L
 
     @Nested
     inner class CRUD {
@@ -240,6 +250,55 @@ class WidgetIntegrationTest {
                     recordId().isEqualTo(Widget.Key(original.id))
                     origin().isIn(Event.Origin.RESOURCE_DELETED, Event.Origin.WATCH)
                 }
+        }
+
+        @Test
+        fun `It should watch for widget with one remaining watch`() = testWidgets {
+            val widget = Widget(
+                name = "Create widget with one remaining watch",
+                widget = true
+            )
+            val token = widgets.watchEngine.createToken()
+            val watch1 = widgets.watchEngine.watchSpecific(widget.id)
+            val watch2 = widgets.watchEngine.watchSpecific(widget.id)
+            token.register(watch1)
+            token.register(watch2)
+            token.unregister(watch1)
+
+            launch { widgets.create(widget) }
+            val event = withTimeout(defaultTimeoutMillis) {
+                token.events.first()
+            }
+
+            assertThat(event)
+                .isInstanceOfExists()
+                .all {
+                    recordId().isEqualTo(Widget.Key(widget.id))
+                    recordContent().isEqualTo(widget)
+                    origin().isIn(Event.Origin.RESOURCE_CREATED, Event.Origin.WATCH)
+                }
+        }
+
+        @Test
+        fun `It should not watch for widget with no remaining watches`() = testWidgets {
+            val widget = Widget(
+                name = "Create widget with one remaining watch",
+                widget = true
+            )
+            val token = widgets.watchEngine.createToken() as EntityWatchEngine.TokenImpl<Widget.Key, Widget>
+            val watch1 = widgets.watchEngine.watchSpecific(widget.id)
+            val watch2 = widgets.watchEngine.watchSpecific(widget.id)
+            token.register(watch1)
+            token.register(watch2)
+            token.unregister(watch1)
+            token.unregister(watch2)
+
+            launch { widgets.create(widget) }
+            assertThrows<TimeoutCancellationException> {
+                withTimeout(defaultTimeoutMillis) {
+                    token.events.firstOrNull()
+                }
+            }
         }
     }
 

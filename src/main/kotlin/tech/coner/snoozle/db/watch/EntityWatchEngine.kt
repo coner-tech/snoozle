@@ -1,9 +1,13 @@
 package tech.coner.snoozle.db.watch
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import tech.coner.snoozle.db.Key
@@ -174,7 +178,16 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
         }
 
         suspend fun unregister(watch: Watch<K>) {
-            TODO()
+            check(watches.contains(watch)) { "Watch already unregistered: $watch" }
+            if (watches.count { it.directoryPattern == watch.directoryPattern } == 1) {
+                fileWatchEngineToken.unregisterDirectoryPattern(watch.directoryPattern)
+            }
+            if (watches.count { it.filePattern == watch.filePattern } == 1) {
+                fileWatchEngineToken.unregisterFilePattern(watch.filePattern)
+            }
+            watches = watches
+                .toMutableSet()
+                .apply { remove(watch) }
         }
 
         suspend fun unregisterAll() {
