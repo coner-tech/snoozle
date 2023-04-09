@@ -300,6 +300,27 @@ class WidgetIntegrationTest {
                 }
             }
         }
+
+        @Test
+        fun `It should not watch for widget when all watches unregistered`() = testWidgets {
+            val widget = Widget(
+                name = "Create widget with one remaining watch",
+                widget = true
+            )
+            val token = widgets.watchEngine.createToken() as EntityWatchEngine.TokenImpl<Widget.Key, Widget>
+            val watch1 = widgets.watchEngine.watchSpecific(widget.id)
+            val watch2 = widgets.watchEngine.watchSpecific(widget.id)
+            token.register(watch1)
+            token.register(watch2)
+            token.unregisterAll()
+
+            launch { widgets.create(widget) }
+            assertThrows<TimeoutCancellationException> {
+                withTimeout(defaultTimeoutMillis) {
+                    token.events.firstOrNull()
+                }
+            }
+        }
     }
 
     @Nested

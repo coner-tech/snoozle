@@ -1,35 +1,27 @@
 package tech.coner.snoozle.db.watch
 
-import assertk.all
 import assertk.assertThat
 import assertk.assertions.each
-import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isTrue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import tech.coner.snoozle.db.path.RelativePath
 import tech.coner.snoozle.db.path.asAbsolute
-import tech.coner.snoozle.db.sample.*
+import tech.coner.snoozle.db.sample.SampleDatabase
+import tech.coner.snoozle.db.sample.SampleDatabaseFixture
+import tech.coner.snoozle.db.sample.Widget
+import tech.coner.snoozle.db.sample.WidgetResource
+import tech.coner.snoozle.db.sample.watchAll
+import tech.coner.snoozle.db.sample.watchSpecific
+import tech.coner.snoozle.db.sample.widgets
 import tech.coner.snoozle.db.session.data.DataSession
-import tech.coner.snoozle.util.hasUuidPattern
 import java.nio.file.Path
-import java.util.*
-import java.util.regex.Pattern
-import kotlin.io.path.createDirectories
-import kotlin.io.path.createDirectory
-import kotlin.io.path.writeText
 
 class EntityWatchEngineTest : CoroutineScope {
 
