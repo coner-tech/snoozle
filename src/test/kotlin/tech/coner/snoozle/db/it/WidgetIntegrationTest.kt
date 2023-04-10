@@ -5,10 +5,8 @@ import assertk.assertThat
 import assertk.assertions.containsAll
 import assertk.assertions.exists
 import assertk.assertions.hasSize
-import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isIn
-import assertk.assertions.isNull
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -23,7 +21,6 @@ import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assumptions
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
@@ -37,14 +34,11 @@ import tech.coner.snoozle.db.sample.watchSpecific
 import tech.coner.snoozle.db.session.data.DataSession
 import tech.coner.snoozle.db.watch.EntityWatchEngine
 import tech.coner.snoozle.db.watch.Event
-import tech.coner.snoozle.db.watch.TestFileWatchEngine
 import tech.coner.snoozle.db.watch.isInstanceOfDeleted
 import tech.coner.snoozle.db.watch.isInstanceOfExists
 import tech.coner.snoozle.db.watch.origin
 import tech.coner.snoozle.db.watch.recordContent
 import tech.coner.snoozle.db.watch.recordId
-import tech.coner.snoozle.db.watch.scopes
-import tech.coner.snoozle.db.watch.watchStore
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteExisting
@@ -302,24 +296,31 @@ class WidgetIntegrationTest {
         }
 
         @Test
-        fun `It should not watch for widget when all watches unregistered`() = testWidgets {
+        fun `It should not watch for widget when all watches across all tokens have unregistered`() = testWidgets {
             val widget = Widget(
-                name = "Create widget with one remaining watch",
+                name = "Create widget should not be watched by any scopes",
                 widget = true
             )
-            val token = widgets.watchEngine.createToken() as EntityWatchEngine.TokenImpl<Widget.Key, Widget>
+            val token1 = widgets.watchEngine.createToken()
+            val token2 = widgets.watchEngine.createToken()
             val watch1 = widgets.watchEngine.watchSpecific(widget.id)
             val watch2 = widgets.watchEngine.watchSpecific(widget.id)
-            token.register(watch1)
-            token.register(watch2)
-            token.unregisterAll()
+            token1.register(watch1)
+            token2.register(watch2)
+            token1.unregister(watch1)
+            token2.unregister(watch2)
 
             launch { widgets.create(widget) }
             assertThrows<TimeoutCancellationException> {
                 withTimeout(defaultTimeoutMillis) {
-                    token.events.firstOrNull()
+                    token1.events.firstOrNull()
                 }
             }
+        }
+
+        @Test
+        fun `It should continue to watch for widget when same watch pattern registered on multiple scopes`() = testWidgets {
+            TODO()
         }
     }
 
