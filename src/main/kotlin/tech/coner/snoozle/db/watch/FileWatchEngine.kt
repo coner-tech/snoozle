@@ -86,12 +86,17 @@ open class FileWatchEngine(
     }
 
     private suspend fun pollLoop() = coroutineScope {
+        println("pollLoop()")
         while (isActive && service != null) {
+            println("pollLoop() while {")
             mutex.withLock {
+                println("pollLoop() mutex.withLock {")
                 val watchKey = service?.awaitTake()
                 if (!isActive) return@withLock
                 watchKey?.pollEvents()?.forEach { event ->
+                    println("pollLoop events -> $event")
                     launch {
+                        println("pollLoop events launched")
                         when (event.kind()) {
                             StandardWatchEventKinds.ENTRY_CREATE,
                             StandardWatchEventKinds.ENTRY_MODIFY,
@@ -107,7 +112,9 @@ open class FileWatchEngine(
                         }
                     }
                 }
+                println("pollLoop mutex.withLock }")
             }
+            println("pollLoop while }")
         }
     }
 
@@ -347,11 +354,13 @@ open class FileWatchEngine(
         token: TokenImpl,
         directoryPattern: Pattern
     ) {
+        println("registerDirectoryPattern(token = $token, directoryPattern = $directoryPattern)")
         mutex.withLock {
+            println("registerDirectoryPattern(token = $token, directoryPattern = $directoryPattern) mutex.withLock {")
             val service = this@FileWatchEngine.service ?: return@withLock Unit
             watchStore[token]
-                ?.copyAndAddDirectoryPattern(directoryPattern)
-                ?.also { watchStore[token] = it }
+                .copyAndAddDirectoryPattern(directoryPattern)
+                .also { watchStore[token] = it }
             Files.walkFileTree(root.value, object : SimpleFileVisitor<Path>() {
                 override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
                     val dirAsAbsolute = dir.asAbsolute()
@@ -359,10 +368,10 @@ open class FileWatchEngine(
                     if (directoryPattern.matcher(dirAsRelative.value.toString()).matches()) {
                         val watchKey = watchKeyFactoryFn(dirAsAbsolute, service)
                         watchStore[token]
-                            ?.copyAndAddDirectoryWatchKeyEntry(
+                            .copyAndAddDirectoryWatchKeyEntry(
                                 directoryWatchKeyEntryFactory(token, dirAsAbsolute, watchKey)
                             )
-                            ?.also { watchStore[token] = it }
+                            .also { watchStore[token] = it }
                     }
                     return FileVisitResult.CONTINUE
                 }
@@ -374,23 +383,24 @@ open class FileWatchEngine(
                     if (dirAsAbsolute != root) {
                         val parentDirAsAbsolute = dirAsAbsolute.value.parent.asAbsolute()
                         val entryToMutate = watchStore[token]
-                            ?.directoryWatchKeyEntries
-                            ?.firstOrNull { it.absoluteDirectory == parentDirAsAbsolute }
+                            .directoryWatchKeyEntries
+                            .firstOrNull { it.absoluteDirectory == parentDirAsAbsolute }
                         if (entryToMutate != null) {
                             watchStore[token]
-                                ?.copyAndAddWatchedSubdirectory(
+                                .copyAndAddWatchedSubdirectory(
                                     watchedSubdirectory = Scope.WatchedSubdirectoryEntry(
                                         absolutePath = dirAsAbsolute,
                                         relativePath = dirAsRelative
                                     ),
                                     watchKey = entryToMutate.watchKey
                                 )
-                                ?.also { watchStore[token] = it }
+                                .also { watchStore[token] = it }
                         }
                     }
                     return FileVisitResult.CONTINUE
                 }
             })
+            println("registerDirectoryPattern(token = $token, directoryPattern = $directoryPattern) mutex.withLock }")
         }
     }
 
@@ -423,10 +433,10 @@ open class FileWatchEngine(
     ) {
         mutex.withLock {
             watchStore[token]
-                ?.also { it.checkDirectoryPatternsNotEmpty() }
-                ?.also { require(!it.filePatterns.contains(filePattern)) { "Scope already has file pattern: $filePattern" } }
-                ?.copyAndAddFilePattern(filePattern)
-                ?.also { watchStore[token] = it }
+                .also { it.checkDirectoryPatternsNotEmpty() }
+                .also { require(!it.filePatterns.contains(filePattern)) { "Scope already has file pattern: $filePattern" } }
+                .copyAndAddFilePattern(filePattern)
+                .also { watchStore[token] = it }
         }
     }
 
@@ -436,10 +446,10 @@ open class FileWatchEngine(
     ) {
         mutex.withLock {
             watchStore[token]
-                ?.also { it.checkDirectoryPatternsNotEmpty() }
-                ?.also { require(it.filePatterns.contains(filePattern)) { "Scope does not contain file pattern: $filePattern" } }
-                ?.copyAndRemoveFilePattern(filePattern)
-                ?.also { watchStore[token] = it }
+                .also { it.checkDirectoryPatternsNotEmpty() }
+                .also { require(it.filePatterns.contains(filePattern)) { "Scope does not contain file pattern: $filePattern" } }
+                .copyAndRemoveFilePattern(filePattern)
+                .also { watchStore[token] = it }
         }
     }
 
@@ -519,8 +529,11 @@ open class FileWatchEngine(
     }
 
     fun onResourceCreatedRecord(relativePath: RelativePath) = runBlocking {
+        println("onResourceCreatedRecord(relativePath = $relativePath)")
         mutex.withLock {
+            println("onResourceCreatedRecord(relativePath = $relativePath) mutex.withLock {")
             handleResourceEvent(Event.Exists(relativePath, Unit, Event.Origin.RESOURCE_CREATED))
+            println("onResourceCreatedRecord(relativePath = $relativePath) mutex.withLock }")
         }
     }
 

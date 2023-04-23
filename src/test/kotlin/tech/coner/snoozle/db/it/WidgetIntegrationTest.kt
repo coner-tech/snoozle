@@ -55,16 +55,6 @@ class WidgetIntegrationTest {
     inner class CRUD {
 
         @Test
-        fun `It should get a Widget`() = testWidgets {
-            val widget = SampleDatabaseFixture.Widgets.One
-            val key = Widget.Key(id = widget.id)
-
-            val actual = widgets.read(key)
-
-            assertThat(actual).isEqualTo(widget)
-        }
-
-        @Test
         fun `It should create a Widget`() = testWidgets {
             val widget = Widget(name = "Create a Widget", widget = true)
 
@@ -75,6 +65,29 @@ class WidgetIntegrationTest {
             Assertions.assertThat(expectedFile).exists()
             val actual = expectedFile.readText()
             JSONAssert.assertEquals(expectedJson, actual, JSONCompareMode.LENIENT)
+        }
+
+        @Test
+        fun `It should get a Widget`() = testWidgets {
+            val widget = SampleDatabaseFixture.Widgets.One
+            val key = Widget.Key(id = widget.id)
+
+            val actual = widgets.read(key)
+
+            assertThat(actual).isEqualTo(widget)
+        }
+
+        @Test
+        fun `It should update a Widget`() = testWidgets {
+            val widget = SampleDatabaseFixture.Widgets.One
+            val update = widget.copy(name = "Updated ${widget.name}")
+
+            widgets.update(update)
+
+            val expectedFile = SampleDatabaseFixture.Widgets.tempFile(root, widget)
+            val expectedJson = SampleDatabaseFixture.Widgets.asJson(update)
+            assertThat(expectedFile).exists()
+            JSONAssert.assertEquals(expectedJson, expectedFile.readText(), JSONCompareMode.LENIENT)
         }
 
         @Test
@@ -132,9 +145,9 @@ class WidgetIntegrationTest {
         @Test
         fun `It should watch for any widget created in existing directory`() = testWidgets {
             assertThat(widgetsDirectory, "sanity check").exists()
-            val widget = Widget(name = "Any widget", widget = true)
             val token = widgets.watchEngine.createToken()
             token.register(widgets.watchEngine.watchAll())
+            val widget = Widget(name = "Any widget", widget = true)
 
             launch { widgets.create(widget) }
             val event = withTimeout(defaultTimeoutMillis) {

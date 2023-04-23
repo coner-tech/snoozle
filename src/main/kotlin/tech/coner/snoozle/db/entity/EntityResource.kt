@@ -40,6 +40,7 @@ class EntityResource<K : Key, E : Entity<K>>(
     }
 
     fun create(entity: E) {
+        println("EntityResource.create(entity = $entity)")
         val key = keyMapper.fromInstance(entity)
         val relativeRecord = pathfinder.findRecord(key)
         val destination = root.value.resolve(relativeRecord.value)

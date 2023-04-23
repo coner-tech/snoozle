@@ -45,29 +45,32 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
             tokenFactory = { id -> TokenImpl(id) },
             scopeFactory = { token ->
                 Scope(
+                    coroutineContext = coroutineContext + Job(),
                     token = token
                 )
                     .also { scope ->
+                        println("createToken also -> $scope")
                         token.engine = this
-                            .also { fileWatchEngineToken ->
-                                fileWatchEngineToken.registerRootDirectory()
-                                fileWatchEngineToken.events
-                                    .onEach { event ->
-                                        scope.launch {
-                                            mutex.withLock {
-                                                handleFileWatchEvent(scope, event)
-                                            }
-                                        }
-                                        
+                        val fileWatchEngineToken = fileWatchEngine.getOrCreateToken()
+                        fileWatchEngineToken.registerRootDirectory()
+                        fileWatchEngineToken.events
+                            .onEach { event ->
+                                println("fileWatchEngineToken.events.onEach -> $event")
+                                scope.launch {
+                                    mutex.withLock {
+                                        handleFileWatchEvent(scope, event)
                                     }
-                                    .launchIn(this)
+                                }
+
                             }
+                            .launchIn(this)
                     }
             }
         )
     }
 
     private suspend fun handleFileWatchEvent(scope: Scope<K, E>, event: FileWatchEvent) {
+        println("handleFileWatchEvent(scope = $scope, event = $event")
         when (event) {
             is Event.Record -> handleRecordEvent(scope, event)
             is Event.Overflow -> handleOverflowEvent(scope, event)
@@ -99,6 +102,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
     }
 
     suspend fun register(token: TokenImpl<K, E>, watch: Watch<K>) = mutex.withLock {
+        println("register(token = $token, watch = $watch)")
         fun shouldRegisterDirectoryPattern(): Boolean {
             return watchStore.allScopes.none { scope ->
                 scope.watches.none { watchInScope ->
@@ -107,11 +111,12 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
             }
         }
         fun shouldRegisterFilePattern(): Boolean {
-            return watchStore.allScopes.none { scope ->
-                scope.watches.none { watchInScope ->
+            return !watchStore.allScopes.any { scope ->
+                scope.watches.any { watchInScope ->
                     watchInScope.filePattern == watch.filePattern
                 }
             }
+                .also { println("shouldRegisterFilePattern(watch.filePattern = ${watch.filePattern}) : $it") }
         }
         val scope = watchStore[token]
         check(!scope.watches.contains(watch)) { "Watch already registered: $watch" }
@@ -122,36 +127,49 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
             fileWatchEngine.getOrCreateToken().registerFilePattern(watch.filePattern)
         }
         watchStore[token] = scope.copyAndAddWatch(watch)
+        println("registered watch: $watch, for token: $token")
     }
 
     suspend fun unregister(token: TokenImpl<K, E>, watch: Watch<K>) = mutex.withLock {
-        fun shouldUnregisterDirectoryPattern(): Boolean {
-            return watchStore.allScopes.sumOf { scope ->
-                scope.watches.count { watchInScope ->
-                    watchInScope.directoryPattern == watch.directoryPattern
-                }
-            } == 1
-        }
-        fun shouldUnregisterFilePattern(): Boolean {
-            return watchStore.allScopes.sumOf { scope ->
-                scope.watches.count { watchInScope ->
-                    watchInScope.filePattern == watch.filePattern
-                }
-            } == 1
-        }
         val scope = watchStore[token]
         check(scope.watches.contains(watch)) { "Watch already unregistered: $watch" }
-        if (shouldUnregisterDirectoryPattern()) {
-            fileWatchEngine.getOrCreateToken().unregisterDirectoryPattern(watch.directoryPattern)
-        }
-        if (shouldUnregisterFilePattern()) {
-            fileWatchEngine.getOrCreateToken().unregisterFilePattern(watch.filePattern)
-        }
+        handleUnregisterDirectoryPattern(watch)
+        handleUnregisterFilePattern(watch)
         watchStore[token] = scope.copyAndRemoveWatch(watch)
     }
 
     suspend fun unregisterAll(token: TokenImpl<K, E>) = mutex.withLock {
-        watchStore[token].unregisterAll()
+        val scope = watchStore[token]
+        scope.watches
+            .forEach { watch ->
+                handleUnregisterDirectoryPattern(watch)
+                handleUnregisterFilePattern(watch)
+            }
+        watchStore[token] = scope.copyWithEmptyWatches()
+    }
+
+    private suspend fun handleUnregisterDirectoryPattern(watch: Watch<K>) {
+        fun shouldUnregisterDirectoryPattern() = watchStore.allScopes
+            .sumOf { scope ->
+                scope.watches.count { watchInScope ->
+                    watchInScope.directoryPattern == watch.directoryPattern
+                }
+            } == 1
+        if (shouldUnregisterDirectoryPattern()) {
+            fileWatchEngine.getOrCreateToken().unregisterDirectoryPattern(watch.directoryPattern)
+        }
+    }
+
+    private suspend fun handleUnregisterFilePattern(watch: Watch<K>) {
+        fun shouldUnregisterFilePattern() = watchStore.allScopes
+            .sumOf { scope ->
+                scope.watches.count { watchInScope ->
+                    watchInScope.filePattern == watch.filePattern
+                }
+            } == 1
+        if (shouldUnregisterFilePattern()) {
+            fileWatchEngine.getOrCreateToken().unregisterFilePattern(watch.filePattern)
+        }
     }
 
     suspend fun destroyToken(token: TokenImpl<K, E>) = mutex.withLock {
@@ -162,9 +180,8 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
         watchStore.destroyAll(::afterDestroyTokenFn)
     }
 
-    private suspend fun afterDestroyTokenFn(scope: Scope<K, E>) {
+    private fun afterDestroyTokenFn(scope: Scope<K, E>) {
         scope.cancel()
-        scope.fileWatchEngineToken.destroy()
     }
 
     interface Token<K : Key, E : Entity<K>> : WatchToken<K, E> {
@@ -199,9 +216,11 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
     }
 
     data class Scope<K : Key, E : Entity<K>>(
+        override val coroutineContext: CoroutineContext,
         override val token: TokenImpl<K, E>,
         val watches: Set<Watch<K>> = emptySet()
-    ) : StorableWatchScope<K, E, TokenImpl<K, E>> {
+    ) : StorableWatchScope<K, E, TokenImpl<K, E>>,
+    CoroutineScope {
 
         fun copyAndAddWatch(watch: Watch<K>): Scope<K, E> = copy(
             watches = watches
@@ -215,23 +234,9 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
                 .apply { remove(watch) }
         )
 
-
-        suspend fun unregister(watch: Watch<K>) {
-            check(watches.contains(watch)) {  }
-            if (watches.count { it.directoryPattern == watch.directoryPattern } == 1) {
-                fileWatchEngineToken.unregisterDirectoryPattern(watch.directoryPattern)
-            }
-            if (watches.count { it.filePattern == watch.filePattern } == 1) {
-                fileWatchEngineToken.unregisterFilePattern(watch.filePattern)
-            }
-            watches = watches
-                .toMutableSet()
-                .apply { remove(watch) }
-        }
-
-        suspend fun unregisterAll() {
-            TODO()
-        }
+        fun copyWithEmptyWatches(): Scope<K, E> = copy(
+            watches = emptySet()
+        )
     }
 
     fun createWatch(builderDslFn: WatchBuilderDsl.() -> Unit): Watch<K> {
