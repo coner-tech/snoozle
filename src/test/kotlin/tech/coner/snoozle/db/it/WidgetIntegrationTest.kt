@@ -460,7 +460,9 @@ class WidgetIntegrationTest {
             token.register(widgets.watchEngine.watchAll())
 
             launch {
+                println("widgetFile.writeText >>>")
                 widgetFile.writeText(modifiedWidget)
+                println("widgetFile.writeText <<<")
             }
             val event = withTimeout(defaultTimeoutMillis) {
                 token.events.first()

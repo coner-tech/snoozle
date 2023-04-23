@@ -104,8 +104,8 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
     suspend fun register(token: TokenImpl<K, E>, watch: Watch<K>) = mutex.withLock {
         println("register(token = $token, watch = $watch)")
         fun shouldRegisterDirectoryPattern(): Boolean {
-            return watchStore.allScopes.none { scope ->
-                scope.watches.none { watchInScope ->
+            return !watchStore.allScopes.any { scope ->
+                scope.watches.any { watchInScope ->
                     watchInScope.directoryPattern == watch.directoryPattern
                 }
             }
@@ -116,14 +116,19 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
                     watchInScope.filePattern == watch.filePattern
                 }
             }
-                .also { println("shouldRegisterFilePattern(watch.filePattern = ${watch.filePattern}) : $it") }
         }
         val scope = watchStore[token]
         check(!scope.watches.contains(watch)) { "Watch already registered: $watch" }
-        if (shouldRegisterDirectoryPattern()) {
+        if (
+            shouldRegisterDirectoryPattern()
+                .also { println("shouldRegisterDirectoryPattern: $it") }
+        ) {
             fileWatchEngine.getOrCreateToken().registerDirectoryPattern(watch.directoryPattern)
         }
-        if (shouldRegisterFilePattern()) {
+        if (
+            shouldRegisterFilePattern()
+                .also { println("shouldRegisterFilePattern: $it") }
+        ) {
             fileWatchEngine.getOrCreateToken().registerFilePattern(watch.filePattern)
         }
         watchStore[token] = scope.copyAndAddWatch(watch)
