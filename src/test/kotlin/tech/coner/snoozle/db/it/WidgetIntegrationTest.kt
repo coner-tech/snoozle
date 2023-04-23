@@ -332,8 +332,30 @@ class WidgetIntegrationTest {
         }
 
         @Test
-        fun `It should continue to watch for widget when same watch pattern registered on multiple scopes`() = testWidgets {
-            TODO()
+        fun `It should continue to watch for widget when same watch pattern registered on multiple scopes unregisters from one`() = testWidgets {
+            val widget = Widget(
+                name = "Watched by multiple scopes, one unregisters, one should remain watching",
+                widget = true
+            )
+            val token1 = widgets.watchEngine.createToken()
+            val token2 = widgets.watchEngine.createToken()
+            val watch = widgets.watchEngine.watchSpecific(widget.id)
+            token1.register(watch)
+            token2.register(watch)
+            token1.unregister(watch)
+
+            launch { widgets.create(widget) }
+            val event = withTimeout(defaultTimeoutMillis) {
+                token2.events.first()
+            }
+
+            assertThat(event)
+                .isInstanceOfExists()
+                .all {
+                    recordId().isEqualTo(Widget.Key(widget.id))
+                    recordContent().isEqualTo(widget)
+                    origin().isIn(Event.Origin.RESOURCE_CREATED, Event.Origin.WATCH)
+                }
         }
     }
 
