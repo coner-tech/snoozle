@@ -4,6 +4,6 @@ import assertk.Assert
 import assertk.assertions.prop
 import tech.coner.snoozle.db.Key
 
-fun <K : Key> Assert<EntityWatchEngine.Watch<K>>.id() = prop(EntityWatchEngine.Watch<K>::id)
-fun <K : Key> Assert<EntityWatchEngine.Watch<K>>.directoryPattern() = prop(EntityWatchEngine.Watch<K>::directoryPattern)
-fun <K : Key> Assert<EntityWatchEngine.Watch<K>>.filePattern() = prop(EntityWatchEngine.Watch<K>::filePattern)
+fun <K : Key> Assert<Watch<K>>.id() = prop(Watch<K>::id)
+fun <K : Key> Assert<Watch<K>>.directoryPattern() = prop(Watch<K>::directoryPattern)
+fun <K : Key> Assert<Watch<K>>.filePattern() = prop(Watch<K>::filePattern)

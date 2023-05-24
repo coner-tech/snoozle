@@ -4,20 +4,20 @@ import assertk.all
 import assertk.assertThat
 import assertk.assertions.containsAll
 import assertk.assertions.hasSize
-import assertk.assertions.index
 import assertk.assertions.isEqualTo
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assumptions
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
 import org.skyscreamer.jsonassert.JSONCompareMode
 import tech.coner.snoozle.db.closeAndAssertSuccess
-import tech.coner.snoozle.db.entity.EntityResource
 import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.sample.Subwidget
 import tech.coner.snoozle.db.sample.SubwidgetResource
@@ -129,7 +129,7 @@ class SubwidgetIntegrationTest {
         try {
             runBlocking { testFn(context) }
         } finally {
-            runBlocking { context.subwidgets.watchEngine.destroyAllTokens() }
+            runBlocking { context.subwidgets.destroyAllWatchTokens() }
             context.session.closeAndAssertSuccess()
             context.cancel()
         }

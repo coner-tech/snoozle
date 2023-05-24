@@ -17,8 +17,9 @@ import tech.coner.snoozle.db.sample.SampleDatabase
 import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.sample.Widget
 import tech.coner.snoozle.db.sample.WidgetResource
-import tech.coner.snoozle.db.sample.watchAll
-import tech.coner.snoozle.db.sample.watchSpecific
+import tech.coner.snoozle.db.sample.watchWidgets
+import tech.coner.snoozle.db.sample.watchWidget
+import tech.coner.snoozle.db.sample.watchAllWidgets
 import tech.coner.snoozle.db.sample.widgets
 import tech.coner.snoozle.db.session.data.DataSession
 import java.nio.file.Path
@@ -63,7 +64,7 @@ class EntityWatchEngineTest : CoroutineScope {
         @Test
         fun `watchAll filePattern should match any widget path`() {
             val randomWidgetPaths = (0..100).randomWidgetRelativePathStrings()
-            val watch = widgets.watchEngine.watchAll()
+            val watch = widgets.watchAllWidgets()
 
             val actual = randomWidgetPaths
                 .map { watch.filePattern.matcher(it).matches() }
@@ -75,7 +76,7 @@ class EntityWatchEngineTest : CoroutineScope {
         fun `watchSpecific single filePattern should match any single widget`() {
             val widget = SampleDatabaseFixture.Widgets.One
             val widgetPath = SampleDatabaseFixture.Widgets.relativePath(widget).value.toString()
-            val watch = widgets.watchEngine.watchSpecific(widget.id)
+            val watch = widgets.watchWidget(widget.id)
 
             val actual = watch.filePattern.matcher(widgetPath).matches()
 
@@ -86,7 +87,7 @@ class EntityWatchEngineTest : CoroutineScope {
         fun `watchSpecific single should not match other widgets`() {
             val randomOtherWidgetPaths = (0..100).randomWidgetRelativePathStrings()
             val widget = Widget(name = "Random Widget of Interest", widget = true)
-            val watch = widgets.watchEngine.watchSpecific(widget.id)
+            val watch = widgets.watchWidget(widget.id)
 
             val actual = randomOtherWidgetPaths
                 .map { watch.filePattern.matcher(it).matches() }
@@ -99,7 +100,7 @@ class EntityWatchEngineTest : CoroutineScope {
             val widgetsCollection = (0..100)
                 .map { Widget(name = "Widget $it", widget = true) }
             val widgetsIds = widgetsCollection.map { it.id }
-            val watch = widgets.watchEngine.watchSpecific(widgetsIds)
+            val watch = widgets.watchWidgets(widgetsIds)
             val widgetsCollectionPaths = widgetsCollection
                 .map { it.toRelativePathString() }
 
@@ -118,7 +119,7 @@ class EntityWatchEngineTest : CoroutineScope {
                 .map { Widget(name = "Widget $it", widget = true) }
             val widgetsNotOfInterestPaths = widgetsNotOfInterest
                 .map { it.toRelativePathString() }
-            val watch = widgets.watchEngine.watchSpecific(widgetsOfInterest)
+            val watch = widgets.watchWidgets(widgetsOfInterest)
 
             val actual = widgetsNotOfInterestPaths
                 .map { watch.filePattern.matcher(it).matches() }

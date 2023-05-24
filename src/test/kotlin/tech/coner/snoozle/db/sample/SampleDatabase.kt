@@ -5,7 +5,6 @@ import tech.coner.snoozle.db.entity.EntityResource
 import tech.coner.snoozle.db.migration.MigrationPathMatcher
 import tech.coner.snoozle.db.path.AbsolutePath
 import tech.coner.snoozle.db.session.data.DataSession
-import tech.coner.snoozle.db.watch.EntityWatchEngine
 import java.util.*
 
 class SampleDatabase(root: AbsolutePath) : Database(root) {
@@ -115,14 +114,13 @@ class SampleDatabase(root: AbsolutePath) : Database(root) {
 }
 
 typealias WidgetResource = EntityResource<Widget.Key, Widget>
-
 fun DataSession.widgets(): WidgetResource = entity()
-typealias WidgetWatchEngine = EntityWatchEngine<Widget.Key, Widget>
-fun WidgetWatchEngine.watchAll() = createWatch { uuidIsAny() }
-fun WidgetWatchEngine.watchSpecific(widgetId: UUID) = createWatch { uuidIsEqualTo(widgetId) }
-fun WidgetWatchEngine.watchSpecific(widgetIds: Collection<UUID>) = createWatch { uuidIsOneOf(widgetIds) }
+fun WidgetResource.watchAllWidgets() = buildWatch { listOf(uuidIsAny()) }
+fun WidgetResource.watchWidget(widgetId: UUID) = buildWatch { listOf(uuidIsEqualTo(widgetId)) }
+fun WidgetResource.watchWidgets(widgetIds: Collection<UUID>) = buildWatch { listOf(uuidIsOneOf(widgetIds)) }
 
 typealias SubwidgetResource = EntityResource<Subwidget.Key, Subwidget>
-
 fun DataSession.subwidgets(): SubwidgetResource = entity()
-typealias SubwidgetWatchEngine = EntityWatchEngine<Subwidget.Key, Subwidget>
+fun SubwidgetResource.watchAllSubwidgets() = buildWatch { listOf(uuidIsAny(), uuidIsAny()) }
+fun SubwidgetResource.watchSubwidget(widgetId: UUID, subwidgetId: UUID) = buildWatch { listOf(uuidIsEqualTo(widgetId), uuidIsEqualTo(subwidgetId)) }
+fun SubwidgetResource.watchSubwidgetsOf(widgetId: UUID) = buildWatch { listOf(uuidIsEqualTo(widgetId), uuidIsAny()) }

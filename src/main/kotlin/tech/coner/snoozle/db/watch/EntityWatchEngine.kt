@@ -244,45 +244,25 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
         )
     }
 
-    fun createWatch(builderDslFn: WatchBuilderDsl.() -> Unit): Watch<K> {
-        return WatchBuilderDslImpl()
-            .apply(builderDslFn)
-            .build()
-    }
+    inner class WatchBuilderDslImpl : WatchBuilderDsl {
 
-    class Watch<K : Key>(
-        val id: Int,
-        val directoryPattern: Pattern,
-        val filePattern: Pattern
-    )
-
-    interface WatchBuilderDsl {
-        fun uuidIsAny()
-        fun uuidIsEqualTo(uuid: UUID)
-        fun uuidIsOneOf(uuids: Collection<UUID>)
-    }
-
-    inner class WatchBuilderDslImpl(
-    ) : WatchBuilderDsl {
-
-        private val segmentFilters: MutableList<Pattern> = mutableListOf()
-
-        override fun uuidIsAny() {
-            segmentFilters += hasUuidPattern
+        override fun uuidIsAny(): WatchBuilderDsl.VariableExtractorNode {
+            return VariableExtractorNodeImpl(hasUuidPattern)
         }
 
-        override fun uuidIsEqualTo(uuid: UUID) {
-            segmentFilters += Pattern.compile(uuid.toString())
+        override fun uuidIsEqualTo(uuid: UUID): WatchBuilderDsl.VariableExtractorNode {
+            return VariableExtractorNodeImpl(Pattern.compile(uuid.toString()))
         }
 
-        override fun uuidIsOneOf(uuids: Collection<UUID>) {
-            segmentFilters += Pattern.compile(uuids.joinToString(prefix = "(", separator = "|", postfix = ")"))
+        override fun uuidIsOneOf(uuids: Collection<UUID>): WatchBuilderDsl.VariableExtractorNode {
+            return VariableExtractorNodeImpl(Pattern.compile(uuids.joinToString(prefix = "(", separator = "|", postfix = ")")))
         }
 
-        fun build(): Watch<K> {
+        fun build(builderDslFn: WatchBuilderDsl.() -> List<WatchBuilderDsl.VariableExtractorNode>): Watch<K> {
+            val variableExtractorNodes: List<WatchBuilderDsl.VariableExtractorNode> = builderDslFn()
             val countOfVariableExtractors = resource.definition.path
                 .count { it is PathPart.VariableExtractor<*, *> }
-            check(countOfVariableExtractors == segmentFilters.size)
+            check(countOfVariableExtractors == variableExtractorNodes.size)
             var nextDirectoryPatternVariableExtractorIndex = 0
             var nextFilePatternVariableExtractorIndex = 0
             fun handleUnknownPartPartType(): String {
@@ -299,7 +279,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
                             }
                             is PathPart.VariableExtractor<*, *> -> {
                                 val segmentFilterIndex = nextDirectoryPatternVariableExtractorIndex
-                                val pattern = segmentFilters[segmentFilterIndex]
+                                val pattern = variableExtractorNodes[segmentFilterIndex].pattern
                                     .also { nextDirectoryPatternVariableExtractorIndex++ }
                                     .pattern()
                                 pattern
@@ -314,7 +294,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
                             is PathPart.StaticExtractor<*> -> pathPart.regex.pattern()
                             is PathPart.VariableExtractor<*, *> -> {
                                 val segmentFilterIndex = nextFilePatternVariableExtractorIndex
-                                segmentFilters[segmentFilterIndex]
+                                variableExtractorNodes[segmentFilterIndex].pattern
                                     .also { nextFilePatternVariableExtractorIndex++ }
                                     .pattern()
                             }
@@ -325,4 +305,8 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
             )
         }
     }
+
+    data class VariableExtractorNodeImpl(
+        override val pattern: Pattern
+    ) : WatchBuilderDsl.VariableExtractorNode
 }

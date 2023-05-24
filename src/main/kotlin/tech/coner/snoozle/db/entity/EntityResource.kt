@@ -14,6 +14,8 @@ import tech.coner.snoozle.db.path.asAbsolute
 import tech.coner.snoozle.db.path.asRelative
 import tech.coner.snoozle.db.watch.EntityWatchEngine
 import tech.coner.snoozle.db.watch.FileWatchEngine
+import tech.coner.snoozle.db.watch.Watch
+import tech.coner.snoozle.db.watch.WatchBuilderDsl
 import tech.coner.snoozle.util.PathWatchEvent
 import tech.coner.snoozle.util.watch
 import java.nio.file.Files
@@ -147,7 +149,7 @@ class EntityResource<K : Key, E : Entity<K>>(
         return allKeysForRead.map { read(root.value.resolve(pathfinder.findRecord(it).value).asAbsolute()) }
     }
 
-    val watchEngine: EntityWatchEngine<K, E> by lazy {
+    private val watchEngine: EntityWatchEngine<K, E> by lazy {
         EntityWatchEngine(
             coroutineContext = Dispatchers.IO + Job(),
             fileWatchEngine = fileWatchEngine,
@@ -157,7 +159,17 @@ class EntityResource<K : Key, E : Entity<K>>(
         )
     }
 
-    fun watch(keyFilter: Predicate<K>? = null): Observable<EntityEvent<K, E>> {
+    suspend fun createWatchToken() = watchEngine.createToken()
+
+    suspend fun destroyAllWatchTokens() = watchEngine.destroyAllTokens()
+
+    fun buildWatch(builderDslFn: WatchBuilderDsl.() -> List<WatchBuilderDsl.VariableExtractorNode>): Watch<K> {
+        return watchEngine.WatchBuilderDslImpl()
+            .build(builderDslFn)
+    }
+
+    @Deprecated("Use the coroutines/flow-based Watch functions instead")
+    fun watchRxJava(keyFilter: Predicate<K>? = null): Observable<EntityEvent<K, E>> {
         return root.value.watch(recursive = true)
                 .filter { pathfinder.isRecord(root.value.relativize(it.file).asRelative()) }
                 .map { event: PathWatchEvent ->

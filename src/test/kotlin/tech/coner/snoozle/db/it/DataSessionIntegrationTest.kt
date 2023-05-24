@@ -19,6 +19,7 @@ import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
 import tech.coner.snoozle.db.entity.EntityEvent
 import tech.coner.snoozle.db.metadata.SessionMetadataEntity
+import tech.coner.snoozle.db.path.asAbsolute
 import tech.coner.snoozle.db.sample.SampleDatabase
 import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.sample.Widget
@@ -35,7 +36,6 @@ import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteExisting
 import kotlin.io.path.readText
-import tech.coner.snoozle.db.path.asAbsolute
 
 class DataSessionIntegrationTest {
 
@@ -152,7 +152,7 @@ class DataSessionIntegrationTest {
         database.useDataSession {
             val widgets = it.widgets()
             val observer = TestObserver<EntityEvent<Widget.Key, Widget>>()
-            widgets.watch()
+            widgets.watchRxJava()
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .subscribe(observer)

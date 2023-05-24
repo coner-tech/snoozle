@@ -142,7 +142,7 @@ class WatchEntityIntegrationTest {
 
     private inline fun <reified K : tech.coner.snoozle.db.Key, reified E : Entity<K>> observe(): TestObserver<EntityEvent<K, E>> {
         val testObserver: TestObserver<EntityEvent<K, E>> = TestObserver()
-        resource.watch()
+        resource.watchRxJava()
                 .subscribeOn(Schedulers.io())
                 .subscribe(testObserver as Observer<in EntityEvent<Widget.Key, Widget>>)
 

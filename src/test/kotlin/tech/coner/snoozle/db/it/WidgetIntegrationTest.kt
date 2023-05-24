@@ -29,8 +29,8 @@ import tech.coner.snoozle.db.closeAndAssertSuccess
 import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.sample.Widget
 import tech.coner.snoozle.db.sample.WidgetResource
-import tech.coner.snoozle.db.sample.watchAll
-import tech.coner.snoozle.db.sample.watchSpecific
+import tech.coner.snoozle.db.sample.watchWidget
+import tech.coner.snoozle.db.sample.watchAllWidgets
 import tech.coner.snoozle.db.session.data.DataSession
 import tech.coner.snoozle.db.watch.EntityWatchEngine
 import tech.coner.snoozle.db.watch.Event
@@ -123,8 +123,8 @@ class WidgetIntegrationTest {
         @Test
         fun `It should watch for any widget created in new directory`() = testWidgets(populate = false) {
             val widget = Widget(name = "Random Widget", widget = true)
-            val token = widgets.watchEngine.createToken()
-            token.register(widgets.watchEngine.watchAll())
+            val token = widgets.createWatchToken()
+            token.register(widgets.watchAllWidgets())
 
             launch {
                 widgets.create(widget)
@@ -145,8 +145,8 @@ class WidgetIntegrationTest {
         @Test
         fun `It should watch for any widget created in existing directory`() = testWidgets {
             assertThat(widgetsDirectory, "sanity check").exists()
-            val token = widgets.watchEngine.createToken()
-            token.register(widgets.watchEngine.watchAll())
+            val token = widgets.createWatchToken()
+            token.register(widgets.watchAllWidgets())
             val widget = Widget(name = "Any widget", widget = true)
 
             launch { widgets.create(widget) }
@@ -169,8 +169,8 @@ class WidgetIntegrationTest {
                 name = "Specific Widget Created",
                 widget = true
             )
-            val token = widgets.watchEngine.createToken()
-            token.register(widgets.watchEngine.watchSpecific(widget.id))
+            val token = widgets.createWatchToken()
+            token.register(widgets.watchWidget(widget.id))
 
             launch { widgets.create(widget) }
             val event = withTimeout(defaultTimeoutMillis) {
@@ -196,8 +196,8 @@ class WidgetIntegrationTest {
                 name = "Widget of no concern with respect to Watch",
                 widget = true
             )
-            val token = widgets.watchEngine.createToken()
-            token.register(widgets.watchEngine.watchSpecific(widgetOfInterest.id))
+            val token = widgets.createWatchToken()
+            token.register(widgets.watchWidget(widgetOfInterest.id))
 
             launch {
                 widgets.create(widgetNotOfInterest)
@@ -221,8 +221,8 @@ class WidgetIntegrationTest {
             val original = Widget(name = "original", widget = true)
             widgets.create(original)
             val modified = original.copy(name = "modified")
-            val token = widgets.watchEngine.createToken()
-            token.register(widgets.watchEngine.watchAll())
+            val token = widgets.createWatchToken()
+            token.register(widgets.watchAllWidgets())
 
             launch { widgets.update(modified) }
             val event = withTimeout(defaultTimeoutMillis) {
@@ -243,8 +243,8 @@ class WidgetIntegrationTest {
             val original = Widget(name = "Widget to delete", widget = true)
             widgets.create(original)
 
-            val token = widgets.watchEngine.createToken()
-            token.register(widgets.watchEngine.watchAll())
+            val token = widgets.createWatchToken()
+            token.register(widgets.watchAllWidgets())
 
             launch { widgets.delete(original) }
             val event = withTimeout(defaultTimeoutMillis) {
@@ -265,9 +265,9 @@ class WidgetIntegrationTest {
                 name = "Create widget with one remaining watch",
                 widget = true
             )
-            val token = widgets.watchEngine.createToken()
-            val watch1 = widgets.watchEngine.watchSpecific(widget.id)
-            val watch2 = widgets.watchEngine.watchSpecific(widget.id)
+            val token = widgets.createWatchToken()
+            val watch1 = widgets.watchWidget(widget.id)
+            val watch2 = widgets.watchWidget(widget.id)
             token.register(watch1)
             token.register(watch2)
             token.unregister(watch1)
@@ -292,9 +292,9 @@ class WidgetIntegrationTest {
                 name = "Create widget with one remaining watch",
                 widget = true
             )
-            val token = widgets.watchEngine.createToken() as EntityWatchEngine.TokenImpl<Widget.Key, Widget>
-            val watch1 = widgets.watchEngine.watchSpecific(widget.id)
-            val watch2 = widgets.watchEngine.watchSpecific(widget.id)
+            val token = widgets.createWatchToken() as EntityWatchEngine.TokenImpl<Widget.Key, Widget>
+            val watch1 = widgets.watchWidget(widget.id)
+            val watch2 = widgets.watchWidget(widget.id)
             token.register(watch1)
             token.register(watch2)
             token.unregister(watch1)
@@ -314,10 +314,10 @@ class WidgetIntegrationTest {
                 name = "Create widget should not be watched by any scopes",
                 widget = true
             )
-            val token1 = widgets.watchEngine.createToken()
-            val token2 = widgets.watchEngine.createToken()
-            val watch1 = widgets.watchEngine.watchSpecific(widget.id)
-            val watch2 = widgets.watchEngine.watchSpecific(widget.id)
+            val token1 = widgets.createWatchToken()
+            val token2 = widgets.createWatchToken()
+            val watch1 = widgets.watchWidget(widget.id)
+            val watch2 = widgets.watchWidget(widget.id)
             token1.register(watch1)
             token2.register(watch2)
             token1.unregister(watch1)
@@ -337,9 +337,9 @@ class WidgetIntegrationTest {
                 name = "Watched by multiple scopes, one unregisters, one should remain watching",
                 widget = true
             )
-            val token1 = widgets.watchEngine.createToken()
-            val token2 = widgets.watchEngine.createToken()
-            val watch = widgets.watchEngine.watchSpecific(widget.id)
+            val token1 = widgets.createWatchToken()
+            val token2 = widgets.createWatchToken()
+            val watch = widgets.watchWidget(widget.id)
             token1.register(watch)
             token2.register(watch)
             token1.unregister(watch)
@@ -365,8 +365,8 @@ class WidgetIntegrationTest {
         @Test
         fun `It should watch for any widget created in new directory`() = testWidgets(populate = false) {
             val widget = Widget(name = "Random Widget", widget = true)
-            val token = widgets.watchEngine.createToken()
-            token.register(widgets.watchEngine.watchAll())
+            val token = widgets.createWatchToken()
+            token.register(widgets.watchAllWidgets())
             val widgetFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(widget).value)
             widgetFile.parent.createDirectories()
             val widgetAsJson = SampleDatabaseFixture.Widgets.asJson(widget)
@@ -391,8 +391,8 @@ class WidgetIntegrationTest {
         fun `It should watch for any widget created in existing directory`() = testWidgets {
             assertThat(widgetsDirectory, "sanity check").exists()
             val widget = Widget(name = "Any widget", widget = true)
-            val token = widgets.watchEngine.createToken()
-            token.register(widgets.watchEngine.watchAll())
+            val token = widgets.createWatchToken()
+            token.register(widgets.watchAllWidgets())
             val widgetFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(widget).value)
             val widgetAsJson = SampleDatabaseFixture.Widgets.asJson(widget)
 
@@ -418,8 +418,8 @@ class WidgetIntegrationTest {
                 name = "Specific Widget Created",
                 widget = true
             )
-            val token = widgets.watchEngine.createToken()
-            token.register(widgets.watchEngine.watchSpecific(widget.id))
+            val token = widgets.createWatchToken()
+            token.register(widgets.watchWidget(widget.id))
             val widgetFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(widget).value)
             val widgetAsJson = SampleDatabaseFixture.Widgets.asJson(widget)
 
@@ -451,8 +451,8 @@ class WidgetIntegrationTest {
             )
             val widgetNotOfInterestFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(widgetOfInterest).value)
             val widgetNotOfInterestJson = SampleDatabaseFixture.Widgets.asJson(widgetNotOfInterest)
-            val token = widgets.watchEngine.createToken()
-            token.register(widgets.watchEngine.watchSpecific(widgetOfInterest.id))
+            val token = widgets.createWatchToken()
+            token.register(widgets.watchWidget(widgetOfInterest.id))
 
             launch {
                 widgetNotOfInterestFile.writeText(widgetNotOfInterestJson)
@@ -478,8 +478,8 @@ class WidgetIntegrationTest {
             val modified = original.copy(name = "modified")
             val widgetFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(modified).value)
             val modifiedWidget = SampleDatabaseFixture.Widgets.asJson(modified)
-            val token = widgets.watchEngine.createToken()
-            token.register(widgets.watchEngine.watchAll())
+            val token = widgets.createWatchToken()
+            token.register(widgets.watchAllWidgets())
 
             launch {
                 println("widgetFile.writeText >>>")
@@ -504,8 +504,8 @@ class WidgetIntegrationTest {
             val widget = Widget(name = "Widget to delete", widget = true)
             widgets.create(widget)
             val widgetFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(widget).value)
-            val token = widgets.watchEngine.createToken()
-            token.register(widgets.watchEngine.watchAll())
+            val token = widgets.createWatchToken()
+            token.register(widgets.watchAllWidgets())
 
             launch {
                 widgetFile.deleteExisting()
@@ -544,7 +544,7 @@ class WidgetIntegrationTest {
         try {
             runBlocking { testFn(context) }
         } finally {
-            runBlocking { context.widgets.watchEngine.destroyAllTokens() }
+            runBlocking { context.widgets.destroyAllWatchTokens() }
             context.session.closeAndAssertSuccess()
             context.cancel()
         }
