@@ -12,9 +12,14 @@ import tech.coner.snoozle.db.closeAndAssertSuccess
 import tech.coner.snoozle.db.sample.GadgetPhoto
 import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.session.data.DataSession
+import tech.coner.snoozle.util.endsWith
+import tech.coner.snoozle.util.startsWith
 import java.nio.file.Path
+import java.nio.file.Paths
 import javax.imageio.ImageIO
+import kotlin.io.path.ExperimentalPathApi
 
+@OptIn(ExperimentalPathApi::class)
 class GadgetPhotoIntegrationTest {
 
     @TempDir
@@ -43,8 +48,8 @@ class GadgetPhotoIntegrationTest {
     @Test
     fun `It should stream GadgetPhotos`() {
         val actualGadgetPhotos = resource.stream()
-                .toList()
-                .sortedBy { it.id }
+            .use { stream -> stream.toList() }
+            .sortedBy { it.id }
 
         assertThat(actualGadgetPhotos).all {
             index(0).all {
@@ -59,8 +64,7 @@ class GadgetPhotoIntegrationTest {
         }
 
         val images = actualGadgetPhotos
-                .map { resource.getAsInputStream(it) }
-                .map { ImageIO.read(it) }
+                .map { gadgetPhoto -> resource.getAsInputStream(gadgetPhoto).use { ImageIO.read(it) } }
         assertThat(images).all {
             index(0).all {
                 transform { it.width }.isEqualTo(640)
@@ -74,20 +78,16 @@ class GadgetPhotoIntegrationTest {
 
         val actualGadgetPhotoZeroPath = resource.getAbsolutePathTo(actualGadgetPhotos[0])
         assertThat(actualGadgetPhotoZeroPath.value).all {
-            toStringFun().all {
-                startsWith(root.toString())
-                endsWith("/gadgets/${actualGadgetPhotos[0].gadgetId}/photos/${actualGadgetPhotos[0].id}.${actualGadgetPhotos[0].extension}")
-            }
+            startsWith(root)
+            endsWith(Paths.get("gadgets", "${actualGadgetPhotos[0].gadgetId}", "photos", "${actualGadgetPhotos[0].id}.${actualGadgetPhotos[0].extension}"))
             isRegularFile()
             isReadable()
         }
 
         val actualGadgetPhotoOnePath = resource.getAbsolutePathTo(actualGadgetPhotos[1])
         assertThat(actualGadgetPhotoOnePath.value).all {
-            toStringFun().all {
-                startsWith(root.toString())
-                endsWith("/gadgets/${actualGadgetPhotos[1].gadgetId}/photos/${actualGadgetPhotos[1].id}.${actualGadgetPhotos[1].extension}")
-            }
+            startsWith(root)
+            endsWith(Paths.get("gadgets","${actualGadgetPhotos[1].gadgetId}", "photos", "${actualGadgetPhotos[1].id}.${actualGadgetPhotos[1].extension}"))
             isRegularFile()
             isReadable()
         }
