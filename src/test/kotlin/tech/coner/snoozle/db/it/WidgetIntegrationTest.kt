@@ -29,8 +29,8 @@ import tech.coner.snoozle.db.closeAndAssertSuccess
 import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.sample.Widget
 import tech.coner.snoozle.db.sample.WidgetResource
-import tech.coner.snoozle.db.sample.watchWidget
 import tech.coner.snoozle.db.sample.watchAllWidgets
+import tech.coner.snoozle.db.sample.watchWidget
 import tech.coner.snoozle.db.session.data.DataSession
 import tech.coner.snoozle.db.watch.EntityWatchEngine
 import tech.coner.snoozle.db.watch.Event
@@ -169,8 +169,9 @@ class WidgetIntegrationTest {
                 name = "Specific Widget Created",
                 widget = true
             )
+            val widgetKey = widget.toKey()
             val token = widgets.createWatchToken()
-            token.register(widgets.watchWidget(widget.id))
+            token.register(widgets.watchWidget(widgetKey))
 
             launch { widgets.create(widget) }
             val event = withTimeout(defaultTimeoutMillis) {
@@ -180,7 +181,7 @@ class WidgetIntegrationTest {
             assertThat(event)
                 .isInstanceOfExists()
                 .all {
-                    recordId().isEqualTo(Widget.Key(widget.id))
+                    recordId().isEqualTo(widgetKey)
                     recordContent().isEqualTo(widget)
                     origin().isIn(Event.Origin.RESOURCE_CREATED, Event.Origin.WATCH)
                 }
@@ -192,12 +193,13 @@ class WidgetIntegrationTest {
                 name = "Specific Widget to Watch",
                 widget = true
             )
+            val widgetOfInterestKey = widgetOfInterest.toKey()
             val widgetNotOfInterest = Widget(
                 name = "Widget of no concern with respect to Watch",
                 widget = true
             )
             val token = widgets.createWatchToken()
-            token.register(widgets.watchWidget(widgetOfInterest.id))
+            token.register(widgets.watchWidget(widgetOfInterestKey))
 
             launch {
                 widgets.create(widgetNotOfInterest)
@@ -210,7 +212,7 @@ class WidgetIntegrationTest {
             assertThat(event)
                 .isInstanceOfExists()
                 .all {
-                    recordId().isEqualTo(Widget.Key(widgetOfInterest.id))
+                    recordId().isEqualTo(widgetOfInterestKey)
                     recordContent().isEqualTo(widgetOfInterest)
                     origin().isIn(Event.Origin.RESOURCE_CREATED, Event.Origin.WATCH)
                 }
@@ -241,6 +243,7 @@ class WidgetIntegrationTest {
         @Test
         fun `It should watch for any widget deleted`() = testWidgets(populate = false) {
             val original = Widget(name = "Widget to delete", widget = true)
+            val originalKey = original.toKey()
             widgets.create(original)
 
             val token = widgets.createWatchToken()
@@ -254,7 +257,7 @@ class WidgetIntegrationTest {
             assertThat(event)
                 .isInstanceOfDeleted()
                 .all {
-                    recordId().isEqualTo(Widget.Key(original.id))
+                    recordId().isEqualTo(originalKey)
                     origin().isIn(Event.Origin.RESOURCE_DELETED, Event.Origin.WATCH)
                 }
         }
@@ -265,9 +268,10 @@ class WidgetIntegrationTest {
                 name = "Create widget with one remaining watch",
                 widget = true
             )
+            val widgetKey = widget.toKey()
             val token = widgets.createWatchToken()
-            val watch1 = widgets.watchWidget(widget.id)
-            val watch2 = widgets.watchWidget(widget.id)
+            val watch1 = widgets.watchWidget(widgetKey)
+            val watch2 = widgets.watchWidget(widgetKey)
             token.register(watch1)
             token.register(watch2)
             token.unregister(watch1)
@@ -280,7 +284,7 @@ class WidgetIntegrationTest {
             assertThat(event)
                 .isInstanceOfExists()
                 .all {
-                    recordId().isEqualTo(Widget.Key(widget.id))
+                    recordId().isEqualTo(widgetKey)
                     recordContent().isEqualTo(widget)
                     origin().isIn(Event.Origin.RESOURCE_CREATED, Event.Origin.WATCH)
                 }
@@ -292,9 +296,10 @@ class WidgetIntegrationTest {
                 name = "Create widget with one remaining watch",
                 widget = true
             )
+            val widgetKey = widget.toKey()
             val token = widgets.createWatchToken() as EntityWatchEngine.TokenImpl<Widget.Key, Widget>
-            val watch1 = widgets.watchWidget(widget.id)
-            val watch2 = widgets.watchWidget(widget.id)
+            val watch1 = widgets.watchWidget(widgetKey)
+            val watch2 = widgets.watchWidget(widgetKey)
             token.register(watch1)
             token.register(watch2)
             token.unregister(watch1)
@@ -314,10 +319,11 @@ class WidgetIntegrationTest {
                 name = "Create widget should not be watched by any scopes",
                 widget = true
             )
+            val widgetKey = widget.toKey()
             val token1 = widgets.createWatchToken()
             val token2 = widgets.createWatchToken()
-            val watch1 = widgets.watchWidget(widget.id)
-            val watch2 = widgets.watchWidget(widget.id)
+            val watch1 = widgets.watchWidget(widgetKey)
+            val watch2 = widgets.watchWidget(widgetKey)
             token1.register(watch1)
             token2.register(watch2)
             token1.unregister(watch1)
@@ -337,9 +343,10 @@ class WidgetIntegrationTest {
                 name = "Watched by multiple scopes, one unregisters, one should remain watching",
                 widget = true
             )
+            val widgetKey = widget.toKey()
             val token1 = widgets.createWatchToken()
             val token2 = widgets.createWatchToken()
-            val watch = widgets.watchWidget(widget.id)
+            val watch = widgets.watchWidget(widgetKey)
             token1.register(watch)
             token2.register(watch)
             token1.unregister(watch)
@@ -352,7 +359,7 @@ class WidgetIntegrationTest {
             assertThat(event)
                 .isInstanceOfExists()
                 .all {
-                    recordId().isEqualTo(Widget.Key(widget.id))
+                    recordId().isEqualTo(widgetKey)
                     recordContent().isEqualTo(widget)
                     origin().isIn(Event.Origin.RESOURCE_CREATED, Event.Origin.WATCH)
                 }
@@ -418,8 +425,9 @@ class WidgetIntegrationTest {
                 name = "Specific Widget Created",
                 widget = true
             )
+            val widgetKey = widget.toKey()
             val token = widgets.createWatchToken()
-            token.register(widgets.watchWidget(widget.id))
+            token.register(widgets.watchWidget(widgetKey))
             val widgetFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(widget).value)
             val widgetAsJson = SampleDatabaseFixture.Widgets.asJson(widget)
 
@@ -431,7 +439,7 @@ class WidgetIntegrationTest {
             assertThat(event)
                 .isInstanceOfExists()
                 .all {
-                    recordId().isEqualTo(Widget.Key(widget.id))
+                    recordId().isEqualTo(widgetKey)
                     recordContent().isEqualTo(widget)
                     origin().isEqualTo(Event.Origin.WATCH)
                 }
@@ -443,6 +451,7 @@ class WidgetIntegrationTest {
                 name = "Specific Widget to Watch",
                 widget = true
             )
+            val widgetOfInterestKey = widgetOfInterest.toKey()
             val widgetOfInterestFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(widgetOfInterest).value)
             val widgetOfInterestJson = SampleDatabaseFixture.Widgets.asJson(widgetOfInterest)
             val widgetNotOfInterest = Widget(
@@ -452,7 +461,7 @@ class WidgetIntegrationTest {
             val widgetNotOfInterestFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(widgetOfInterest).value)
             val widgetNotOfInterestJson = SampleDatabaseFixture.Widgets.asJson(widgetNotOfInterest)
             val token = widgets.createWatchToken()
-            token.register(widgets.watchWidget(widgetOfInterest.id))
+            token.register(widgets.watchWidget(widgetOfInterestKey))
 
             launch {
                 widgetNotOfInterestFile.writeText(widgetNotOfInterestJson)
@@ -465,7 +474,7 @@ class WidgetIntegrationTest {
             assertThat(event)
                 .isInstanceOfExists()
                 .all {
-                    recordId().isEqualTo(Widget.Key(widgetOfInterest.id))
+                    recordId().isEqualTo(widgetOfInterestKey)
                     recordContent().isEqualTo(widgetOfInterest)
                     origin().isEqualTo(Event.Origin.WATCH)
                 }
@@ -474,6 +483,7 @@ class WidgetIntegrationTest {
         @Test
         fun `It should watch for any widget modified`() = testWidgets(populate = false) {
             val original = Widget(name = "original", widget = true)
+            val originalKey = original.toKey()
             widgets.create(original)
             val modified = original.copy(name = "modified")
             val widgetFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(modified).value)
@@ -493,7 +503,7 @@ class WidgetIntegrationTest {
             assertThat(event)
                 .isInstanceOfExists()
                 .all {
-                    recordId().isEqualTo(Widget.Key(original.id))
+                    recordId().isEqualTo(originalKey)
                     recordContent().isEqualTo(modified)
                     origin().isEqualTo(Event.Origin.WATCH)
                 }
@@ -502,6 +512,7 @@ class WidgetIntegrationTest {
         @Test
         fun `It should watch for any widget deleted`() = testWidgets(populate = false) {
             val widget = Widget(name = "Widget to delete", widget = true)
+            val widgetKey = widget.toKey()
             widgets.create(widget)
             val widgetFile = root.resolve(SampleDatabaseFixture.Widgets.relativePath(widget).value)
             val token = widgets.createWatchToken()
@@ -517,7 +528,7 @@ class WidgetIntegrationTest {
             assertThat(event)
                 .isInstanceOfDeleted()
                 .all {
-                    recordId().isEqualTo(Widget.Key(widget.id))
+                    recordId().isEqualTo(widgetKey)
                     origin().isEqualTo(Event.Origin.WATCH)
                 }
         }

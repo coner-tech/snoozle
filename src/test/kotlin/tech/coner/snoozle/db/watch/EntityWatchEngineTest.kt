@@ -17,9 +17,9 @@ import tech.coner.snoozle.db.sample.SampleDatabase
 import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.sample.Widget
 import tech.coner.snoozle.db.sample.WidgetResource
-import tech.coner.snoozle.db.sample.watchWidgets
-import tech.coner.snoozle.db.sample.watchWidget
 import tech.coner.snoozle.db.sample.watchAllWidgets
+import tech.coner.snoozle.db.sample.watchWidget
+import tech.coner.snoozle.db.sample.watchWidgets
 import tech.coner.snoozle.db.sample.widgets
 import tech.coner.snoozle.db.session.data.DataSession
 import java.nio.file.Path
@@ -75,8 +75,9 @@ class EntityWatchEngineTest : CoroutineScope {
         @Test
         fun `watchSpecific single filePattern should match any single widget`() {
             val widget = SampleDatabaseFixture.Widgets.One
+            val widgetKey = widget.toKey()
             val widgetPath = SampleDatabaseFixture.Widgets.relativePath(widget).value.toString()
-            val watch = widgets.watchWidget(widget.id)
+            val watch = widgets.watchWidget(widgetKey)
 
             val actual = watch.filePattern.matcher(widgetPath).matches()
 
@@ -87,7 +88,8 @@ class EntityWatchEngineTest : CoroutineScope {
         fun `watchSpecific single should not match other widgets`() {
             val randomOtherWidgetPaths = (0..100).randomWidgetRelativePathStrings()
             val widget = Widget(name = "Random Widget of Interest", widget = true)
-            val watch = widgets.watchWidget(widget.id)
+            val widgetKey = widget.toKey()
+            val watch = widgets.watchWidget(widgetKey)
 
             val actual = randomOtherWidgetPaths
                 .map { watch.filePattern.matcher(it).matches() }
@@ -99,8 +101,8 @@ class EntityWatchEngineTest : CoroutineScope {
         fun `watchSpecific collection should match widgets from collection`() {
             val widgetsCollection = (0..100)
                 .map { Widget(name = "Widget $it", widget = true) }
-            val widgetsIds = widgetsCollection.map { it.id }
-            val watch = widgets.watchWidgets(widgetsIds)
+            val widgetKeys = widgetsCollection.map { it.toKey() }
+            val watch = widgets.watchWidgets(widgetKeys)
             val widgetsCollectionPaths = widgetsCollection
                 .map { it.toRelativePathString() }
 
@@ -114,7 +116,7 @@ class EntityWatchEngineTest : CoroutineScope {
         fun `watchSpecific collection should not match widgets not from collection`() {
             val widgetsOfInterest = (0..100)
                 .map { Widget(name = "Widget $it", widget = true) }
-                .map { it.id }
+                .map { it.toKey() }
             val widgetsNotOfInterest = (0..100)
                 .map { Widget(name = "Widget $it", widget = true) }
             val widgetsNotOfInterestPaths = widgetsNotOfInterest
@@ -126,11 +128,5 @@ class EntityWatchEngineTest : CoroutineScope {
 
             assertThat(actual, "match result for widgets not of interest").each { it.isFalse() }
         }
-    }
-
-
-    @Nested
-    inner class Subwidgets {
-
     }
 }

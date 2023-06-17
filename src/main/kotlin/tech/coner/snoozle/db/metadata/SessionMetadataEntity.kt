@@ -21,6 +21,8 @@ data class SessionMetadataEntity(
         ADMINISTRATIVE,
         DATA
     }
+
+    override fun toKey() = Key(id = id)
 }
 
 typealias SessionMetadataResource = EntityResource<SessionMetadataEntity.Key, SessionMetadataEntity>

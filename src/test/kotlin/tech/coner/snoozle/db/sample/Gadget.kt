@@ -12,4 +12,5 @@ data class Gadget(
 
     data class Key(val id: UUID) : tech.coner.snoozle.db.Key
 
+    override fun toKey() = Key(id = id)
 }

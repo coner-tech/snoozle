@@ -14,6 +14,7 @@ import tech.coner.snoozle.db.Key
 import tech.coner.snoozle.db.KeyMapper
 import tech.coner.snoozle.db.entity.Entity
 import tech.coner.snoozle.db.entity.EntityResource
+import tech.coner.snoozle.db.parent
 import tech.coner.snoozle.db.path.PathPart
 import tech.coner.snoozle.db.path.Pathfinder
 import tech.coner.snoozle.db.path.RelativePath
@@ -103,10 +104,10 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
 
     suspend fun register(token: TokenImpl<K, E>, watch: Watch<K>) = mutex.withLock {
         println("register(token = $token, watch = $watch)")
-        fun shouldRegisterDirectoryPattern(): Boolean {
+        fun shouldRegisterDirectoryPatterns(): Boolean {
             return !watchStore.allScopes.any { scope ->
                 scope.watches.any { watchInScope ->
-                    watchInScope.directoryPattern == watch.directoryPattern
+                    watchInScope.directoryPatterns.contains(watch.directoryPatterns.first())
                 }
             }
         }
@@ -120,7 +121,7 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
         val scope = watchStore[token]
         check(!scope.watches.contains(watch)) { "Watch already registered: $watch" }
         if (
-            shouldRegisterDirectoryPattern()
+            shouldRegisterDirectoryPatterns()
                 .also { println("shouldRegisterDirectoryPattern: $it") }
         ) {
             fileWatchEngine.getOrCreateToken().registerDirectoryPattern(watch.directoryPattern)
@@ -270,24 +271,31 @@ class EntityWatchEngine<K : Key, E : Entity<K>>(
             }
             return Watch(
                 id = runBlocking { mutex.withLock { nextKeyFilterId++ } },
-                directoryPattern = resource.definition.pathParent
-                    .joinToString(prefix = "^", postfix = "$") { pathPart ->
-                        when (pathPart) {
-                            is PathPart.StaticExtractor<*> -> {
-                                val pattern = pathPart.regex.pattern()
-                                pattern
+                directoryPatterns = resource.definition.path
+                    .let { resourceDefinitionPath ->
+                        resourceDefinitionPath.runningFold(resourceDefinitionPath.parent) { acc, pathPart -> acc.parent }
+                            .filter { it.isNotEmpty() }
+                            .distinct()
+                            .map { pathPartsOfInterest ->
+                                pathPartsOfInterest.joinToString(prefix = "^", postfix = "$") { pathPart ->
+                                    when (pathPart) {
+                                        is PathPart.StaticExtractor<*> -> {
+                                            val pattern = pathPart.regex.pattern()
+                                            pattern
+                                        }
+                                        is PathPart.VariableExtractor<*, *> -> {
+                                            val segmentFilterIndex = nextDirectoryPatternVariableExtractorIndex
+                                            val pattern = variableExtractorNodes[segmentFilterIndex].pattern
+                                                .also { nextDirectoryPatternVariableExtractorIndex++ }
+                                                .pattern()
+                                            pattern
+                                        }
+                                        else -> handleUnknownPartPartType()
+                                    }
+                                }
+                                    .let(Pattern::compile)
                             }
-                            is PathPart.VariableExtractor<*, *> -> {
-                                val segmentFilterIndex = nextDirectoryPatternVariableExtractorIndex
-                                val pattern = variableExtractorNodes[segmentFilterIndex].pattern
-                                    .also { nextDirectoryPatternVariableExtractorIndex++ }
-                                    .pattern()
-                                pattern
-                            }
-                            else -> handleUnknownPartPartType()
-                        }
-                    }
-                    .let(Pattern::compile),
+                    },
                 filePattern = resource.definition.path
                     .joinToString(prefix = "^", separator = "", postfix = "$") { pathPart ->
                         when (pathPart) {

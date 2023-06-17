@@ -5,6 +5,6 @@ import java.util.regex.Pattern
 
 class Watch<K : Key>(
     val id: Int,
-    val directoryPattern: Pattern,
+    val directoryPatterns: List<Pattern>,
     val filePattern: Pattern
 )

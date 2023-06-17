@@ -6,8 +6,4 @@ import kotlin.reflect.KClass
 class EntityDefinition<K : tech.coner.snoozle.db.Key, E : Entity<K>>(
         keyClass: KClass<K>,
         entityClass: KClass<E>
-) : LiteralRecordDefinition<K, E>(keyClass, entityClass) {
-
-    var keyFromEntity: (E.() -> K)? = null
-
-}
+) : LiteralRecordDefinition<K, E>(keyClass, entityClass)

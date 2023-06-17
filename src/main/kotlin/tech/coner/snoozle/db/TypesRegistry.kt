@@ -1,8 +1,6 @@
 package tech.coner.snoozle.db
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import tech.coner.snoozle.db.blob.Blob
 import tech.coner.snoozle.db.blob.BlobDefinition
 import tech.coner.snoozle.db.blob.BlobResource
@@ -14,7 +12,6 @@ import tech.coner.snoozle.db.metadata.SessionMetadataEntity
 import tech.coner.snoozle.db.path.AbsolutePath
 import tech.coner.snoozle.db.path.PathPart
 import tech.coner.snoozle.db.path.Pathfinder
-import tech.coner.snoozle.db.watch.EntityWatchEngine
 import tech.coner.snoozle.db.watch.FileWatchEngine
 import kotlin.reflect.KClass
 
@@ -45,7 +42,6 @@ class TypesRegistry(
                 PathPart.StringValue(".json")
             )
             keyFromPath = { SessionMetadataEntity.Key(id = uuidAt(0)) }
-            keyFromEntity = { SessionMetadataEntity.Key(id = id) }
         }
     }
 
@@ -62,7 +58,7 @@ class TypesRegistry(
             definition = entityDefinition,
             pathfinder = pathfinder,
             relativeRecordFn = requireNotNull(entityDefinition.keyFromPath),
-            instanceFn = requireNotNull(entityDefinition.keyFromEntity)
+            instanceFn = { toKey() }
         )
         entityResources[E::class] = EntityResource(
             root = root,

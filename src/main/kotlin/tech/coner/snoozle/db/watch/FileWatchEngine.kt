@@ -266,9 +266,9 @@ open class FileWatchEngine(
                             newDirectoryWatchKeyEntriesToAdd.forEach { (token, directoryWatchKeyEntriesToAdd) ->
                                 directoryWatchKeyEntriesToAdd.forEach { entryToAdd ->
                                     watchStore[token]
-                                        ?.copyAndAddDirectoryWatchKeyEntry(entryToAdd)
-                                        ?.also { watchStore[token] = it }
-                                        ?.also { scanNewWatchedDirectory(entryToAdd.absoluteDirectory) }
+                                        .copyAndAddDirectoryWatchKeyEntry(entryToAdd)
+                                        .also { watchStore[token] = it }
+                                        .also { scanNewWatchedDirectory(entryToAdd.absoluteDirectory) }
                                 }
                             }
                         } else if (newFileCandidateAbsolute.value.isRegularFile(LinkOption.NOFOLLOW_LINKS)) {

@@ -1,11 +1,8 @@
 package tech.coner.snoozle.db.sample
 
 import tech.coner.snoozle.db.Database
-import tech.coner.snoozle.db.entity.EntityResource
 import tech.coner.snoozle.db.migration.MigrationPathMatcher
 import tech.coner.snoozle.db.path.AbsolutePath
-import tech.coner.snoozle.db.session.data.DataSession
-import java.util.*
 
 class SampleDatabase(root: AbsolutePath) : Database(root) {
 
@@ -14,17 +11,14 @@ class SampleDatabase(root: AbsolutePath) : Database(root) {
         entity<Widget.Key, Widget> {
             path = "widgets" / { id } + ".json"
             keyFromPath = { Widget.Key(id = uuidAt(0)) }
-            keyFromEntity = { Widget.Key(id = id) }
         }
         entity<Subwidget.Key, Subwidget> {
             path = "widgets" / { widgetId } / "subwidgets" / { id } + ".json"
             keyFromPath = { Subwidget.Key(widgetId = uuidAt(0), id = uuidAt(1)) }
-            keyFromEntity = { Subwidget.Key(widgetId = widgetId, id = id) }
         }
         entity<Gadget.Key, Gadget> {
             path = "gadgets" / { id } + ".json"
             keyFromPath = { Gadget.Key(uuidAt(0)) }
-            keyFromEntity = { Gadget.Key(id = id) }
         }
         blob<GadgetPhoto> {
             path = "gadgets" / { gadgetId } / "photos" / string { id } + "." + string { extension }
@@ -112,15 +106,3 @@ class SampleDatabase(root: AbsolutePath) : Database(root) {
         }
     }
 }
-
-typealias WidgetResource = EntityResource<Widget.Key, Widget>
-fun DataSession.widgets(): WidgetResource = entity()
-fun WidgetResource.watchAllWidgets() = buildWatch { listOf(uuidIsAny()) }
-fun WidgetResource.watchWidget(widgetId: UUID) = buildWatch { listOf(uuidIsEqualTo(widgetId)) }
-fun WidgetResource.watchWidgets(widgetIds: Collection<UUID>) = buildWatch { listOf(uuidIsOneOf(widgetIds)) }
-
-typealias SubwidgetResource = EntityResource<Subwidget.Key, Subwidget>
-fun DataSession.subwidgets(): SubwidgetResource = entity()
-fun SubwidgetResource.watchAllSubwidgets() = buildWatch { listOf(uuidIsAny(), uuidIsAny()) }
-fun SubwidgetResource.watchSubwidget(widgetId: UUID, subwidgetId: UUID) = buildWatch { listOf(uuidIsEqualTo(widgetId), uuidIsEqualTo(subwidgetId)) }
-fun SubwidgetResource.watchSubwidgetsOf(widgetId: UUID) = buildWatch { listOf(uuidIsEqualTo(widgetId), uuidIsAny()) }
