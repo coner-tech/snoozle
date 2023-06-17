@@ -15,8 +15,11 @@ import io.reactivex.observers.TestObserver
 import io.reactivex.schedulers.Schedulers
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.DisabledOnOs
+import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
 import org.skyscreamer.jsonassert.JSONAssert
+import tech.coner.snoozle.db.RXJAVA_DEPRECATED
 import tech.coner.snoozle.db.entity.EntityEvent
 import tech.coner.snoozle.db.metadata.SessionMetadataEntity
 import tech.coner.snoozle.db.sample.SampleDatabase
@@ -36,6 +39,7 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteExisting
 import kotlin.io.path.readText
 import tech.coner.snoozle.db.path.asAbsolute
+import kotlin.io.path.writeText
 
 class DataSessionIntegrationTest {
 
@@ -58,9 +62,7 @@ class DataSessionIntegrationTest {
     fun `When it cannot read version on disk, it should fail to open`() {
         val database = SampleDatabaseFixture.factory(root, SampleDatabaseFixture.VERSION_HIGHEST)
         root.resolve(".snoozle", "database_version")
-            .also {
-                it.toFile().setReadable(false)
-            }
+            .writeText("some text and definitely not a valid database version number")
 
         val actual = database.openDataSession()
 
@@ -130,6 +132,7 @@ class DataSessionIntegrationTest {
     }
 
     @Test
+    @DisabledOnOs(OS.WINDOWS, disabledReason = "Can't revoke write permission on Windows")
     fun `When the session metadata cannot be written, it should fail to open`() {
         val database = SampleDatabaseFixture.factory(root, SampleDatabaseFixture.VERSION_HIGHEST)
         root.resolve(".snoozle", "sessions")
@@ -145,6 +148,7 @@ class DataSessionIntegrationTest {
 
     @Test
     @Disabled
+    @Deprecated(RXJAVA_DEPRECATED)
     fun `It should watch records in an empty newly created database`() {
 //        val database = SampleDatabaseFixture.factory(root, SampleDatabaseFixture.VERSION_HIGHEST)
         val database = SampleDatabase(root.asAbsolute())

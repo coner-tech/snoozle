@@ -17,9 +17,7 @@ import tech.coner.snoozle.util.startsWith
 import java.nio.file.Path
 import java.nio.file.Paths
 import javax.imageio.ImageIO
-import kotlin.io.path.ExperimentalPathApi
 
-@OptIn(ExperimentalPathApi::class)
 class GadgetPhotoIntegrationTest {
 
     @TempDir

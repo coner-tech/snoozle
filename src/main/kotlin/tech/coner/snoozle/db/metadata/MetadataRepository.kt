@@ -28,8 +28,10 @@ class MetadataRepository(
                 BlobIoException.Reason.NotFound -> null
                 else -> throw MetadataException("Failed to read version blob", blobIoException)
             }
+        } catch (numberFormatException: NumberFormatException) {
+            throw MetadataException("Failed to parse number in version blob", numberFormatException)
         } catch (t: Throwable) {
-            throw MetadataException("Failed to read version blob", t)
+            throw MetadataException("Something went wrong reading version blob", t)
         }
     }
 

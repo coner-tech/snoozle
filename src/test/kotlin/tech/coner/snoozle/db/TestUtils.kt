@@ -8,3 +8,5 @@ fun Session.closeAndAssertSuccess() {
       close()
    }
 }
+
+const val RXJAVA_DEPRECATED = "RxJava is to be removed"

@@ -3,26 +3,24 @@ package tech.coner.snoozle.db.it
 import assertk.all
 import assertk.assertAll
 import assertk.assertThat
-import assertk.assertions.isEqualTo
-import assertk.assertions.isFailure
-import assertk.assertions.isInstanceOf
-import assertk.assertions.isSuccess
+import assertk.assertions.*
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.DisabledOnOs
+import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
 import tech.coner.snoozle.db.closeAndAssertSuccess
 import tech.coner.snoozle.db.initialization.CannotInitializeException
 import tech.coner.snoozle.db.initialization.FailedToInitializeException
+import tech.coner.snoozle.db.path.asAbsolute
 import tech.coner.snoozle.db.sample.SampleDatabase
 import tech.coner.snoozle.db.sample.SampleDatabaseFixture
 import tech.coner.snoozle.db.session.administrative.AdministrativeSession
 import tech.coner.snoozle.util.resolve
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.exists
-import kotlin.io.path.readText
-import tech.coner.snoozle.db.path.asAbsolute
+import kotlin.io.path.*
 
 class InitializationIntegrationTest {
 
@@ -39,9 +37,10 @@ class InitializationIntegrationTest {
 
     @AfterEach
     fun after() {
-        // one test marks a directory not writable which causes
-        Files.find(root, 3, { _, attrs -> attrs.isDirectory })
+        root.walk(PathWalkOption.INCLUDE_DIRECTORIES)
+            .filter { it.isDirectory() }
             .forEach { it.toFile().setWritable(true) }
+        // one test marks a directory not writable which causes
         session.closeAndAssertSuccess()
     }
 
@@ -80,9 +79,11 @@ class InitializationIntegrationTest {
     }
 
     @Test
+    @DisabledOnOs(OS.WINDOWS, disabledReason = "Can't revoke write permission on Windows")
     fun `It should fail to initialize if folder not writable`() {
-        Files.find(root, 3, { _, attrs -> attrs.isDirectory })
-            .forEach { it.toFile().setWritable(false) }
+        root.walk(PathWalkOption.INCLUDE_DIRECTORIES)
+            .filter { it.isDirectory() }
+            .forEach { assertThat(it.toFile().setWritable(false), "revoke write permission").isTrue() }
 
         val actual = session.initializeDatabase()
 

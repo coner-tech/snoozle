@@ -142,10 +142,12 @@
                             <goal>test-compile</goal>
                         </goals>
                     </execution>
+
                 </executions>
 
                 <configuration>
                     <jvmTarget>1.8</jvmTarget>
+                    <args>-opt-in=kotlin.io.path.ExperimentalPathApi</args>
                 </configuration>
             </plugin>
 

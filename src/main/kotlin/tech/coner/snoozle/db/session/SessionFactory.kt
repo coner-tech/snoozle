@@ -95,10 +95,11 @@ class SessionFactory(
                 metadataRepository.readVersion()
             } catch (me: MetadataException) {
                 val cause = me.cause
-                if (cause is BlobIoException && cause.reason == BlobIoException.Reason.ReadFailure) {
-                    throw DataSessionException.VersionReadFailure()
-                } else {
-                    throw DataSessionException.Unknown(me)
+                when {
+                    (cause is BlobIoException && cause.reason == BlobIoException.Reason.ReadFailure)
+                            || cause is NumberFormatException ->
+                        throw DataSessionException.VersionReadFailure()
+                    else -> throw DataSessionException.Unknown(me)
                 }
             } catch (t: Throwable) {
                 throw DataSessionException.Unknown(t)

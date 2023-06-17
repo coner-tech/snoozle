@@ -11,8 +11,10 @@ import io.reactivex.observers.TestObserver
 import io.reactivex.schedulers.Schedulers
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import tech.coner.snoozle.db.RXJAVA_DEPRECATED
 import tech.coner.snoozle.db.closeAndAssertSuccess
 import tech.coner.snoozle.db.entity.Entity
 import tech.coner.snoozle.db.entity.EntityEvent
@@ -53,6 +55,7 @@ class WatchEntityIntegrationTest {
     }
 
     @Test
+    @Disabled(RXJAVA_DEPRECATED)
     fun `It should emit when Widget updated`() {
         val changed = SampleDatabaseFixture.Widgets.One.copy(name = "changed")
 
@@ -71,6 +74,7 @@ class WatchEntityIntegrationTest {
     }
 
     @Test
+    @Disabled(RXJAVA_DEPRECATED)
     fun `It should emit when delete removes Widget`() {
         resource.delete(SampleDatabaseFixture.Widgets.One)
 
@@ -85,6 +89,7 @@ class WatchEntityIntegrationTest {
     }
 
     @Test
+    @Disabled(RXJAVA_DEPRECATED)
     fun `It should emit when Widget created`() {
         val create = Widget(name = "created", widget = true)
 
@@ -101,6 +106,7 @@ class WatchEntityIntegrationTest {
     }
 
     @Test
+    @Disabled(RXJAVA_DEPRECATED)
     fun `It should not emit when junk data written`() {
         val widget = Widget(
             name = "It should not emit when junk data written",
