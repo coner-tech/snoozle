@@ -40,7 +40,7 @@
         <assertk.version>0.25</assertk.version>
         <jsonassert.version>1.5.0</jsonassert.version>
         <mockk.version>1.12.1</mockk.version>
-        <apache-commons.version>3.12.0</apache-commons.version>
+        <apache-commons.version>3.18.0</apache-commons.version>
     </properties>
 
     <dependencies>
